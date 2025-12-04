@@ -6,7 +6,7 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 60) / 2;
 
 type MetricType = 'Weight' | 'Height' | 'BMI' | 'Water' | 'Sleep' | 'Steps';
-//hehe
+
 interface StatCard {
   id: MetricType;
   icon: string;
