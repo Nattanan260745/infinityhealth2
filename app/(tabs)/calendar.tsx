@@ -148,7 +148,7 @@ export default function CalendarScreen() {
   const renderTaskGroup = (title: string, taskList: Task[]) => {
     if (taskList.length === 0) return null;
     return (
-      <View style={{ marginBottom: 24 }}>
+      <View style={{ marginBottom: 24, }}>
         <Text style={{
           fontSize: 18,
           fontWeight: '600',
@@ -218,7 +218,7 @@ export default function CalendarScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'red' }}>
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}

@@ -16,7 +16,7 @@ export function Header({ userName, userAvatar, date }: HeaderProps) {
       justifyContent: 'space-between', 
       paddingHorizontal: 20, 
       paddingVertical: 16,
-      backgroundColor: 'red' 
+      backgroundColor: '#FFFFFF' 
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Image
