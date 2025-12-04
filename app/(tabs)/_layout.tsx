@@ -26,7 +26,7 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="HomePage"
+        name="index"
         options={{
           tabBarIcon: ({ color, focused }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
@@ -46,7 +46,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="calendar"
+        name="Calendar"
         options={{
           tabBarIcon: ({ color, focused }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
@@ -55,16 +55,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="pet"
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name={focused ? 'paw' : 'paw-outline'} size={24} color={color} />
-            </View>
-          ),
-        }}
-      />
+   
       <Tabs.Screen
         name="profile"
         options={{
