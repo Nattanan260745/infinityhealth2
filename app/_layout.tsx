@@ -4,8 +4,9 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { useColorScheme } from 'react-native';
 
-import { useColorScheme } from '@/components/useColorScheme';
+import '../app/global.css';
 
 export {
   // Catch any errors thrown by the Layout component.
