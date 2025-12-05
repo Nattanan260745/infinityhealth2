@@ -29,23 +29,29 @@ export default function ExerciseScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      {/* Back Button - Fixed position */}
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={{ 
+          position: 'absolute', 
+          top: Platform.OS === 'ios' ? 50 : 40, 
+          left: 20, 
+          zIndex: 10,
+          padding: 8,
+        }}
+      >
+        <Ionicons name="chevron-back" size={28} color="#1F2937" />
+      </TouchableOpacity>
+
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: Platform.OS === 'web' ? 20 : 50,
+          paddingTop: Platform.OS === 'web' ? 20 : 80,
           paddingBottom: 30,
           paddingHorizontal: 20,
         }}
       >
-        {/* Back Button */}
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{ marginBottom: 16 }}
-        >
-          <Ionicons name="chevron-back" size={28} color="#1F2937" />
-        </TouchableOpacity>
-
         {/* Header */}
         <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937', textAlign: 'center', marginBottom: 24 }}>
           Exercise
@@ -71,7 +77,7 @@ export default function ExerciseScreen() {
             <Text style={{
               textAlign: 'center',
               fontWeight: '600',
-              color: selectedTab === 'cardio' ? '#F97316' : '#6B7280',
+              color: selectedTab === 'cardio' ? '#7DD1E0' : '#6B7280',
             }}>
               Cardio
             </Text>
@@ -88,7 +94,7 @@ export default function ExerciseScreen() {
             <Text style={{
               textAlign: 'center',
               fontWeight: '600',
-              color: selectedTab === 'weight' ? '#F97316' : '#6B7280',
+              color: selectedTab === 'weight' ? '#7DD1E0' : '#6B7280',
             }}>
               Weight Training
             </Text>
@@ -138,7 +144,7 @@ export default function ExerciseScreen() {
                 }}
               >
                 <Text style={{
-                  color: selectedLevel === level ? '#F97316' : '#374151',
+                  color: selectedLevel === level ? '#7DD1E0' : '#374151',
                   fontWeight: selectedLevel === level ? '600' : '400',
                 }}>
                   {level}

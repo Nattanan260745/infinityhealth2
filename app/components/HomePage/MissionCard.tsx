@@ -1,8 +1,10 @@
-import React from 'react';
-import { View, Text, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, ScrollView, Dimensions, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import type { Mission } from '@/src/types';
+
+const missionIcon = require('../../../assets/images/Group.png');
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 50;
@@ -17,6 +19,7 @@ const missionRoutes: Record<string, string> = {
   'Missions': '/missions',
   'Health Tracking': '/health-tracking',
   'Exercise': '/exercise',
+  'Routine': '/routine',
 };
 
 export function MissionCard({ missions, currentIndex, onIndexChange }: MissionCardProps) {
@@ -27,9 +30,11 @@ export function MissionCard({ missions, currentIndex, onIndexChange }: MissionCa
     }
   };
 
+
   return (
-    <View style={{ marginTop: 8 }}>
+    <View style={{ marginTop: 8, borderWidth: 1, borderColor: 'green' }}>
       <ScrollView
+
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -47,8 +52,8 @@ export function MissionCard({ missions, currentIndex, onIndexChange }: MissionCa
             onPress={() => handlePress(mission.title)}
             activeOpacity={0.8}
             style={{
+              marginRight: 20,
               width: CARD_WIDTH,
-              marginRight: 10,
               backgroundColor: '#FBCFC9',
               borderRadius: 24,
               flexDirection: 'row',
@@ -74,10 +79,14 @@ export function MissionCard({ missions, currentIndex, onIndexChange }: MissionCa
               <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
                 <Ionicons name="checkmark-circle" size={20} color="#10B981" />
               </View>
-              {/* Illustration placeholder */}
-              <Text style={{ fontSize: 50 }}>{mission.icon || '👩‍💻'}</Text>
+              {/* Illustration */}
+              <Image
+                source={missionIcon}
+                style={{ width: 70, height: 70 }}
+                resizeMode="contain"
+              />
             </View>
-            
+
             {/* Text Content */}
             <View style={{ flex: 1, marginLeft: 16 }}>
               <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937' }}>
@@ -87,7 +96,7 @@ export function MissionCard({ missions, currentIndex, onIndexChange }: MissionCa
                 {mission.subtitle}
               </Text>
             </View>
-            
+
             {/* Arrow */}
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </TouchableOpacity>

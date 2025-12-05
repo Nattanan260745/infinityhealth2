@@ -25,7 +25,7 @@ const Filter: React.FC<FilterProps> = (props) => {
                         paddingVertical: 8,
                         borderRadius: 20,
                         marginRight: 8,
-                        backgroundColor: props.selectedTab === tab ? '#1F2937' : '#F3F4F6',
+                        backgroundColor: props.selectedTab === tab ? '#7DD1E0' : '#F3F4F6',
                     }}
                 >
                     <Text

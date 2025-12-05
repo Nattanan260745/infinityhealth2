@@ -2,12 +2,12 @@ import { useState } from "react";
 import { MetricType, StatCard } from "../interface/infinityhealth.interface";
 
 const statCards: StatCard[] = [
-    { id: 'Weight', icon: 'bag-handle', iconColor: '#22C55E', value: '80', unit: 'kilogram', bgColor: '#DCFCE7' },
-    { id: 'Height', icon: 'swap-vertical', iconColor: '#F59E0B', value: '175', unit: 'cm', bgColor: '#FEF9C3' },
-    { id: 'BMI', icon: 'options', iconColor: '#14B8A6', value: '26.12', unit: '', bgColor: '#CCFBF1' },
-    { id: 'Water', icon: 'water', iconColor: '#3B82F6', value: '1500', unit: 'millilitre', bgColor: '#DBEAFE' },
-    { id: 'Sleep', icon: 'moon', iconColor: '#EAB308', value: '7', unit: 'hours', bgColor: '#FEF3C7' },
-    { id: 'Steps', icon: 'footsteps', iconColor: '#10B981', value: '8000', unit: 'steps', bgColor: '#D1FAE5' },
+    { id: 'Weight', icon: 'bag-handle', iconColor: '#009E0B', value: '80', unit: 'kilogram', bgColor: '#DAEDDC' },
+    { id: 'Height', icon: 'swap-vertical', iconColor: '#009E0B', value: '175', unit: 'cm', bgColor: '#D8F4DC' },
+    { id: 'BMI', icon: 'options', iconColor: '#FF5100', value: '26.12', unit: '', bgColor: '#FFE2D7' },
+    { id: 'Water', icon: 'water', iconColor: '#00BFFF', value: '1500', unit: 'millilitre', bgColor: '#D8F4FF' },
+    { id: 'Sleep', icon: 'moon', iconColor: '#FFEA00', value: '7', unit: 'hours', bgColor: '#FAF5DE' },
+    { id: 'Steps', icon: 'footsteps', iconColor: '#6004FF', value: '8000', unit: 'steps', bgColor: '#EAE1F9' },
 ];
 
 const chartData = [

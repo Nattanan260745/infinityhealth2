@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform, Modal, TextInput, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
@@ -16,28 +16,168 @@ interface Mission {
   completed: boolean;
 }
 
-const dailyMissions: Mission[] = [
+const initialDailyMissions: Mission[] = [
   { id: 1, title: 'Drink water at least 2000 ml', icon: '💧', progress: 1000, total: 2000, xp: 50, gems: 10, completed: false },
   { id: 2, title: 'Walk 5000 steps', icon: '👟', progress: 5000, total: 5000, xp: 50, gems: 10, completed: true },
   { id: 3, title: 'Avoid fried foods', icon: '🥗', progress: 5000, total: 5000, xp: 50, gems: 10, completed: true },
 ];
 
-const challengeMissions: Mission[] = [
-  { id: 4, title: '7-Day Workout Streak', icon: '🔥', progress: 5, total: 7, xp: 200, gems: 50, completed: false },
-  { id: 5, title: 'Lose 2kg this month', icon: '⚖️', progress: 1.5, total: 2, xp: 300, gems: 100, completed: false },
-  { id: 6, title: 'Sleep 8 hours for a week', icon: '😴', progress: 7, total: 7, xp: 150, gems: 30, completed: true },
+const initialChallengeMissions: Mission[] = [
+  { id: 4, title: 'No sugar for 1 day', icon: '🍬', progress: 0, total: 1, xp: 100, gems: 50, completed: false },
+  { id: 5, title: 'Exercise for 3 days', icon: '💪', progress: 3, total: 3, xp: 100, gems: 50, completed: true },
 ];
 
 export default function MissionsScreen() {
   const [selectedTab, setSelectedTab] = useState<TabType>('daily');
+  const [dailyMissions, setDailyMissions] = useState<Mission[]>(initialDailyMissions);
+  const [challengeMissions, setChallengeMissions] = useState<Mission[]>(initialChallengeMissions);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
+  const [inputValue, setInputValue] = useState('');
   
   const missions = selectedTab === 'daily' ? dailyMissions : challengeMissions;
   const completedCount = missions.filter(m => m.completed).length;
   const totalXP = missions.reduce((sum, m) => sum + m.xp, 0);
   const totalGems = missions.reduce((sum, m) => sum + m.gems, 0);
 
+  const handleUpdatePress = (mission: Mission) => {
+    setSelectedMission(mission);
+    setInputValue(mission.progress.toString());
+    setShowUpdateModal(true);
+  };
+
+  const handleSave = () => {
+    if (!selectedMission) return;
+    
+    const newProgress = parseFloat(inputValue) || 0;
+    const isCompleted = newProgress >= selectedMission.total;
+    
+    const updateMissions = (missions: Mission[]) => 
+      missions.map(m => 
+        m.id === selectedMission.id 
+          ? { ...m, progress: Math.min(newProgress, m.total), completed: isCompleted }
+          : m
+      );
+
+    if (selectedTab === 'daily') {
+      setDailyMissions(updateMissions(dailyMissions));
+    } else {
+      setChallengeMissions(updateMissions(challengeMissions));
+    }
+    
+    setShowUpdateModal(false);
+    setSelectedMission(null);
+    setInputValue('');
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      {/* Update Progress Modal */}
+      <Modal
+        visible={showUpdateModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowUpdateModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowUpdateModal(false)}>
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          }}>
+            <KeyboardAvoidingView 
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={{ 
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <TouchableWithoutFeedback>
+                <View style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 20,
+                  padding: 24,
+                  width: 280,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 12,
+                  elevation: 8,
+                }}>
+                  <Text style={{
+                    fontSize: 18,
+                    fontWeight: 'bold',
+                    color: '#1F2937',
+                    textAlign: 'center',
+                    marginBottom: 20,
+                  }}>
+                    Update Progress
+                  </Text>
+                  
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: 8,
+                  }}>
+                    {selectedMission?.title}
+                  </Text>
+                  
+                  <TextInput
+                    value={inputValue}
+                    onChangeText={setInputValue}
+                    keyboardType="numeric"
+                    placeholder="Enter value"
+                    style={{
+                      backgroundColor: '#F9FAFB',
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                      padding: 14,
+                      fontSize: 16,
+                      color: '#1F2937',
+                      marginBottom: 20,
+                    }}
+                  />
+                  
+                  <TouchableOpacity
+                    onPress={handleSave}
+                    style={{
+                      backgroundColor: '#F59E0B',
+                      borderRadius: 12,
+                      paddingVertical: 14,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{
+                      color: '#FFFFFF',
+                      fontSize: 16,
+                      fontWeight: '600',
+                    }}>
+                      Save
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Back Button - Fixed position */}
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={{ 
+          position: 'absolute', 
+          top: Platform.OS === 'ios' ? 50 : 40, 
+          left: 20, 
+          zIndex: 10,
+          padding: 8,
+        }}
+      >
+        <Ionicons name="chevron-back" size={28} color="#1F2937" />
+      </TouchableOpacity>
+
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
@@ -56,14 +196,6 @@ export default function MissionsScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 20 }}>
-          {/* Back Button */}
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{ position: 'absolute', top: -180, left: 20 }}
-          >
-            <Ionicons name="chevron-back" size={28} color="#1F2937" />
-          </TouchableOpacity>
-
           {/* Header */}
           <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937', textAlign: 'center', marginTop: 16, marginBottom: 24 }}>
             Missions
@@ -89,7 +221,7 @@ export default function MissionsScreen() {
               <Text style={{
                 textAlign: 'center',
                 fontWeight: '600',
-                color: selectedTab === 'daily' ? '#F97316' : '#6B7280',
+                color: selectedTab === 'daily' ? '#7DD1E0' : '#6B7280',
               }}>
                 Daily
               </Text>
@@ -106,7 +238,7 @@ export default function MissionsScreen() {
               <Text style={{
                 textAlign: 'center',
                 fontWeight: '600',
-                color: selectedTab === 'challenge' ? '#F97316' : '#6B7280',
+                color: selectedTab === 'challenge' ? '#7DD1E0' : '#6B7280',
               }}>
                 Challenge
               </Text>
@@ -129,7 +261,7 @@ export default function MissionsScreen() {
             <View style={{ height: 8, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 16 }}>
               <View style={{
                 height: 8,
-                backgroundColor: '#10B981',
+                backgroundColor: '#F59E0B',
                 borderRadius: 4,
                 width: `${(completedCount / missions.length) * 100}%`,
               }} />
@@ -162,17 +294,39 @@ export default function MissionsScreen() {
             <View
               key={mission.id}
               style={{
-                backgroundColor: mission.completed ? '#ECFDF5' : '#FFFFFF',
+                backgroundColor: '#FFFFFF',
                 borderRadius: 16,
                 padding: 16,
                 marginBottom: 12,
                 borderWidth: 1,
-                borderColor: mission.completed ? '#D1FAE5' : '#F3F4F6',
+                borderColor: '#F3F4F6',
+                position: 'relative',
               }}
             >
+              {/* Completed checkmark */}
+              {mission.completed && (
+                <View style={{
+                  position: 'absolute',
+                  top: 12,
+                  right: 12,
+                }}>
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                </View>
+              )}
+              
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={{ fontSize: 24, marginRight: 12 }}>{mission.icon}</Text>
-                <Text style={{ flex: 1, fontSize: 14, fontWeight: '500', color: '#1F2937' }}>
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: '#FEF3C7',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
+                }}>
+                  <Text style={{ fontSize: 20 }}>{mission.icon}</Text>
+                </View>
+                <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: '#1F2937', paddingRight: 24 }}>
                   {mission.title}
                 </Text>
               </View>
@@ -186,7 +340,7 @@ export default function MissionsScreen() {
                 <View style={{ height: 6, backgroundColor: '#E5E7EB', borderRadius: 3 }}>
                   <View style={{
                     height: 6,
-                    backgroundColor: mission.completed ? '#10B981' : '#F97316',
+                    backgroundColor: mission.completed ? '#F59E0B' : '#F59E0B',
                     borderRadius: 3,
                     width: `${(mission.progress / mission.total) * 100}%`,
                   }} />
@@ -207,18 +361,26 @@ export default function MissionsScreen() {
                 </View>
                 
                 {mission.completed ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 12, color: '#10B981', marginRight: 4 }}>Completed</Text>
-                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
+                  <View style={{
+                    borderWidth: 1,
+                    borderColor: '#D1D5DB',
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                  }}>
+                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Completed</Text>
                   </View>
                 ) : (
-                  <TouchableOpacity style={{
-                    backgroundColor: '#3B82F6',
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 12,
-                  }}>
-                    <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>Update</Text>
+                  <TouchableOpacity 
+                    onPress={() => handleUpdatePress(mission)}
+                    style={{
+                      backgroundColor: '#F3F4F6',
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 12,
+                    }}
+                  >
+                    <Text style={{ color: '#1F2937', fontSize: 12, fontWeight: '600' }}>Update</Text>
                   </TouchableOpacity>
                 )}
               </View>

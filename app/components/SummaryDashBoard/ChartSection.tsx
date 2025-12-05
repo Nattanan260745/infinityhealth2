@@ -86,10 +86,6 @@ const ChartSection: React.FC<ChartSectionProps> = (props) => {
                 </View>
             </View>
 
-            {/* Arrow indicator */}
-            <View style={{ alignItems: 'flex-end', marginTop: 8 }}>
-                <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
-            </View>
         </View>
     );
 };

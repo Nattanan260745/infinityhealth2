@@ -28,23 +28,29 @@ export default function HealthTrackingScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      {/* Back Button - Fixed position */}
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={{ 
+          position: 'absolute', 
+          top: Platform.OS === 'ios' ? 50 : 40, 
+          left: 20, 
+          zIndex: 10,
+          padding: 8,
+        }}
+      >
+        <Ionicons name="chevron-back" size={28} color="#1F2937" />
+      </TouchableOpacity>
+
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: Platform.OS === 'web' ? 20 : 50,
+          paddingTop: Platform.OS === 'web' ? 20 : 80,
           paddingBottom: 100,
           paddingHorizontal: 20,
         }}
       >
-        {/* Back Button */}
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{ marginBottom: 16 }}
-        >
-          <Ionicons name="chevron-back" size={28} color="#1F2937" />
-        </TouchableOpacity>
-
         {/* Header */}
         <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937', textAlign: 'center', marginBottom: 24 }}>
           Health Tracking
@@ -67,7 +73,7 @@ export default function HealthTrackingScreen() {
               justifyContent: 'center',
               paddingVertical: 12,
               borderRadius: 22,
-              backgroundColor: selectedTab === 'workout' ? '#14B8A6' : 'transparent',
+              backgroundColor: selectedTab === 'workout' ? '#7DD1E0' : 'transparent',
             }}
           >
             <Ionicons name="fitness" size={18} color={selectedTab === 'workout' ? '#FFFFFF' : '#6B7280'} />
@@ -163,7 +169,7 @@ export default function HealthTrackingScreen() {
                     }}
                   >
                     <Text style={{
-                      color: activityType === type ? '#14B8A6' : '#374151',
+                      color: activityType === type ? '#7DD1E0' : '#374151',
                       fontWeight: activityType === type ? '600' : '400',
                     }}>
                       {type}
@@ -322,7 +328,7 @@ export default function HealthTrackingScreen() {
                 <Text style={{ fontSize: 20 }}>💧</Text>
                 <Text style={{ marginLeft: 8, fontSize: 16, fontWeight: '600', color: '#1F2937' }}>Water Intake</Text>
               </View>
-              <Text style={{ fontSize: 12, color: '#14B8A6', marginBottom: 6 }}>Amount (ml)</Text>
+              <Text style={{ fontSize: 12, color: '#7DD1E0', marginBottom: 6 }}>Amount (ml)</Text>
               <TextInput
                 value={water}
                 onChangeText={setWater}
@@ -411,7 +417,7 @@ export default function HealthTrackingScreen() {
       }}>
         <TouchableOpacity
           style={{
-            backgroundColor: '#14B8A6',
+            backgroundColor: '#7DD1E0',
             borderRadius: 16,
             paddingVertical: 16,
             alignItems: 'center',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import type { CalendarDay } from '@/src/types';
 
 interface CalendarWeekProps {
@@ -10,12 +10,16 @@ interface CalendarWeekProps {
 
 export function CalendarWeek({ days, selectedDate, onSelectDate }: CalendarWeekProps) {
   return (
-    <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
-      <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginBottom: 16 }}>
+    <View style={{ marginTop: 24 }}>
+      <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginBottom: 16, paddingHorizontal: 20 }}>
         Calendar
       </Text>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderWidth: 1, borderColor: 'red' }}>
-        {days.map((item) => {
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20 }}
+      >
+        {days.map((item, index) => {
           const isSelected = selectedDate === item.date;
           return (
             <TouchableOpacity
@@ -23,30 +27,30 @@ export function CalendarWeek({ days, selectedDate, onSelectDate }: CalendarWeekP
               onPress={() => onSelectDate(item.date)}
               style={{
                 alignItems: 'center',
-                paddingVertical: 10,
-                paddingHorizontal: 10,
+                paddingVertical: 12,
+                paddingHorizontal: 14,
                 borderRadius: 12,
-                minWidth: 42,
-                backgroundColor: isSelected ? '#374151' : '#FFFFFF',
+                minWidth: 48,
+                marginRight: index < days.length - 1 ? 10 : 0,
+                backgroundColor: isSelected ? '#7DD1E0' : '#F1F3F5',
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: isSelected ? 0 : 0.05,
                 shadowRadius: 2,
                 elevation: isSelected ? 0 : 1,
-
               }}
             >
               <Text
                 style={{
                   fontSize: 12,
-                  color: '#9CA3AF',
+                  color: isSelected ? '#FFFFFF' : '#9CA3AF',
                 }}
               >
                 {item.day}
               </Text>
               <Text
                 style={{
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: 'bold',
                   marginTop: 4,
                   color: isSelected ? '#FFFFFF' : '#1F2937',
@@ -57,7 +61,7 @@ export function CalendarWeek({ days, selectedDate, onSelectDate }: CalendarWeekP
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 }

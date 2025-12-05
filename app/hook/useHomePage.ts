@@ -21,6 +21,7 @@ const missions: Mission[] = [
     { id: 1, title: 'Missions', subtitle: "Complete daily tasks", icon: '🎯' },
     { id: 2, title: 'Health Tracking', subtitle: 'Track your health', icon: '❤️' },
     { id: 3, title: 'Exercise', subtitle: 'Workout routines', icon: '💪' },
+    { id: 4, title: 'Routine', subtitle: 'Self-Care Planner', icon: '📋' },
 ];
 
 export const useHomePage = () => {

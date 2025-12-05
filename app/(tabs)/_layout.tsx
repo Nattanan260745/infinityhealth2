@@ -20,7 +20,7 @@ export default function TabLayout() {
           shadowRadius: 8,
           elevation: 10,
         },
-        tabBarActiveTintColor: '#F97316',
+        tabBarActiveTintColor: '#7DD1E0',
         tabBarInactiveTintColor: '#D1D5DB',
         tabBarShowLabel: false,
       }}

@@ -6,15 +6,18 @@ interface HeaderProps {
   userName: string;
   userAvatar: string;
   date: string;
+  onNotificationPress?: () => void;
 }
 
-export function Header({ userName, userAvatar, date }: HeaderProps) {
+export function Header({ userName, userAvatar, date, onNotificationPress }: HeaderProps) {
   return (
     <View style={{ 
       flexDirection: 'row', 
       alignItems: 'center', 
       justifyContent: 'space-between', 
-      paddingHorizontal: 20, 
+      // paddingHorizontal: 20, 
+      borderWidth: 1,
+      borderColor: 'green',
       paddingVertical: 16,
       backgroundColor: '#FFFFFF' 
     }}>
@@ -30,7 +33,7 @@ export function Header({ userName, userAvatar, date }: HeaderProps) {
           <Text style={{ fontSize: 12, color: '#9CA3AF' }}>{date}</Text>
         </View>
       </View>
-      <TouchableOpacity>
+      <TouchableOpacity onPress={onNotificationPress}>
         <Ionicons name="notifications" size={26} color="#F5A623" />
       </TouchableOpacity>
     </View>

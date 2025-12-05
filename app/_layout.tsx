@@ -52,6 +52,10 @@ function RootLayoutNav() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="missions" options={{ headerShown: false }} />
+        <Stack.Screen name="exercise" options={{ headerShown: false }} />
+        <Stack.Screen name="health-tracking" options={{ headerShown: false }} />
+        <Stack.Screen name="routine" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>

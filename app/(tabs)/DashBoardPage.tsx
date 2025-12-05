@@ -13,20 +13,26 @@ export default function DashboardPage() {
   const { selectedTab, setSelectedTab, maxValue, chartData, statCards, filterTabs } = useDashBoardPage();
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'red' }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      {/* Header - Fixed at top */}
+      <View style={{ 
+        paddingTop: Platform.OS === 'web' ? 40 : 60, 
+        paddingBottom: 16,
+        paddingHorizontal: 20,
+        backgroundColor: '#FFFFFF',
+      }}>
+        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937' }}>
+          Summary Dashboard
+        </Text>
+      </View>
+
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: Platform.OS === 'web' ? 40 : 60,
           paddingBottom: 30,
         }}
       >
-        {/* Header */}
-        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937', marginBottom: 24, paddingHorizontal: 20, }}>
-          Summary Dashboard
-        </Text>
-        {/* <div style={{ borderWidth: 1, borderColor: 'red', overflow: 'auto', height: 'calc(100vh - 00px)' }}> */}
         {/* Stats Grid */}
         <DashBoardCard statCards={statCards} />
 
@@ -44,7 +50,6 @@ export default function DashboardPage() {
           chartData={chartData}
           maxValue={maxValue}
         />
-        {/* </div> */}
       </ScrollView>
     </View>
   );
