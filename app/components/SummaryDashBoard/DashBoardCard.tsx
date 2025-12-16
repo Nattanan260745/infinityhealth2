@@ -21,7 +21,7 @@ const cardIcons: Record<string, ImageSourcePropType> = {
 const DashBoardCard: React.FC<DashBoardCardProps> = (props) => {
     
     return (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 20, borderWidth: 1, borderColor: 'red' }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 20,  }}>
             {props.statCards.map((card) => (
                 <View
                     key={card.id}

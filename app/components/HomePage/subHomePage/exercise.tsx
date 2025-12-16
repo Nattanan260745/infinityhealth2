@@ -28,8 +28,8 @@ const exerciseVideos: Record<string, { id: number; title: string; description: s
       title: '15 Min Full Body Strength Training',
       description: 'Build strength with this full body workout',
       duration: '15 min',
-      thumbnail: 'https://images.unsplash.com/photo-1581009146145-b5ef050c149a?w=400&h=250&fit=crop',
-      videoUrl: 'https://www.youtube.com/watch?v=UBMk30rjy0o',
+      thumbnail: 'https://playserver.in.th/user_image/server_icon/40832_1384018912.jpg',
+      videoUrl: 'https://www.youtube.com/watch?v=468n_hRIkKA',
     },
     {
       id: 2,

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useRoutinePage } from './hook/useRoutinePage';
+import { useRoutinePage } from '../../../hook/useRoutinePage';
 
 export default function RoutineScreen() {
   const {

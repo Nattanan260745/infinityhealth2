@@ -16,8 +16,7 @@ export function Header({ userName, userAvatar, date, onNotificationPress }: Head
       alignItems: 'center', 
       justifyContent: 'space-between', 
       // paddingHorizontal: 20, 
-      borderWidth: 1,
-      borderColor: 'green',
+      
       paddingVertical: 16,
       backgroundColor: '#FFFFFF' 
     }}>

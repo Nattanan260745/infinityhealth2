@@ -13,7 +13,7 @@ const Filter: React.FC<FilterProps> = (props) => {
         <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={{ marginTop: 8, marginBottom: 20, borderWidth: 1, borderColor: 'red', paddingLeft: 20 }}
+            style={{ marginTop: 8, marginBottom: 20, paddingLeft: 20 }}
         // contentContainerStyle={{ paddingRight: 20 }}
         >
             {props.filterTabs.map((tab) => (

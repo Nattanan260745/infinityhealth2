@@ -132,7 +132,7 @@ export default function MissionsScreen() {
                       backgroundColor: '#F9FAFB',
                       borderRadius: 12,
                       borderWidth: 1,
-                      borderColor: '#E5E7EB',
+                      borderColor: Number(inputValue) > 0 ? '#E5E7EB' : '#EF4444',
                       padding: 14,
                       fontSize: 16,
                       color: '#1F2937',

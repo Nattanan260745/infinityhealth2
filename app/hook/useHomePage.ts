@@ -1,5 +1,72 @@
 import { CalendarDay, Routine, Mission } from "@/src/types";
 import { useState } from "react";
+import { StyleSheet } from "react-native";
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1, backgroundColor: '#FFFFFF'
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    notificationContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        width: 300,
+        maxHeight: 400,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    notificationHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    notificationTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1F2937',
+    },
+    notificationItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    unreadNotification: {
+        backgroundColor: '#F0FDFA',
+    },
+    notificationDot: {
+        width: 20,
+        alignItems: 'center',
+        paddingTop: 6,
+    },
+    unreadDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#7DD1E0',
+    },
+    notificationText: {
+        fontSize: 14,
+        color: '#1F2937',
+        marginBottom: 4,
+    },
+    notificationTime: {
+        fontSize: 12,
+        color: '#9CA3AF',
+    },
+});
 
 const weekDays: CalendarDay[] = [
     { day: 'Sun', date: 14 },
@@ -29,6 +96,7 @@ export const useHomePage = () => {
     const [currentMission, setCurrentMission] = useState(0);
     
     return {
+        styles,
         weekDays,
         routines,
         missions,

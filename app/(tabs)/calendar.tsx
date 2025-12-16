@@ -36,7 +36,7 @@ export default function CalendarScreen() {
     return (
         <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
 
-            <View style={{ backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'red', paddingTop: Platform.OS === 'web' ? 40 : 60 }}>
+            <View style={{ backgroundColor: '#FFFFFF',  paddingTop: Platform.OS === 'web' ? 40 : 60 }}>
                 <CalendarHeader />
                 <MonthNavigation
                     month={month}

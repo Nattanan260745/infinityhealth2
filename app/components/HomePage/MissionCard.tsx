@@ -16,10 +16,10 @@ interface MissionCardProps {
 }
 
 const missionRoutes: Record<string, string> = {
-  'Missions': '/missions',
-  'Health Tracking': '/health-tracking',
-  'Exercise': '/exercise',
-  'Routine': '/routine',
+  'Missions': '/components/HomePage/subHomePage/missions',
+  'Health Tracking': '/components/HomePage/subHomePage/health-tracking',
+  'Exercise': '/components/HomePage/subHomePage/exercise',
+  'Routine': '/components/HomePage/subHomePage/routine',
 };
 
 export function MissionCard({ missions, currentIndex, onIndexChange }: MissionCardProps) {
@@ -32,7 +32,7 @@ export function MissionCard({ missions, currentIndex, onIndexChange }: MissionCa
 
 
   return (
-    <View style={{ marginTop: 8, borderWidth: 1, borderColor: 'green' }}>
+    <View style={{ marginTop: 8}}>
       <ScrollView
 
         horizontal
