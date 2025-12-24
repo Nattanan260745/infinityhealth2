@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Dimensions, TouchableOpacity, Image } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import type { Mission } from '@/src/types';
+import { IuseHomePage } from '@/app/hook/useHomePage';
 
 const missionIcon = require('../../../assets/images/Group.png');
 
@@ -10,9 +11,10 @@ const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 50;
 
 interface MissionCardProps {
-  missions: Mission[];
-  currentIndex: number;
-  onIndexChange: (index: number) => void;
+  // missions: Mission[];
+  // currentIndex: number;
+  // onIndexChange: (index: number) => void;
+  useHomePageController: IuseHomePage;
 }
 
 const missionRoutes: Record<string, string> = {
@@ -22,7 +24,7 @@ const missionRoutes: Record<string, string> = {
   'Routine': '/components/HomePage/subHomePage/routine',
 };
 
-export function MissionCard({ missions, currentIndex, onIndexChange }: MissionCardProps) {
+export function MissionCard({ useHomePageController }: MissionCardProps) {
   const handlePress = (title: string) => {
     const route = missionRoutes[title];
     if (route) {
@@ -43,10 +45,10 @@ export function MissionCard({ missions, currentIndex, onIndexChange }: MissionCa
         contentContainerStyle={{ paddingHorizontal: 20 }}
         onMomentumScrollEnd={(e) => {
           const index = Math.round(e.nativeEvent.contentOffset.x / (CARD_WIDTH + 10));
-          onIndexChange(index);
+          useHomePageController.setCurrentMission(index);
         }}
       >
-        {missions.map((mission) => (
+        {useHomePageController.missions.map((mission) => (
           <TouchableOpacity
             key={mission.id}
             onPress={() => handlePress(mission.title)}
@@ -105,7 +107,7 @@ export function MissionCard({ missions, currentIndex, onIndexChange }: MissionCa
 
       {/* Pagination Dots */}
       <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16 }}>
-        {missions.map((_, index) => (
+        {useHomePageController.missions.map((_, index) => (
           <View
             key={index}
             style={{
@@ -113,7 +115,7 @@ export function MissionCard({ missions, currentIndex, onIndexChange }: MissionCa
               height: 8,
               borderRadius: 4,
               marginHorizontal: 4,
-              backgroundColor: index === currentIndex ? '#4B5563' : '#D1D5DB',
+              backgroundColor: index === useHomePageController.currentMission ? '#4B5563' : '#D1D5DB',
             }}
           />
         ))}

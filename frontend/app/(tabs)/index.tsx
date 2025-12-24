@@ -22,13 +22,12 @@ const notifications = [
 ];
 
 const HomePage: React.FC<HomePageProps> = (props) => {
-
-    const {styles, weekDays, routines, missions, selectedDate, setSelectedDate, currentMission, setCurrentMission } = useHomePage();
+    const useHomePageController = useHomePage();
     const [showNotification, setShowNotification] = useState(false);
 
     return (
-        <View style={styles.container}>
-            <View style={{paddingTop: Platform.OS === 'web' ? 20 : 50, paddingHorizontal: 20, backgroundColor: '#FFFFFF' }}>
+        <View style={useHomePageController.styles.container}>
+            <View style={{ paddingTop: Platform.OS === 'web' ? 20 : 50, paddingHorizontal: 20, backgroundColor: '#FFFFFF' }}>
                 <Header
                     userName="Tutor"
                     userAvatar="https://i.pravatar.cc/100?img=47"
@@ -45,30 +44,30 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                 onRequestClose={() => setShowNotification(false)}
             >
                 <TouchableWithoutFeedback onPress={() => setShowNotification(false)}>
-                    <View style={styles.modalOverlay}>
+                    <View style={useHomePageController.styles.modalOverlay}>
                         <TouchableWithoutFeedback>
-                            <View style={styles.notificationContainer}>
-                                <View style={styles.notificationHeader}>
-                                    <Text style={styles.notificationTitle}>การแจ้งเตือน</Text>
+                            <View style={useHomePageController.styles.notificationContainer}>
+                                <View style={useHomePageController.styles.notificationHeader}>
+                                    <Text style={useHomePageController.styles.notificationTitle}>การแจ้งเตือน</Text>
                                     <TouchableOpacity onPress={() => setShowNotification(false)}>
                                         <Ionicons name="close" size={24} color="#6B7280" />
                                     </TouchableOpacity>
                                 </View>
                                 <ScrollView style={{ maxHeight: 300 }}>
                                     {notifications.map((notif) => (
-                                        <View 
-                                            key={notif.id} 
+                                        <View
+                                            key={notif.id}
                                             style={[
-                                                styles.notificationItem,
-                                                !notif.read && styles.unreadNotification
+                                                useHomePageController.styles.notificationItem,
+                                                !notif.read && useHomePageController.styles.unreadNotification
                                             ]}
                                         >
-                                            <View style={styles.notificationDot}>
-                                                {!notif.read && <View style={styles.unreadDot} />}
+                                            <View style={useHomePageController.styles.notificationDot}>
+                                                {!notif.read && <View style={useHomePageController.styles.unreadDot} />}
                                             </View>
                                             <View style={{ flex: 1 }}>
-                                                <Text style={styles.notificationText}>{notif.title}</Text>
-                                                <Text style={styles.notificationTime}>{notif.time}</Text>
+                                                <Text style={useHomePageController.styles.notificationText}>{notif.title}</Text>
+                                                <Text style={useHomePageController.styles.notificationTime}>{notif.time}</Text>
                                             </View>
                                         </View>
                                     ))}
@@ -89,18 +88,19 @@ const HomePage: React.FC<HomePageProps> = (props) => {
 
 
                 <MissionCard
-                    missions={missions}
-                    currentIndex={currentMission}
-                    onIndexChange={setCurrentMission}
+                    useHomePageController={useHomePageController}
+                // missions={missions}
+                // currentIndex={currentMission}
+                // onIndexChange={setCurrentMission}
                 />
 
                 <CalendarWeek
-                    days={weekDays}
-                    selectedDate={selectedDate}
-                    onSelectDate={setSelectedDate}
+                    days={useHomePageController.weekDays}
+                    selectedDate={useHomePageController.selectedDate}
+                    onSelectDate={useHomePageController.setSelectedDate}
                 />
 
-                <RoutineList routines={routines} />
+                <RoutineList routines={useHomePageController.routines} />
             </ScrollView>
         </View>
     );

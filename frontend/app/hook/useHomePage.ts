@@ -1,6 +1,8 @@
 import { CalendarDay, Routine, Mission } from "@/src/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
+import { HealthCheckResponse } from "../interface/infinityhealth.interface";
+import { getHealthCheck } from "../service/InfinityhealthApi";
 
 const styles = StyleSheet.create({
     container: {
@@ -94,7 +96,36 @@ const missions: Mission[] = [
 export const useHomePage = () => {
     const [selectedDate, setSelectedDate] = useState(15);
     const [currentMission, setCurrentMission] = useState(0);
+    const [isLoad, setisLoad] = useState<boolean>(false);
+
+    const getHealthCheckApi = async () => {
+        if (isLoad) return;
+        setisLoad(true);
+
+        try {
+            const res: HealthCheckResponse = await getHealthCheck();
+            if (res) {
+                setisLoad(false);
+                console.log('Health check response:', res.status);
+            }
+
+        } catch (error) {
+            console.error('Error fetching health check:', error);
+            setisLoad(false);
+        }
+    }
+
+
+    useEffect(() => {
+        getHealthCheckApi();
+    }, [])
+
+    // useEffect(() => {
+    //   console.log('selectedDate', selectedDate);
+    // }, [selectedDate])
     
+
+
     return {
         styles,
         weekDays,
@@ -104,5 +135,9 @@ export const useHomePage = () => {
         setSelectedDate,
         currentMission,
         setCurrentMission,
+
+        isLoad
     }
 }
+
+export type IuseHomePage = ReturnType<typeof useHomePage>;

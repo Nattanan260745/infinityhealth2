@@ -8,3 +8,12 @@ export interface StatCard {
     unit: string;
     bgColor: string;
   }
+
+  //-----------------------------------------------
+  export interface HealthCheckResponse {
+    status: string;
+    message: string;
+    timestamp: string;
+    uptime: number;
+    environment: string;
+  }
