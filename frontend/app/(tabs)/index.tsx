@@ -29,10 +29,11 @@ const HomePage: React.FC<HomePageProps> = (props) => {
         <View style={useHomePageController.styles.container}>
             <View style={{ paddingTop: Platform.OS === 'web' ? 20 : 50, paddingHorizontal: 20, backgroundColor: '#FFFFFF' }}>
                 <Header
-                    userName="Tutor"
+                    userName={useHomePageController.userName}
                     userAvatar="https://i.pravatar.cc/100?img=47"
                     date="Today 12 Nov 27"
                     onNotificationPress={() => setShowNotification(true)}
+                    onLogoutPress={useHomePageController.handleLogout}
                 />
             </View>
 

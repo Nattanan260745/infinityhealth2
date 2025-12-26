@@ -1,22 +1,38 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-const menuItems = [
-  { id: 1, icon: 'person-outline', title: 'Edit Profile', color: '#3B82F6' },
-  { id: 2, icon: 'notifications-outline', title: 'Notifications', color: '#F59E0B' },
-  { id: 3, icon: 'shield-checkmark-outline', title: 'Privacy & Security', color: '#10B981' },
-  { id: 4, icon: 'help-circle-outline', title: 'Help & Support', color: '#8B5CF6' },
-  { id: 5, icon: 'information-circle-outline', title: 'About', color: '#6B7280' },
-];
-
-const stats = [
-  { label: 'Days Active', value: '28' },
-  { label: 'Goals Done', value: '45' },
-  { label: 'Streak', value: '7' },
-];
+import storage from '../utils/storage';
 
 export default function ProfileScreen() {
+  const [userName, setUserName] = useState('User');
+
+  // Load user data from storage
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const fullName = await storage.getItem('userFullName');
+        if (fullName) {
+          setUserName(fullName);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+    loadUserData();
+  }, []);
+
+  // Mock data - ในอนาคตดึงจาก API
+  const userData = {
+    avatar: 'https://i.pinimg.com/736x/5b/2c/47/5b2c4756f84f6a0478b67df75e2fd1c0.jpg',
+    level: 10,
+    rank: 'Beginner',
+    experience: 500,
+    maxExperience: 1000,
+    totalPoints: 500,
+  };
+
+  const experienceProgress = (userData.experience / userData.maxExperience) * 100;
+
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <ScrollView
@@ -25,148 +41,197 @@ export default function ProfileScreen() {
         contentContainerStyle={{
           paddingTop: Platform.OS === 'web' ? 40 : 60,
           paddingBottom: 30,
+          paddingHorizontal: 20,
         }}
       >
-        {/* Profile Header */}
-        <View style={{ alignItems: 'center', paddingHorizontal: 20, marginBottom: 24 }}>
+        {/* Title */}
+        <Text style={{ 
+          fontSize: 24, 
+          fontWeight: 'bold', 
+          color: '#1F2937', 
+          textAlign: 'center',
+          marginBottom: 24,
+        }}>
+          Your Profile
+        </Text>
+
+        {/* Avatar Section */}
+        <View style={{ alignItems: 'center', marginBottom: 24 }}>
+          <View style={{ position: 'relative' }}>
+            <Image
+              source={{ uri: userData.avatar }}
+              style={{ 
+                width: 120, 
+                height: 120, 
+                borderRadius: 60,
+                borderWidth: 3,
+                borderColor: '#E5E7EB',
+              }}
+            />
+            {/* Camera Icon */}
+            <TouchableOpacity style={{
+              position: 'absolute',
+              bottom: 0,
+              right: 0,
+              backgroundColor: '#FFFFFF',
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
+            }}>
+              <Ionicons name="camera" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Username */}
+          <Text style={{ 
+            fontSize: 22, 
+            fontWeight: 'bold', 
+            color: '#1F2937',
+            marginTop: 16,
+          }}>
+            {userName}
+          </Text>
+        </View>
+
+        {/* Level Card */}
+        <View style={{
+          backgroundColor: '#F9FAFB',
+          borderRadius: 16,
+          padding: 20,
+          marginBottom: 16,
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+            {/* Level Circle */}
+            <View style={{
+              width: 50,
+              height: 50,
+              borderRadius: 25,
+              backgroundColor: '#7DD1E0',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 12,
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FFFFFF' }}>
+                {userData.level}
+              </Text>
+            </View>
+            
+            {/* Level Info */}
+            <View>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937' }}>
+                Level {userData.level}
+              </Text>
+              <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                {userData.rank}
+              </Text>
+            </View>
+          </View>
+
+          {/* Experience */}
+          <View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: '#374151' }}>
+                Experience
+              </Text>
+              <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                {userData.experience} / {userData.maxExperience}
+              </Text>
+            </View>
+            
+            {/* Progress Bar */}
+            <View style={{
+              height: 12,
+              backgroundColor: '#E5E7EB',
+              borderRadius: 6,
+              overflow: 'hidden',
+            }}>
+              <View style={{
+                width: `${experienceProgress}%`,
+                height: '100%',
+                backgroundColor: '#7DD1E0',
+                borderRadius: 6,
+              }} />
+            </View>
+          </View>
+        </View>
+
+        {/* Total Points Card */}
+        <View style={{
+          backgroundColor: '#F9FAFB',
+          borderRadius: 16,
+          padding: 20,
+          marginBottom: 16,
+        }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
+            Total Points
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Image 
+              source={require('../../assets/images/point.png')} 
+              style={{ width: 28, height: 28, marginRight: 8 }}
+            />
+            <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937' }}>
+              {userData.totalPoints}
+            </Text>
+          </View>
+        </View>
+
+        {/* Ranks Up Card */}
+        <View style={{
+          backgroundColor: '#F9FAFB',
+          borderRadius: 16,
+          padding: 20,
+          alignItems: 'center',
+        }}>
+          {/* Trophy Icon */}
           <View style={{
-            width: 100,
-            height: 100,
-            borderRadius: 50,
-            backgroundColor: '#E0F2FE',
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            backgroundColor: '#F3E8FF',
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: 16,
           }}>
-            <Image
-              source={{ uri: 'https://i.pravatar.cc/100?img=47' }}
-              style={{ width: 100, height: 100, borderRadius: 50 }}
-            />
+            <Ionicons name="trophy" size={32} color="#A855F7" />
           </View>
-          <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1F2937' }}>
-            John Doe
-          </Text>
-          <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
-            john.doe@example.com
-          </Text>
-        </View>
 
-        {/* Stats */}
-        <View style={{
-          flexDirection: 'row',
-          marginHorizontal: 20,
-          backgroundColor: '#F9FAFB',
-          borderRadius: 16,
-          padding: 16,
-          marginBottom: 24,
-        }}>
-          {stats.map((stat, index) => (
-            <View key={stat.label} style={{
-              flex: 1,
-              alignItems: 'center',
-              borderRightWidth: index < stats.length - 1 ? 1 : 0,
-              borderRightColor: '#E5E7EB',
-            }}>
-              <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#10B981' }}>
-                {stat.value}
-              </Text>
-              <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
-                {stat.label}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Premium Banner */}
-        <TouchableOpacity style={{
-          marginHorizontal: 20,
-          backgroundColor: '#FEF3C7',
-          borderRadius: 16,
-          padding: 16,
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginBottom: 24,
-        }}>
-          <View style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            backgroundColor: '#F59E0B',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 12,
+          <Text style={{ 
+            fontSize: 14, 
+            color: '#6B7280', 
+            textAlign: 'center',
+            marginBottom: 4,
           }}>
-            <Ionicons name="star" size={24} color="#FFFFFF" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937' }}>
-              Upgrade to Premium
-            </Text>
-            <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-              Unlock all features and benefits
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#6B7280" />
-        </TouchableOpacity>
-
-        {/* Menu Items */}
-        <View style={{ paddingHorizontal: 20 }}>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#6B7280', marginBottom: 12 }}>
-            SETTINGS
+            Complete missions to earn EXP and Points
           </Text>
-          {menuItems.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 16,
-                borderBottomWidth: 1,
-                borderBottomColor: '#F3F4F6',
-              }}
-            >
-              <View style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: `${item.color}15`,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12,
-              }}>
-                <Ionicons name={item.icon as any} size={20} color={item.color} />
-              </View>
-              <Text style={{ flex: 1, fontSize: 16, color: '#1F2937' }}>
-                {item.title}
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
-            </TouchableOpacity>
-          ))}
+          <Text style={{ 
+            fontSize: 14, 
+            color: '#6B7280', 
+            textAlign: 'center',
+            marginBottom: 20,
+          }}>
+            Use {userData.totalPoints} points and {userData.maxExperience} exp
+          </Text>
+
+          {/* Ranks Up Button */}
+          <TouchableOpacity style={{
+            backgroundColor: '#F472B6',
+            paddingHorizontal: 32,
+            paddingVertical: 14,
+            borderRadius: 25,
+          }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>
+              Ranks Up!
+            </Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Logout Button */}
-        <TouchableOpacity style={{
-          marginHorizontal: 20,
-          marginTop: 24,
-          backgroundColor: '#FEE2E2',
-          borderRadius: 12,
-          padding: 16,
-          alignItems: 'center',
-        }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#EF4444' }}>
-            Log Out
-          </Text>
-        </TouchableOpacity>
-
-        {/* Version */}
-        <Text style={{
-          textAlign: 'center',
-          color: '#9CA3AF',
-          fontSize: 12,
-          marginTop: 24,
-        }}>
-          Version 1.0.0
-        </Text>
       </ScrollView>
     </View>
   );

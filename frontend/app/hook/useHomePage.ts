@@ -1,8 +1,10 @@
 import { CalendarDay, Routine, Mission } from "@/src/types";
 import { useEffect, useState } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform, Alert } from "react-native";
+import { router } from "expo-router";
+import storage from "../utils/storage";
 import { HealthCheckResponse } from "../interface/infinityhealth.interface";
-import { getHealthCheck } from "../service/InfinityhealthApi";
+import { getHealthCheck, logout } from "../service/InfinityhealthApi";
 
 const styles = StyleSheet.create({
     container: {
@@ -97,6 +99,7 @@ export const useHomePage = () => {
     const [selectedDate, setSelectedDate] = useState(15);
     const [currentMission, setCurrentMission] = useState(0);
     const [isLoad, setisLoad] = useState<boolean>(false);
+    const [userName, setUserName] = useState<string>('User');
 
     const getHealthCheckApi = async () => {
         if (isLoad) return;
@@ -115,9 +118,62 @@ export const useHomePage = () => {
         }
     }
 
+    // Load user data from storage
+    const loadUserData = async () => {
+        try {
+            const fullName = await storage.getItem('userFullName');
+            if (fullName) {
+                setUserName(fullName);
+            }
+        } catch (error) {
+            console.error('Error loading user data:', error);
+        }
+    };
+
+    // Logout function
+    const handleLogout = async () => {
+        const confirmLogout = () => {
+            return new Promise<boolean>((resolve) => {
+                if (Platform.OS === 'web') {
+                    resolve(window.confirm('Are you sure you want to logout?'));
+                } else {
+                    Alert.alert(
+                        'Logout',
+                        'Are you sure you want to logout?',
+                        [
+                            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+                            { text: 'Logout', style: 'destructive', onPress: () => resolve(true) },
+                        ]
+                    );
+                }
+            });
+        };
+
+        const confirmed = await confirmLogout();
+        if (!confirmed) return;
+
+        try {
+            // Call logout API
+            await logout();
+        } catch (error) {
+            console.error('Logout API error:', error);
+        }
+
+        // Clear storage
+        await storage.removeItem('userId');
+        await storage.removeItem('userEmail');
+        await storage.removeItem('userFullName');
+        await storage.removeItem('token');
+
+        console.log('[HomePage] Logged out, redirecting to login...');
+        
+        // Redirect to login
+        router.replace('/(auth)/login');
+    };
 
     useEffect(() => {
         getHealthCheckApi();
+        loadUserData();
     }, [])
 
     // useEffect(() => {
@@ -135,8 +191,9 @@ export const useHomePage = () => {
         setSelectedDate,
         currentMission,
         setCurrentMission,
-
-        isLoad
+        isLoad,
+        userName,
+        handleLogout,
     }
 }
 
