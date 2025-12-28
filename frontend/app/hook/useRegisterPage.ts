@@ -4,6 +4,9 @@ import { router } from "expo-router";
 import storage from "../utils/storage";
 import { HealthCheckResponse, RegisterResponse } from "../interface/infinityhealth.interface";
 import { getHealthCheck, register } from "../service/InfinityhealthApi";
+import z from "zod";
+import { useForm, UseFormReturn } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 const styles = StyleSheet.create({
     container: {
@@ -160,10 +163,7 @@ const styles = StyleSheet.create({
 });
 
 export const useRegisterPage = () => {
-    const [fullName, setFullName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
+    
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -195,13 +195,9 @@ export const useRegisterPage = () => {
     }, []);
 
     const handleRegister = async () => {
-        if (!fullName || !email || !password || !confirmPassword) {
-            const message = 'Please fill in all fields';
-            Platform.OS === 'web' ? alert(message) : Alert.alert('Error', message);
-            return;
-        }
+        
 
-        if (password !== confirmPassword) {
+        if (watch('password') !== watch('confirmPassword')) {
             const message = 'Passwords do not match';
             Platform.OS === 'web' ? alert(message) : Alert.alert('Error', message);
             return;
@@ -216,18 +212,18 @@ export const useRegisterPage = () => {
         setIsLoading(true);
         
         try {
-            const response: RegisterResponse = await register({ fullName, email, password });
+            const response: RegisterResponse = await register({ fullName: watch('fullName'), email: watch('email'), password: watch('password') });
             
             if (response.success && response.user) {
                 // Store userId and token in storage (works on both web and native)
-                await storage.setItem('userId', response.user.id);
+                await storage.setItem('userId', response.user.userId);
                 await storage.setItem('userEmail', response.user.email);
                 await storage.setItem('userFullName', response.user.fullName);
                 if (response.token) {
                     await storage.setItem('token', response.token);
                 }
                 
-                console.log('[RegisterPage] Registration successful, userId stored:', response.user.id);
+                console.log('[RegisterPage] Registration successful, userId stored:', response.user.userId);
                 
                 const message = 'Registration successful!';
                 Platform.OS === 'web' ? alert(message) : Alert.alert('Success', message);
@@ -264,17 +260,39 @@ export const useRegisterPage = () => {
     const toggleAgreeTerms = () => {
         setAgreeTerms(!agreeTerms);
     };
+    const documentSchema = z.object({
+        fullName: z.string().min(1, 'Full Name is required'),
+        email: z.string().min(1, 'Email is required'),
+        password: z.string().min(1, 'Password is required'),
+        confirmPassword: z.string().min(1, 'Confirm Password is required'),
+    });
 
+    type FormValues = z.infer<typeof documentSchema>;
+
+    const methods: UseFormReturn<FormValues> = useForm<FormValues>({
+        resolver: zodResolver(documentSchema),
+        defaultValues: {
+            fullName: '',
+            email: '',
+            password: '',
+            confirmPassword: '',
+        },
+        mode: 'all'
+    });
+
+    const {control, handleSubmit, formState, watch, reset, setValue} = methods;
+
+    const onSubmit = (data: FormValues) => {
+        console.log('data ', data)
+        handleRegister()
+    }
+
+    const onError = (errors: any) => {
+        console.log('errors ', errors)
+    }
     return {
         styles,
-        fullName,
-        setFullName,
-        email,
-        setEmail,
-        password,
-        setPassword,
-        confirmPassword,
-        setConfirmPassword,
+        watch,
         showPassword,
         toggleShowPassword,
         showConfirmPassword,
@@ -287,6 +305,10 @@ export const useRegisterPage = () => {
         handleRegister,
         handleBack,
         handleLogin,
+
+        methods,
+        onSubmit,
+        onError,
     };
 };
 
