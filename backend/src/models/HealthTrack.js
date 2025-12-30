@@ -25,6 +25,9 @@ const healthTrackSchema = new mongoose.Schema({
   sleep_hours: {
     type: Number,  // ชั่วโมงการนอน
   },
+  steps: {
+    type: Number,  // จำนวนก้าว
+  },
 }, {
   timestamps: true,
 });

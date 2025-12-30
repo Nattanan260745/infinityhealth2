@@ -1,78 +1,186 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform, Modal, TextInput, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
+import React from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Platform,
+  Modal,
+  TextInput,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useMissionPage } from '@/app/hook/useMissionPage';
 
 type TabType = 'daily' | 'challenge';
 
-interface Mission {
-  id: number;
-  title: string;
-  icon: string;
-  progress: number;
-  total: number;
-  xp: number;
-  gems: number;
-  completed: boolean;
-}
-
-const initialDailyMissions: Mission[] = [
-  { id: 1, title: 'Drink water at least 2000 ml', icon: '💧', progress: 1000, total: 2000, xp: 50, gems: 10, completed: false },
-  { id: 2, title: 'Walk 5000 steps', icon: '👟', progress: 5000, total: 5000, xp: 50, gems: 10, completed: true },
-  { id: 3, title: 'Avoid fried foods', icon: '🥗', progress: 5000, total: 5000, xp: 50, gems: 10, completed: true },
+const tabs: { key: TabType; label: string; icon: string }[] = [
+  { key: 'daily', label: 'Daily', icon: '📅' },
+  { key: 'challenge', label: 'Challenge', icon: '🏆' },
 ];
 
-const initialChallengeMissions: Mission[] = [
-  { id: 4, title: 'No sugar for 1 day', icon: '🍬', progress: 0, total: 1, xp: 100, gems: 50, completed: false },
-  { id: 5, title: 'Exercise for 3 days', icon: '💪', progress: 3, total: 3, xp: 100, gems: 50, completed: true },
-];
+// Helper to determine presets based on mission type/unit
+const getPresets = (mission: any) => {
+  const title = mission.title.toLowerCase();
+  const unit = mission.targetUnit?.toLowerCase() || '';
+  const total = mission.total || 0;
 
-export default function MissionsScreen() {
-  const [selectedTab, setSelectedTab] = useState<TabType>('daily');
-  const [dailyMissions, setDailyMissions] = useState<Mission[]>(initialDailyMissions);
-  const [challengeMissions, setChallengeMissions] = useState<Mission[]>(initialChallengeMissions);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
-  const [inputValue, setInputValue] = useState('');
-  
-  const missions = selectedTab === 'daily' ? dailyMissions : challengeMissions;
-  const completedCount = missions.filter(m => m.completed).length;
-  const totalXP = missions.reduce((sum, m) => sum + m.xp, 0);
-  const totalGems = missions.reduce((sum, m) => sum + m.gems, 0);
+  // Case 1: Binary/Daily Task (e.g., "Avoid Fried Food" 0/1 day) -> No +/- buttons
+  if (total <= 1 || unit.includes('day') || unit.includes('time') || unit.includes('playlist')) {
+    return null; // Signals to render a simple "Done" button
+  }
 
-  const handleUpdatePress = (mission: Mission) => {
-    setSelectedMission(mission);
-    setInputValue(mission.progress.toString());
-    setShowUpdateModal(true);
-  };
+  // Case 2: Water (Standard)
+  if (title.includes('water') || unit.includes('ml')) {
+    return [
+      { label: '💧 250ml', value: 250 },
+      { label: '🍼 600ml', value: 600 }
+    ];
+  }
 
-  const handleSave = () => {
-    if (!selectedMission) return;
-    
-    const newProgress = parseFloat(inputValue) || 0;
-    const isCompleted = newProgress >= selectedMission.total;
-    
-    const updateMissions = (missions: Mission[]) => 
-      missions.map(m => 
-        m.id === selectedMission.id 
-          ? { ...m, progress: Math.min(newProgress, m.total), completed: isCompleted }
-          : m
-      );
+  // Case 3: Steps (Standard)
+  if (title.includes('step') || unit.includes('step')) {
+    return [
+      { label: '👣 500', value: 500 },
+      { label: '🏃 1000', value: 1000 }
+    ];
+  }
 
-    if (selectedTab === 'daily') {
-      setDailyMissions(updateMissions(dailyMissions));
-    } else {
-      setChallengeMissions(updateMissions(challengeMissions));
+  // Case 4: Exercise/Sleep (Time-based)
+  if (title.includes('exercise') || title.includes('workout') || title.includes('sleep') || unit.includes('min') || unit.includes('hr')) {
+    // If target is small (<= 20 mins), give smaller increments
+    if (total <= 20) {
+      return [
+        { label: '⏱️ 5m', value: 5 },
+        { label: '💪 15m', value: 15 }
+      ];
     }
-    
-    setShowUpdateModal(false);
-    setSelectedMission(null);
-    setInputValue('');
+    // Standard duration
+    return [
+      { label: '⏱️ 15m', value: 15 },
+      { label: '💪 30m', value: 30 }
+    ];
+  }
+
+  // Case 5: Calories/Food
+  if (title.includes('cal') || title.includes('food')) {
+    return [
+      { label: '🍎 50', value: 50 },
+      { label: '🍔 200', value: 200 }
+    ];
+  }
+
+  // Default fallback
+  return [
+    { label: 'Item', value: 1 },
+    { label: 'Pack', value: 5 }
+  ];
+};
+
+// Generic Component for Quick Update
+const QuickUpdateControl = ({ mission, onUpdate }: { mission: any, onUpdate: (m: any, val: number) => void }) => {
+  const presets = getPresets(mission);
+  const [currentPresetIndex, setCurrentPresetIndex] = React.useState(0);
+
+  // If no presets (Binary Task), show simple "Done" button
+  if (!presets) {
+    return (
+      <TouchableOpacity
+        onPress={() => onUpdate(mission, 1)}
+        style={{
+          backgroundColor: '#10B981',
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          borderRadius: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4
+        }}
+      >
+        <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" />
+        <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>Done</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  const currentPreset = presets[currentPresetIndex];
+
+  const togglePreset = () => {
+    setCurrentPresetIndex((prev) => (prev + 1) % presets.length);
   };
 
   return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      {/* Minus */}
+      <TouchableOpacity
+        onPress={() => onUpdate(mission, -currentPreset.value)}
+        style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <Ionicons name="remove" size={14} color="#4B5563" />
+      </TouchableOpacity>
+
+      {/* Unit Selector */}
+      <TouchableOpacity
+        onPress={togglePreset}
+        style={{
+          minWidth: 60,
+          paddingVertical: 4,
+          paddingHorizontal: 8,
+          borderRadius: 8,
+          backgroundColor: '#EFF6FF',
+          alignItems: 'center',
+          borderWidth: 1,
+          borderColor: '#BFDBFE'
+        }}
+      >
+        <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: '600' }}>
+          {currentPreset.label}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Plus */}
+      <TouchableOpacity
+        onPress={() => onUpdate(mission, currentPreset.value)}
+        style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <Ionicons name="add" size={14} color="#2563EB" />
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+export default function MissionsScreen() {
+  const {
+    selectedTab,
+    setSelectedTab,
+    missions,
+    isLoading,
+    error,
+    completedCount,
+    totalCount,
+    unlockedCount,
+    totalXP,
+    totalGems,
+    userLevel,
+    showUpdateModal,
+    setShowUpdateModal,
+    selectedMission,
+    inputValue,
+    setInputValue,
+    handleUpdatePress,
+    handleSave,
+    handleComplete,
+    handleQuickUpdate,
+    refreshMissions,
+  } = useMissionPage();
+
+  return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      {/* Update Progress Modal */}
+      {/* Update Progress Modal (Still kept for backup/custom input if needed, though hidden for now) */}
       <Modal
         visible={showUpdateModal}
         transparent={true}
@@ -84,9 +192,9 @@ export default function MissionsScreen() {
             flex: 1,
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
           }}>
-            <KeyboardAvoidingView 
+            <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={{ 
+              style={{
                 flex: 1,
                 justifyContent: 'center',
                 alignItems: 'center',
@@ -113,7 +221,7 @@ export default function MissionsScreen() {
                   }}>
                     Update Progress
                   </Text>
-                  
+
                   <Text style={{
                     fontSize: 14,
                     fontWeight: '600',
@@ -122,7 +230,7 @@ export default function MissionsScreen() {
                   }}>
                     {selectedMission?.title}
                   </Text>
-                  
+
                   <TextInput
                     value={inputValue}
                     onChangeText={setInputValue}
@@ -139,7 +247,7 @@ export default function MissionsScreen() {
                       marginBottom: 20,
                     }}
                   />
-                  
+
                   <TouchableOpacity
                     onPress={handleSave}
                     style={{
@@ -167,10 +275,10 @@ export default function MissionsScreen() {
       {/* Back Button - Fixed position */}
       <TouchableOpacity
         onPress={() => router.back()}
-        style={{ 
-          position: 'absolute', 
-          top: Platform.OS === 'ios' ? 50 : 40, 
-          left: 20, 
+        style={{
+          position: 'absolute',
+          top: Platform.OS === 'ios' ? 50 : 40,
+          left: 20,
           zIndex: 10,
           padding: 8,
         }}
@@ -184,6 +292,14 @@ export default function MissionsScreen() {
         contentContainerStyle={{
           paddingBottom: 30,
         }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={refreshMissions}
+            colors={['#F59E0B']}
+            tintColor="#F59E0B"
+          />
+        }
       >
         {/* Hero Image */}
         <View style={{
@@ -209,41 +325,54 @@ export default function MissionsScreen() {
             padding: 4,
             marginBottom: 24,
           }}>
-            <TouchableOpacity
-              onPress={() => setSelectedTab('daily')}
-              style={{
-                flex: 1,
-                paddingVertical: 12,
-                borderRadius: 22,
-                backgroundColor: selectedTab === 'daily' ? '#FFFFFF' : 'transparent',
-              }}
-            >
-              <Text style={{
-                textAlign: 'center',
-                fontWeight: '600',
-                color: selectedTab === 'daily' ? '#7DD1E0' : '#6B7280',
-              }}>
-                Daily
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setSelectedTab('challenge')}
-              style={{
-                flex: 1,
-                paddingVertical: 12,
-                borderRadius: 22,
-                backgroundColor: selectedTab === 'challenge' ? '#FFFFFF' : 'transparent',
-              }}
-            >
-              <Text style={{
-                textAlign: 'center',
-                fontWeight: '600',
-                color: selectedTab === 'challenge' ? '#7DD1E0' : '#6B7280',
-              }}>
-                Challenge
-              </Text>
-            </TouchableOpacity>
+            {tabs.map((tab) => (
+              <TouchableOpacity
+                key={tab.key}
+                onPress={() => setSelectedTab(tab.key)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  borderRadius: 22,
+                  backgroundColor: selectedTab === tab.key ? '#FFFFFF' : 'transparent',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 16, marginRight: 6 }}>{tab.icon}</Text>
+                <Text style={{
+                  textAlign: 'center',
+                  fontWeight: '600',
+                  color: selectedTab === tab.key ? '#7DD1E0' : '#6B7280',
+                }}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
+
+          {/* User Level Info (for Challenge tab) */}
+          {selectedTab === 'challenge' && (
+            <View style={{
+              backgroundColor: '#FEF3C7',
+              borderRadius: 12,
+              padding: 12,
+              marginBottom: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}>
+              <Text style={{ fontSize: 24, marginRight: 12 }}>⭐</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#92400E' }}>
+                  Your Level: {userLevel}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#B45309' }}>
+                  Unlocked: {unlockedCount}/{totalCount} challenges
+                </Text>
+              </View>
+            </View>
+          )}
 
           {/* Progress Card */}
           <View style={{
@@ -254,16 +383,16 @@ export default function MissionsScreen() {
           }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151' }}>Missions Completed</Text>
-              <Text style={{ fontSize: 14, color: '#6B7280' }}>{completedCount}/{missions.length}</Text>
+              <Text style={{ fontSize: 14, color: '#6B7280' }}>{completedCount}/{totalCount}</Text>
             </View>
-            
+
             {/* Progress Bar */}
             <View style={{ height: 8, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 16 }}>
               <View style={{
                 height: 8,
                 backgroundColor: '#F59E0B',
                 borderRadius: 4,
-                width: `${(completedCount / missions.length) * 100}%`,
+                width: totalCount > 0 ? `${(completedCount / totalCount) * 100}%` : '0%',
               }} />
             </View>
 
@@ -279,32 +408,97 @@ export default function MissionsScreen() {
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={{ fontSize: 16 }}>🔥</Text>
-                <Text style={{ marginLeft: 4, fontWeight: '600', color: '#F97316' }}>0</Text>
+                <Text style={{ marginLeft: 4, fontWeight: '600', color: '#F97316' }}>{completedCount}</Text>
               </View>
             </View>
           </View>
 
           {/* Missions Title */}
           <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 16 }}>
-            {selectedTab === 'daily' ? 'Daily Missions' : 'Challenge Missions'}
+            {selectedTab.charAt(0).toUpperCase() + selectedTab.slice(1)} Missions
           </Text>
+
+          {/* Loading State */}
+          {isLoading && missions.length === 0 && (
+            <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+              <ActivityIndicator size="large" color="#F59E0B" />
+              <Text style={{ marginTop: 12, color: '#6B7280' }}>Loading missions...</Text>
+            </View>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <View style={{
+              alignItems: 'center',
+              paddingVertical: 40,
+              backgroundColor: '#FEF2F2',
+              borderRadius: 12,
+              marginBottom: 16,
+            }}>
+              <Ionicons name="alert-circle" size={40} color="#EF4444" />
+              <Text style={{ marginTop: 12, color: '#EF4444', textAlign: 'center' }}>{error}</Text>
+              <TouchableOpacity
+                onPress={refreshMissions}
+                style={{
+                  marginTop: 16,
+                  backgroundColor: '#EF4444',
+                  paddingHorizontal: 20,
+                  paddingVertical: 10,
+                  borderRadius: 8,
+                }}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && !error && missions.length === 0 && (
+            <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+              <Text style={{ fontSize: 60 }}>🎯</Text>
+              <Text style={{ marginTop: 12, color: '#6B7280', fontSize: 16 }}>
+                No {selectedTab} missions available
+              </Text>
+            </View>
+          )}
 
           {/* Mission Cards */}
           {missions.map((mission) => (
             <View
               key={mission.id}
               style={{
-                backgroundColor: '#FFFFFF',
+                backgroundColor: mission.isLocked ? '#F9FAFB' : '#FFFFFF',
                 borderRadius: 16,
                 padding: 16,
                 marginBottom: 12,
                 borderWidth: 1,
-                borderColor: '#F3F4F6',
+                borderColor: mission.completed ? '#D1FAE5' : mission.isLocked ? '#E5E7EB' : '#F3F4F6',
                 position: 'relative',
+                opacity: mission.isLocked ? 0.7 : 1,
               }}
             >
+              {/* Locked Badge */}
+              {mission.isLocked && (
+                <View style={{
+                  position: 'absolute',
+                  top: 12,
+                  right: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#FEE2E2',
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 8,
+                }}>
+                  <Ionicons name="lock-closed" size={12} color="#DC2626" />
+                  <Text style={{ fontSize: 10, color: '#DC2626', marginLeft: 4, fontWeight: '600' }}>
+                    Lv.{mission.minLevel}
+                  </Text>
+                </View>
+              )}
+
               {/* Completed checkmark */}
-              {mission.completed && (
+              {mission.completed && !mission.isLocked && (
                 <View style={{
                   position: 'absolute',
                   top: 12,
@@ -313,82 +507,118 @@ export default function MissionsScreen() {
                   <Ionicons name="checkmark-circle" size={20} color="#10B981" />
                 </View>
               )}
-              
+
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                 <View style={{
                   width: 40,
                   height: 40,
                   borderRadius: 20,
-                  backgroundColor: '#FEF3C7',
+                  backgroundColor: mission.isLocked ? '#E5E7EB' : '#FEF3C7',
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginRight: 12,
                 }}>
-                  <Text style={{ fontSize: 20 }}>{mission.icon}</Text>
+                  <Text style={{ fontSize: 20 }}>{mission.isLocked ? '🔒' : mission.icon}</Text>
                 </View>
-                <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: '#1F2937', paddingRight: 24 }}>
-                  {mission.title}
-                </Text>
+                <View style={{ flex: 1, paddingRight: mission.isLocked ? 60 : 24 }}>
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '600',
+                    color: mission.isLocked ? '#9CA3AF' : '#1F2937'
+                  }}>
+                    {mission.title}
+                  </Text>
+                  {mission.description && (
+                    <Text style={{
+                      fontSize: 12,
+                      color: mission.isLocked ? '#D1D5DB' : '#6B7280',
+                      marginTop: 2
+                    }}>
+                      {mission.description}
+                    </Text>
+                  )}
+                </View>
               </View>
 
-              {/* Progress */}
-              <View style={{ marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <Text style={{ fontSize: 12, color: '#6B7280' }}>Progress</Text>
-                  <Text style={{ fontSize: 12, color: '#6B7280' }}>{mission.progress}/{mission.total}</Text>
+              {/* Progress (hide for locked) */}
+              {!mission.isLocked && (
+                <View style={{ marginBottom: 12 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Progress</Text>
+                    <Text style={{ fontSize: 12, color: '#6B7280' }}>
+                      {mission.progress}/{mission.total} {mission.targetUnit}
+                    </Text>
+                  </View>
+                  <View style={{ height: 6, backgroundColor: '#E5E7EB', borderRadius: 3 }}>
+                    <View style={{
+                      height: 6,
+                      backgroundColor: mission.completed ? '#10B981' : '#F59E0B',
+                      borderRadius: 3,
+                      width: `${Math.min((mission.progress / mission.total) * 100, 100)}%`,
+                    }} />
+                  </View>
                 </View>
-                <View style={{ height: 6, backgroundColor: '#E5E7EB', borderRadius: 3 }}>
-                  <View style={{
-                    height: 6,
-                    backgroundColor: mission.completed ? '#F59E0B' : '#F59E0B',
-                    borderRadius: 3,
-                    width: `${(mission.progress / mission.total) * 100}%`,
-                  }} />
-                </View>
-              </View>
+              )}
 
               {/* Rewards & Action */}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <View style={{ flexDirection: 'row' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
                     <Text style={{ fontSize: 14 }}>⚡</Text>
-                    <Text style={{ marginLeft: 4, fontSize: 12, color: '#F59E0B' }}>{mission.xp}</Text>
+                    <Text style={{
+                      marginLeft: 4,
+                      fontSize: 12,
+                      color: mission.isLocked ? '#D1D5DB' : '#F59E0B'
+                    }}>
+                      {mission.xp}
+                    </Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={{ fontSize: 14 }}>💎</Text>
-                    <Text style={{ marginLeft: 4, fontSize: 12, color: '#EC4899' }}>{mission.gems}</Text>
+                    <Text style={{
+                      marginLeft: 4,
+                      fontSize: 12,
+                      color: mission.isLocked ? '#D1D5DB' : '#EC4899'
+                    }}>
+                      {mission.gems}
+                    </Text>
                   </View>
                 </View>
-                
-                {mission.completed ? (
+
+                {mission.isLocked ? (
                   <View style={{
                     borderWidth: 1,
-                    borderColor: '#D1D5DB',
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
                     borderRadius: 12,
                     paddingHorizontal: 12,
                     paddingVertical: 6,
                   }}>
-                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Completed</Text>
+                    <Text style={{ fontSize: 12, color: '#9CA3AF', fontWeight: '600' }}>
+                      Unlock at Lv.{mission.minLevel}
+                    </Text>
+                  </View>
+                ) : mission.completed ? (
+                  <View style={{
+                    borderWidth: 1,
+                    borderColor: '#10B981',
+                    backgroundColor: '#D1FAE5',
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                  }}>
+                    <Text style={{ fontSize: 12, color: '#059669', fontWeight: '600' }}>Completed</Text>
                   </View>
                 ) : (
-                  <TouchableOpacity 
-                    onPress={() => handleUpdatePress(mission)}
-                    style={{
-                      backgroundColor: '#F3F4F6',
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 12,
-                    }}
-                  >
-                    <Text style={{ color: '#1F2937', fontSize: 12, fontWeight: '600' }}>Update</Text>
-                  </TouchableOpacity>
+                  <View>
+                    <QuickUpdateControl mission={mission} onUpdate={handleQuickUpdate} />
+                  </View>
                 )}
               </View>
             </View>
           ))}
         </View>
-      </ScrollView>
-    </View>
+      </ScrollView >
+    </View >
   );
 }
-

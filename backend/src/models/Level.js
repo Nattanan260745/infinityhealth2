@@ -14,6 +14,9 @@ const levelSchema = new mongoose.Schema({
   title: {
     type: String,
   },
+  title_th: {
+    type: String,
+  },
   color: {
     type: String,
   },

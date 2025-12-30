@@ -10,13 +10,13 @@ import { useDashBoardPage } from '../hook/useDashBoardPage';
 
 export default function DashboardPage() {
 
-  const { selectedTab, setSelectedTab, maxValue, chartData, statCards, filterTabs } = useDashBoardPage();
+  const { selectedTab, setSelectedTab, maxValue, chartData, statCards, filterTabs, trendValue, trendDirection } = useDashBoardPage();
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       {/* Header - Fixed at top */}
-      <View style={{ 
-        paddingTop: Platform.OS === 'web' ? 40 : 60, 
+      <View style={{
+        paddingTop: Platform.OS === 'web' ? 40 : 60,
         paddingBottom: 16,
         paddingHorizontal: 20,
         backgroundColor: '#FFFFFF',
@@ -49,6 +49,8 @@ export default function DashboardPage() {
           selectedTab={selectedTab}
           chartData={chartData}
           maxValue={maxValue}
+          trendValue={trendValue}
+          trendDirection={trendDirection}
         />
       </ScrollView>
     </View>

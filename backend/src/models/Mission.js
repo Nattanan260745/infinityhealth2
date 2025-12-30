@@ -7,7 +7,11 @@ const missionSchema = new mongoose.Schema({
     trim: true,
   },
 
-  type: String,
+  type: {
+    type: String,
+    enum: ['daily', 'challenge'],
+    required: true,
+  },
 
   reward_exp: Number,
 
@@ -19,9 +23,27 @@ const missionSchema = new mongoose.Schema({
 
   description: String,
 
+  // สำหรับ Challenge - ต้องมี level ขั้นต่ำถึงจะปลดล็อค
+  min_level: {
+    type: Number,
+    default: 1,
+  },
+
+  // Target/Goal ของภารกิจ (เช่น ดื่มน้ำ 2000 ml)
+  target_value: {
+    type: Number,
+    default: 1,
+  },
+
+  // หน่วยของ target (ml, steps, minutes, etc.)
+  target_unit: {
+    type: String,
+    default: '',
+  },
+
   is_active: {
     type: Boolean,
-    default: true,  // logical default
+    default: true,
   },
 }, {
   timestamps: true,

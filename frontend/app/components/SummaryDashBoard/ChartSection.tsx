@@ -8,9 +8,26 @@ interface ChartSectionProps {
     chartData: { date: string; value: number }[]
     maxValue: number
     statCards: StatCard[]
+    trendValue: number
+    trendDirection: 'up' | 'down' | 'neutral'
 }
 
 const ChartSection: React.FC<ChartSectionProps> = (props) => {
+    // Determine trend color and icon
+    let trendColor = '#6B7280'; // Gray
+    let trendBg = '#F3F4F6';
+    let iconName: any = 'remove';
+
+    if (props.trendDirection === 'up') {
+        trendColor = '#059669'; // Green
+        trendBg = '#D1FAE5';
+        iconName = 'arrow-up';
+    } else if (props.trendDirection === 'down') {
+        trendColor = '#EF4444'; // Red
+        trendBg = '#FEE2E2';
+        iconName = 'arrow-down';
+    }
+
     return (
         <View
             style={{
@@ -21,9 +38,6 @@ const ChartSection: React.FC<ChartSectionProps> = (props) => {
                 borderWidth: 1,
                 borderColor: '#F3F4F6',
                 shadowColor: '#000',
-
-
-
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.05,
                 shadowRadius: 8,
@@ -38,27 +52,30 @@ const ChartSection: React.FC<ChartSectionProps> = (props) => {
                         {props.statCards.find(c => c.id === props.selectedTab)?.value} {props.selectedTab === 'Weight' ? 'kg' : props.statCards.find(c => c.id === props.selectedTab)?.unit}
                     </Text>
                 </View>
-                <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: '#FEE2E2',
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: 12
-                }}>
-                    <Ionicons name="arrow-down" size={12} color="#EF4444" />
-                    <Text style={{ fontSize: 12, color: '#EF4444', marginLeft: 2 }}>0.8</Text>
-                </View>
+                {props.trendDirection !== 'neutral' && (
+                    <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: trendBg,
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 12
+                    }}>
+                        <Ionicons name={iconName} size={12} color={trendColor} />
+                        <Text style={{ fontSize: 12, color: trendColor, marginLeft: 2 }}>{props.trendValue}</Text>
+                    </View>
+                )}
             </View>
 
             {/* Chart */}
             <View style={{ height: 150, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
                 {/* Y-axis labels */}
+                {/* Y-axis labels */}
                 <View style={{ position: 'absolute', left: 0, top: 0, bottom: 20, justifyContent: 'space-between' }}>
-                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>80</Text>
-                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>60</Text>
-                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>40</Text>
-                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>20</Text>
+                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{Math.round(props.maxValue)}</Text>
+                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{Math.round(props.maxValue * 0.75)}</Text>
+                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{Math.round(props.maxValue * 0.5)}</Text>
+                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{Math.round(props.maxValue * 0.25)}</Text>
                 </View>
 
                 {/* Bars */}

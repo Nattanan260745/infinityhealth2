@@ -2,15 +2,22 @@ const express = require('express');
 const Mission = require('../models/Mission');
 const UserMission = require('../models/UserMission');
 const Profile = require('../models/Profile');
+const User = require('../models/User');
 
 const router = express.Router();
+
+// Helper: Get MongoDB ObjectId from custom userId (e.g., "u000004")
+const getUserObjectId = async (userId) => {
+  const user = await User.findOne({ userId: userId });
+  return user ? user._id : null;
+};
 
 // Get all missions
 router.get('/', async (req, res) => {
   try {
     const missions = await Mission.find({ is_active: true })
       .sort({ type: 1, createdAt: -1 });
-    
+
     res.json({
       success: true,
       data: missions,
@@ -28,10 +35,10 @@ router.get('/', async (req, res) => {
 router.get('/type/:type', async (req, res) => {
   try {
     const { type } = req.params;
-    
+
     const missions = await Mission.find({ type, is_active: true })
       .sort({ createdAt: -1 });
-    
+
     res.json({
       success: true,
       data: missions,
@@ -49,16 +56,16 @@ router.get('/type/:type', async (req, res) => {
 router.get('/:missionId', async (req, res) => {
   try {
     const { missionId } = req.params;
-    
+
     const mission = await Mission.findById(missionId);
-    
+
     if (!mission) {
       return res.status(404).json({
         success: false,
         message: 'Mission not found',
       });
     }
-    
+
     res.json({
       success: true,
       data: mission,
@@ -76,7 +83,7 @@ router.get('/:missionId', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { title, type, reward_exp, reward_points, start_time, end_time, description } = req.body;
-    
+
     const mission = await Mission.create({
       title,
       type,
@@ -86,7 +93,7 @@ router.post('/', async (req, res) => {
       end_time,
       description,
     });
-    
+
     res.status(201).json({
       success: true,
       message: 'Mission created successfully',
@@ -106,16 +113,16 @@ router.put('/:missionId', async (req, res) => {
   try {
     const { missionId } = req.params;
     const { title, type, reward_exp, reward_points, start_time, end_time, description, is_active } = req.body;
-    
+
     const mission = await Mission.findById(missionId);
-    
+
     if (!mission) {
       return res.status(404).json({
         success: false,
         message: 'Mission not found',
       });
     }
-    
+
     if (title !== undefined) mission.title = title;
     if (type !== undefined) mission.type = type;
     if (reward_exp !== undefined) mission.reward_exp = reward_exp;
@@ -124,9 +131,9 @@ router.put('/:missionId', async (req, res) => {
     if (end_time !== undefined) mission.end_time = end_time;
     if (description !== undefined) mission.description = description;
     if (is_active !== undefined) mission.is_active = is_active;
-    
+
     await mission.save();
-    
+
     res.json({
       success: true,
       message: 'Mission updated successfully',
@@ -145,16 +152,16 @@ router.put('/:missionId', async (req, res) => {
 router.delete('/:missionId', async (req, res) => {
   try {
     const { missionId } = req.params;
-    
+
     const mission = await Mission.findByIdAndDelete(missionId);
-    
+
     if (!mission) {
       return res.status(404).json({
         success: false,
         message: 'Mission not found',
       });
     }
-    
+
     res.json({
       success: true,
       message: 'Mission deleted successfully',
@@ -174,29 +181,29 @@ router.delete('/:missionId', async (req, res) => {
 router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     // Get today's date range
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    
+
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
-    
+
     // Get all active missions
     const missions = await Mission.find({ is_active: true });
-    
+
     // Get user's completed missions for today
     const userMissions = await UserMission.find({
       user_id: userId,
       createdAt: { $gte: startOfDay, $lte: endOfDay },
     });
-    
+
     // Combine data
     const missionsWithStatus = missions.map(mission => {
       const userMission = userMissions.find(
         um => um.mission_id.toString() === mission._id.toString()
       );
-      
+
       return {
         ...mission.toObject(),
         user_status: userMission ? {
@@ -210,7 +217,7 @@ router.get('/user/:userId', async (req, res) => {
         },
       };
     });
-    
+
     res.json({
       success: true,
       data: missionsWithStatus,
@@ -228,7 +235,7 @@ router.get('/user/:userId', async (req, res) => {
 router.post('/user/:userId/start/:missionId', async (req, res) => {
   try {
     const { userId, missionId } = req.params;
-    
+
     // Check if mission exists
     const mission = await Mission.findById(missionId);
     if (!mission) {
@@ -237,17 +244,17 @@ router.post('/user/:userId/start/:missionId', async (req, res) => {
         message: 'Mission not found',
       });
     }
-    
+
     // Check if user already started this mission today
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    
+
     const existingUserMission = await UserMission.findOne({
       user_id: userId,
       mission_id: missionId,
       createdAt: { $gte: startOfDay },
     });
-    
+
     if (existingUserMission) {
       return res.status(400).json({
         success: false,
@@ -255,7 +262,7 @@ router.post('/user/:userId/start/:missionId', async (req, res) => {
         data: existingUserMission,
       });
     }
-    
+
     // Create user mission
     const userMission = await UserMission.create({
       user_id: userId,
@@ -263,7 +270,7 @@ router.post('/user/:userId/start/:missionId', async (req, res) => {
       mission_status: 'in_progress',
       progress: '',
     });
-    
+
     res.status(201).json({
       success: true,
       message: 'Mission started successfully',
@@ -282,24 +289,29 @@ router.post('/user/:userId/start/:missionId', async (req, res) => {
 router.patch('/user/:userId/complete/:missionId', async (req, res) => {
   try {
     const { userId, missionId } = req.params;
-    
+
     // Get today's user mission
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    
+
     let userMission = await UserMission.findOne({
       user_id: userId,
       mission_id: missionId,
       createdAt: { $gte: startOfDay },
     });
-    
+
+    // Get mission details first to know target
+    const mission = await Mission.findById(missionId);
+    const targetValue = mission ? (mission.target_value || 1) : 1;
+    const progressString = `${targetValue}/${targetValue}`;
+
     // If not started, create and complete
     if (!userMission) {
       userMission = await UserMission.create({
         user_id: userId,
         mission_id: missionId,
         mission_status: 'completed',
-        progress: '100/100',
+        progress: progressString,
         completed_at: new Date(),
       });
     } else if (userMission.mission_status === 'completed') {
@@ -309,32 +321,37 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
       });
     } else {
       userMission.mission_status = 'completed';
-      userMission.progress = '100/100';
+      userMission.progress = progressString;
       userMission.completed_at = new Date();
       await userMission.save();
     }
-    
+
     // Get mission to add rewards
-    const mission = await Mission.findById(missionId);
-    
+    // const mission = await Mission.findById(missionId); // Copied from line 304
+
     if (mission) {
-      // Add rewards to user profile
-      let profile = await Profile.findOne({ user_id: userId });
-      
-      if (profile) {
-        profile.exp += mission.reward_exp;
-        profile.points += mission.reward_points;
-        
-        // Level up logic
-        const newLevel = Math.floor(profile.exp / 1000) + 1;
-        if (newLevel > profile.level_id) {
-          profile.level_id = newLevel;
+      // Get MongoDB ObjectId from custom userId
+      const userObjectId = await getUserObjectId(userId);
+
+      if (userObjectId) {
+        // Add rewards to user profile
+        let profile = await Profile.findOne({ user_id: userObjectId });
+
+        if (profile) {
+          profile.exp += mission.reward_exp || 0;
+          profile.points += mission.reward_points || 0;
+
+          // Level up logic
+          const newLevel = Math.floor(profile.exp / 1000) + 1;
+          if (newLevel > profile.level_id) {
+            profile.level_id = newLevel;
+          }
+
+          await profile.save();
         }
-        
-        await profile.save();
       }
     }
-    
+
     res.json({
       success: true,
       message: 'Mission completed successfully',
@@ -360,16 +377,16 @@ router.patch('/user/:userId/progress/:missionId', async (req, res) => {
   try {
     const { userId, missionId } = req.params;
     const { progress, mission_status } = req.body;
-    
+
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    
+
     let userMission = await UserMission.findOne({
       user_id: userId,
       mission_id: missionId,
       createdAt: { $gte: startOfDay },
     });
-    
+
     if (!userMission) {
       userMission = await UserMission.create({
         user_id: userId,
@@ -382,7 +399,7 @@ router.patch('/user/:userId/progress/:missionId', async (req, res) => {
       if (mission_status !== undefined) userMission.mission_status = mission_status;
       await userMission.save();
     }
-    
+
     res.json({
       success: true,
       message: 'Progress updated successfully',
@@ -401,16 +418,16 @@ router.patch('/user/:userId/progress/:missionId', async (req, res) => {
 router.patch('/user/:userId/fail/:missionId', async (req, res) => {
   try {
     const { userId, missionId } = req.params;
-    
+
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    
+
     let userMission = await UserMission.findOne({
       user_id: userId,
       mission_id: missionId,
       createdAt: { $gte: startOfDay },
     });
-    
+
     if (!userMission) {
       userMission = await UserMission.create({
         user_id: userId,
@@ -421,7 +438,7 @@ router.patch('/user/:userId/fail/:missionId', async (req, res) => {
       userMission.mission_status = 'failed';
       await userMission.save();
     }
-    
+
     res.json({
       success: true,
       message: 'Mission marked as failed',

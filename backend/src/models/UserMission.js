@@ -2,8 +2,7 @@ const mongoose = require('mongoose');
 
 const userMissionSchema = new mongoose.Schema({
   user_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String,  // ใช้ custom userId (เช่น "u000004")
     required: true,
   },
   mission_id: {
