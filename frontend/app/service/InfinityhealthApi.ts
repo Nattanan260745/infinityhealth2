@@ -17,7 +17,7 @@ import {
   HealthTrack,
 } from '../interface/infinityhealth.interface';
 
-const API_BASE_URL = 'http://192.168.1.40:3000'; // Updated to LAN IP for device access
+const API_BASE_URL = 'https://infinityhealth2.onrender.com'; // Production URL on Render
 
 const api = axios.create({
   baseURL: API_BASE_URL,
