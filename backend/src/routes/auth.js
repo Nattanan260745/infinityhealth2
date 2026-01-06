@@ -72,12 +72,12 @@ router.post('/register', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Set cookie
-    res.cookie('userId', user.id.toString(), {
-      httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: 'lax',
-    });
+    // Set cookie (Commented out for Mobile App compatibility)
+    // res.cookie('userId', user.id.toString(), {
+    //   httpOnly: true,
+    //   maxAge: 7 * 24 * 60 * 60 * 1000,
+    //   sameSite: 'lax',
+    // });
 
     res.status(201).json({
       success: true,
