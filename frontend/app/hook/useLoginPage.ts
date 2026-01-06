@@ -190,7 +190,7 @@ export const useLoginPage = () => {
         mode: 'all'
     });
 
-    const {control, handleSubmit, formState, watch, reset, setValue} = methods;
+    const { control, handleSubmit, formState, watch, reset, setValue } = methods;
 
     const onSubmit = (data: FormValues) => {
         console.log('data ', data)
@@ -249,11 +249,11 @@ export const useLoginPage = () => {
         // }
 
         setIsLoading(true);
-        
+
         try {
             const response: LoginResponse = await login({ email: watch('email'), password: watch('password') });
             console.log('res ', response)
-            
+
             if (response.success && response.user) {
                 // Store user data in storage
                 await storage.setItem('userId', response.user.userId);
@@ -262,9 +262,9 @@ export const useLoginPage = () => {
                 if (response.token) {
                     await storage.setItem('token', response.token);
                 }
-                
+
                 console.log('[LoginPage] Login successful, userId stored:', response.user.userId);
-                
+
                 router.replace('/(tabs)');
             } else {
                 const message = response.message || 'Login failed';
@@ -272,7 +272,7 @@ export const useLoginPage = () => {
             }
         } catch (error: any) {
             console.error('[LoginPage] Login error:', error);
-            const message = error.response?.data?.message || 'Login failed. Please check your credentials.';
+            const message = error.response?.data?.message || (error.message ? 'Error: ' + error.message : 'Login failed.');
             Platform.OS === 'web' ? alert(message) : Alert.alert('Error', message);
         } finally {
             setIsLoading(false);
