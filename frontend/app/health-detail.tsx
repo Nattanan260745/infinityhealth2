@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart, BarChart } from "react-native-chart-kit";
 import { getHealthTrackRange } from './service/InfinityhealthApi'; // Fixed import path
@@ -110,6 +110,7 @@ export default function HealthDetail() {
 
     return (
         <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+            <Stack.Screen options={{ headerShown: false }} />
             {/* Header */}
             <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20 }}>
                 <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 8 }}>
@@ -159,7 +160,7 @@ export default function HealthDetail() {
                         />
                     ) : (
                         <View style={{ height: 220, justifyContent: 'center', alignItems: 'center' }}>
-                            <Text style={{ color: '#9CA3AF' }}>No data available for this period</Text>
+                            <Text style={{ color: '#afafaf4b' }}>No data available for this period</Text>
                         </View>
                     )}
                 </View>
