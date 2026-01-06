@@ -59,6 +59,21 @@ export interface UserProfile {
   updatedAt: string;
 }
 
+export interface UserProfileData {
+  _id: number;
+  user_id: number;
+  level_id: number;
+  exp: number;
+  points: number;
+  profile_img: string | null;
+  bio: string | null;
+  user?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+}
+
 export interface UpdateProfileRequest {
   fullName?: string;
   avatar?: string;
@@ -176,10 +191,10 @@ export interface HealthTrack {
   date: string;
   weight: number;
   height: number;
-  water_glass: number;
-  mood: number;
-  sleep_hours: number;
-  steps: number;
+  water: number;
+  mood?: number;
+  sleepHours: number;
+  stepsCount: number;
   createdAt: string;
   updatedAt: string;
 }

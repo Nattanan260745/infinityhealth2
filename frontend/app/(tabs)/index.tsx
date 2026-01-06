@@ -9,7 +9,6 @@ import { useHomePage } from '../hook/useHomePage';
 import { Ionicons } from '@expo/vector-icons';
 
 
-
 interface HomePageProps {
 
 }
@@ -25,13 +24,30 @@ const HomePage: React.FC<HomePageProps> = (props) => {
     const useHomePageController = useHomePage();
     const [showNotification, setShowNotification] = useState(false);
 
+    // Format today's date
+    const today = new Date();
+    const dateOptions: Intl.DateTimeFormatOptions = {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'short',
+        year: '2-digit'
+    };
+    // Example: "Today 12 Nov 27" -> "Monday, 5 Jan 26" (or similar)
+    // Custom format to match "Today 12 Nov 27" style roughly:
+    const dayName = today.toLocaleDateString('en-US', { weekday: 'long' }); // e.g. Monday
+    const dayNum = today.getDate();
+    const month = today.toLocaleDateString('en-US', { month: 'short' });
+    const year = today.getFullYear().toString().slice(-2);
+    const formattedDate = `Today ${dayNum} ${month} ${year}`;
+
+
     return (
         <View style={useHomePageController.styles.container}>
             <View style={{ paddingTop: Platform.OS === 'web' ? 20 : 50, paddingHorizontal: 20, backgroundColor: '#FFFFFF' }}>
                 <Header
                     userName={useHomePageController.userName}
                     userAvatar="https://i.pravatar.cc/100?img=47"
-                    date="Today 12 Nov 27"
+                    date={formattedDate}
                     onNotificationPress={() => setShowNotification(true)}
                     onLogoutPress={useHomePageController.handleLogout}
                 />

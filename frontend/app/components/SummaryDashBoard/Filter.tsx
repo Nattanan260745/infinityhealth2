@@ -10,12 +10,14 @@ interface FilterProps {
 
 const Filter: React.FC<FilterProps> = (props) => {
     return (
-        <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ marginTop: 8, marginBottom: 20, paddingLeft: 20 }}
-        // contentContainerStyle={{ paddingRight: 20 }}
-        >
+        <View style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: 8,
+            marginBottom: 20,
+            paddingHorizontal: 20
+        }}>
             {props.filterTabs.map((tab) => (
                 <TouchableOpacity
                     key={tab}
@@ -24,8 +26,8 @@ const Filter: React.FC<FilterProps> = (props) => {
                         paddingHorizontal: 16,
                         paddingVertical: 8,
                         borderRadius: 20,
-                        marginRight: 8,
                         backgroundColor: props.selectedTab === tab ? '#7DD1E0' : '#F3F4F6',
+                        // Remove any border if existed (none seen in previous code but ensuring clean style)
                     }}
                 >
                     <Text
@@ -39,7 +41,7 @@ const Filter: React.FC<FilterProps> = (props) => {
                     </Text>
                 </TouchableOpacity>
             ))}
-        </ScrollView>
+        </View>
     );
 };
 

@@ -352,66 +352,7 @@ export default function MissionsScreen() {
             ))}
           </View>
 
-          {/* User Level Info (for Challenge tab) */}
-          {selectedTab === 'challenge' && (
-            <View style={{
-              backgroundColor: '#FEF3C7',
-              borderRadius: 12,
-              padding: 12,
-              marginBottom: 16,
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}>
-              <Text style={{ fontSize: 24, marginRight: 12 }}>⭐</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#92400E' }}>
-                  Your Level: {userLevel}
-                </Text>
-                <Text style={{ fontSize: 12, color: '#B45309' }}>
-                  Unlocked: {unlockedCount}/{totalCount} challenges
-                </Text>
-              </View>
-            </View>
-          )}
 
-          {/* Progress Card */}
-          <View style={{
-            backgroundColor: '#F9FAFB',
-            borderRadius: 16,
-            padding: 16,
-            marginBottom: 24,
-          }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151' }}>Missions Completed</Text>
-              <Text style={{ fontSize: 14, color: '#6B7280' }}>{completedCount}/{totalCount}</Text>
-            </View>
-
-            {/* Progress Bar */}
-            <View style={{ height: 8, backgroundColor: '#E5E7EB', borderRadius: 4, marginBottom: 16 }}>
-              <View style={{
-                height: 8,
-                backgroundColor: '#F59E0B',
-                borderRadius: 4,
-                width: totalCount > 0 ? `${(completedCount / totalCount) * 100}%` : '0%',
-              }} />
-            </View>
-
-            {/* Rewards */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ fontSize: 16 }}>⚡</Text>
-                <Text style={{ marginLeft: 4, fontWeight: '600', color: '#F59E0B' }}>{totalXP}</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ fontSize: 16 }}>💎</Text>
-                <Text style={{ marginLeft: 4, fontWeight: '600', color: '#EC4899' }}>{totalGems}</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ fontSize: 16 }}>🔥</Text>
-                <Text style={{ marginLeft: 4, fontWeight: '600', color: '#F97316' }}>{completedCount}</Text>
-              </View>
-            </View>
-          </View>
 
           {/* Missions Title */}
           <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 16 }}>

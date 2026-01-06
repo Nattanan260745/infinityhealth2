@@ -1,15 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import storage from "../utils/storage";
+import {
+  getUserRoutinesByDate,
+  createRoutine,
+  updateRoutine,
+  deleteRoutine,
+  completeRoutine,
+  getUserGoalsByDate,
+  createGoal,
+  updateGoal,
+  deleteGoal,
+  getUserRoutines,
+  getUserGoals
+} from "../service/InfinityhealthApi";
+import { useFocusEffect } from 'expo-router';
 
 // Types
 export type TabType = 'routines' | 'goals';
+export type ViewMode = 'list' | 'calendar';
 
 export interface RoutineItem {
   id: number;
   title: string;
-  time: string;
-  date: string;
+  time: string; // Display time (e.g. 10:00)
+  date: string; // YYYY-MM-DD
   completed: boolean;
   notifications: boolean;
+  scheduledDate?: string; // ISO string from backend
+  scheduledTime?: string; // string from backend
 }
 
 // Theme Colors
@@ -17,86 +35,179 @@ export const routineColors = {
   // Primary
   primary: '#7DD1E0',
   primaryLight: '#E0F7FA',
-  
+
   // Background
   background: '#FFFFFF',
   backgroundSecondary: '#F3F4F6',
   backgroundHero: '#FEF3C7',
-  
+
   // Text
   textPrimary: '#1F2937',
   textSecondary: '#374151',
   textMuted: '#6B7280',
   textPlaceholder: '#9CA3AF',
-  
+
   // Border
   border: '#E5E7EB',
   borderLight: '#F3F4F6',
-  
+
   // Status - Completed
   completedBg: '#F0FDF4',
   completedBorder: '#D1FAE5',
   completedText: '#059669',
   completedIcon: '#10B981',
-  
+
   // Status - Pending
-  pendingBorder: '#D1D5DB',
-  
+  pendingBorder: '#EF4444',
+
   // Danger
   danger: '#EF4444',
   dangerBg: '#FEE2E2',
-  
+
   // Switch
   switchTrackOff: '#E5E7EB',
 };
 
-// Initial Data
-const initialRoutines: RoutineItem[] = [
-  { id: 1, title: 'Clean up', time: '12.00 AM', date: '2024-01-15', completed: true, notifications: true },
-  { id: 2, title: 'Meeting', time: '1.00 PM', date: '2024-01-15', completed: true, notifications: true },
-  { id: 3, title: 'Clean up', time: '2.00 PM', date: '2024-01-15', completed: false, notifications: false },
-  { id: 4, title: 'Go Sleep', time: '10.00 PM', date: '2024-01-15', completed: false, notifications: true },
-];
-
-const initialGoals: RoutineItem[] = [
-  { id: 5, title: 'Exercise for 30 minutes', time: '', date: '20/10/2568', completed: true, notifications: false },
-  { id: 6, title: 'Eat healthy food', time: '', date: '20/10/2568', completed: true, notifications: false },
-  { id: 7, title: 'No sugar', time: '', date: '20/10/2568', completed: false, notifications: false },
-];
-
 export const useRoutinePage = () => {
   // Tab state
   const [selectedTab, setSelectedTab] = useState<TabType>('routines');
-  
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+
   // Data state
-  const [routines, setRoutines] = useState<RoutineItem[]>(initialRoutines);
-  const [goals, setGoals] = useState<RoutineItem[]>(initialGoals);
-  
+  const [routines, setRoutines] = useState<RoutineItem[]>([]);
+  const [goals, setGoals] = useState<RoutineItem[]>([]);
+  const [allRoutines, setAllRoutines] = useState<any[]>([]);
+  const [allGoals, setAllGoals] = useState<any[]>([]);
+
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<RoutineItem | null>(null);
   const [deletingRoutine, setDeletingRoutine] = useState<RoutineItem | null>(null);
-  
+
   // Form states
   const [formTitle, setFormTitle] = useState('');
-  const [formDate, setFormDate] = useState('');
+  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]); // Default to today YYYY-MM-DD
   const [formTime, setFormTime] = useState('');
   const [formNotifications, setFormNotifications] = useState(true);
 
   // Computed values
   const currentList = selectedTab === 'routines' ? routines : goals;
-  const setCurrentList = selectedTab === 'routines' ? setRoutines : setGoals;
   const isGoalsTab = selectedTab === 'goals';
+
+  // Load User ID
+  useEffect(() => {
+    const loadUser = async () => {
+      const id = await storage.getItem('userId');
+      setUserId(id);
+    };
+    loadUser();
+  }, []);
+
+  // Fetch Data
+  const fetchData = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      // Fetch selected date data
+      const [routineRes, goalRes] = await Promise.all([
+        getUserRoutinesByDate(userId, formDate),
+        getUserGoalsByDate(userId, formDate)
+      ]);
+
+      if (routineRes.success && Array.isArray(routineRes.data)) {
+        const mappedRoutines = routineRes.data.map((r: any) => ({
+          id: r.id,
+          title: r.title,
+          time: r.scheduledTime,
+          date: new Date(r.scheduledDate).toISOString().split('T')[0],
+          completed: r.completed,
+          notifications: true,
+          scheduledDate: r.scheduledDate,
+          scheduledTime: r.scheduledTime
+        }));
+        setRoutines(mappedRoutines);
+      }
+
+      if (goalRes.success && Array.isArray(goalRes.data)) {
+        const mappedGoals = goalRes.data.map((g: any) => ({
+          id: g.id,
+          title: g.title,
+          time: '',
+          date: new Date(g.goalDate).toISOString().split('T')[0],
+          completed: g.completed,
+          notifications: false,
+          scheduledDate: g.goalDate
+        }));
+        setGoals(mappedGoals);
+      }
+
+      // Fetch ALL for calendar
+      const [allR, allG] = await Promise.all([
+        getUserRoutines(userId),
+        getUserGoals(userId)
+      ]);
+      if (allR.success) setAllRoutines(allR.data || []);
+      if (allG.success) setAllGoals(allG.data || []);
+
+    } catch (e) {
+      console.error("Fetch routine error", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, formDate]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
+
+  // Compute Marked Dates for Calendar
+  const markedDates = useMemo(() => {
+    const marks: any = {};
+    const list = isGoalsTab ? allGoals : allRoutines;
+    const dateField = isGoalsTab ? 'goalDate' : 'scheduledDate';
+
+    list.forEach((item: any) => {
+      if (!item[dateField]) return;
+      const date = new Date(item[dateField]).toISOString().split('T')[0];
+
+      if (!marks[date]) {
+        marks[date] = { dots: [] };
+      }
+      if (marks[date].dots.length < 3) {
+        const color = item.completed ? routineColors.completedIcon : routineColors.danger;
+        // Only add dot if not already there (optional, but keep simple)
+        marks[date].dots.push({ key: item.id, color: color });
+      }
+    });
+
+    // Selected
+    marks[formDate] = {
+      ...marks[formDate] || {},
+      selected: true,
+      selectedColor: routineColors.primary
+    };
+
+    return marks;
+  }, [allRoutines, allGoals, isGoalsTab, formDate]);
 
   // Handlers
   const handleAddPress = () => {
     setEditingRoutine(null);
     setFormTitle('');
-    setFormDate('');
+    // Keep formDate as current view date
     setFormTime('');
     setFormNotifications(true);
     setShowAddModal(true);
+  };
+
+  const handleDayPress = (day: any) => {
+    setFormDate(day.dateString);
   };
 
   const handleEditPress = (routine: RoutineItem) => {
@@ -113,32 +224,60 @@ export const useRoutinePage = () => {
     setShowDeleteModal(true);
   };
 
-  const handleSave = () => {
-    if (!formTitle.trim()) return;
+  const handleSave = async () => {
+    if (!formTitle.trim() || !userId) return;
 
-    if (editingRoutine) {
-      setCurrentList(currentList.map(r => 
-        r.id === editingRoutine.id 
-          ? { ...r, title: formTitle, date: formDate, time: formTime, notifications: formNotifications }
-          : r
-      ));
-    } else {
-      const newRoutine: RoutineItem = {
-        id: Date.now(),
-        title: formTitle,
-        date: formDate || 'DD/MM/YYYY',
-        time: formTime || '--:--',
-        completed: false,
-        notifications: formNotifications,
-      };
-      setCurrentList([...currentList, newRoutine]);
+    try {
+      if (isGoalsTab) {
+        if (editingRoutine) {
+          await updateGoal(editingRoutine.id, {
+            title: formTitle,
+            goal_date: new Date(formDate).toISOString(),
+            completed: editingRoutine.completed
+          });
+        } else {
+          await createGoal({
+            user_id: userId,
+            title: formTitle,
+            goal_date: new Date(formDate).toISOString()
+          });
+        }
+      } else {
+        if (editingRoutine) {
+          await updateRoutine(editingRoutine.id, {
+            title: formTitle,
+            scheduled_time: formTime,
+            scheduled_date: new Date(formDate).toISOString(),
+            completed: editingRoutine.completed
+          });
+        } else {
+          await createRoutine({
+            user_id: userId,
+            title: formTitle,
+            scheduled_time: formTime || '00:00',
+            scheduled_date: new Date(formDate).toISOString()
+          });
+        }
+      }
+      setShowAddModal(false);
+      fetchData(); // Refresh
+    } catch (error) {
+      console.error("Save item error", error);
     }
-    setShowAddModal(false);
   };
 
-  const handleDelete = () => {
-    if (deletingRoutine) {
-      setCurrentList(currentList.filter(r => r.id !== deletingRoutine.id));
+  const handleDelete = async () => {
+    if (deletingRoutine && userId) {
+      try {
+        if (isGoalsTab) {
+          await deleteGoal(deletingRoutine.id);
+        } else {
+          await deleteRoutine(deletingRoutine.id);
+        }
+        fetchData();
+      } catch (e) {
+        console.error(e);
+      }
     }
     setShowDeleteModal(false);
     setDeletingRoutine(null);
@@ -152,10 +291,29 @@ export const useRoutinePage = () => {
     setShowDeleteModal(false);
   };
 
-  const toggleComplete = (id: number) => {
-    setCurrentList(currentList.map(r => 
-      r.id === id ? { ...r, completed: !r.completed } : r
-    ));
+  const toggleComplete = async (id: number) => {
+    if (isGoalsTab) {
+      setGoals(prev => prev.map(r => r.id === id ? { ...r, completed: !r.completed } : r));
+    } else {
+      setRoutines(prev => prev.map(r => r.id === id ? { ...r, completed: !r.completed } : r));
+    }
+
+    try {
+      const list = isGoalsTab ? goals : routines;
+      const item = list.find(i => i.id === id);
+      if (item) {
+        if (isGoalsTab) {
+          await updateGoal(id, { completed: !item.completed });
+        } else {
+          await updateRoutine(id, { completed: !item.completed });
+        }
+      }
+      // Re-fetch to update calendar marks
+      fetchData();
+    } catch (e) {
+      console.error("Toggle complete error", e);
+      fetchData(); // Revert
+    }
   };
 
   // Modal titles
@@ -172,23 +330,18 @@ export const useRoutinePage = () => {
   const getDeleteMessage = () => `This action cannot be undone. The ${isGoalsTab ? 'goal' : 'routine'} will be permanently deleted.`;
 
   return {
-    // Colors
     colors: routineColors,
-    
-    // Tab
     selectedTab,
     setSelectedTab,
+    viewMode,
+    setViewMode,
     isGoalsTab,
-    
-    // Data
     currentList,
-    
-    // Modals
+    markedDates,
+    handleDayPress,
     showAddModal,
     showDeleteModal,
     editingRoutine,
-    
-    // Form
     formTitle,
     setFormTitle,
     formDate,
@@ -197,8 +350,6 @@ export const useRoutinePage = () => {
     setFormTime,
     formNotifications,
     setFormNotifications,
-    
-    // Handlers
     handleAddPress,
     handleEditPress,
     handleDeletePress,
@@ -207,8 +358,6 @@ export const useRoutinePage = () => {
     handleCloseAddModal,
     handleCloseDeleteModal,
     toggleComplete,
-    
-    // Text helpers
     getModalTitle,
     getFormLabel,
     getFormPlaceholder,

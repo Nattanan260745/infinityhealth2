@@ -1,16 +1,22 @@
 const express = require('express');
-const DailyGoal = require('../models/DailyGoal');
+const prisma = require('../prisma');
 
 const router = express.Router();
+
+// Helper: Get integer userId
+const parseId = (id) => parseInt(id, 10);
 
 // Get all daily goals by user ID
 router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    
-    const goals = await DailyGoal.find({ user_id: userId })
-      .sort({ goal_date: -1 });
-    
+    const uid = parseId(userId);
+
+    const goals = await prisma.dailyGoal.findMany({
+      where: { userId: uid },
+      orderBy: { goalDate: 'desc' }
+    });
+
     res.json({
       success: true,
       data: goals,
@@ -28,18 +34,22 @@ router.get('/user/:userId', async (req, res) => {
 router.get('/user/:userId/today', async (req, res) => {
   try {
     const { userId } = req.params;
-    
+    const uid = parseId(userId);
+
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    
+
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
-    
-    const goals = await DailyGoal.find({ 
-      user_id: userId,
-      goal_date: { $gte: startOfDay, $lte: endOfDay },
-    }).sort({ createdAt: 1 });
-    
+
+    const goals = await prisma.dailyGoal.findMany({
+      where: {
+        userId: uid,
+        goalDate: { gte: startOfDay, lte: endOfDay }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
     res.json({
       success: true,
       data: goals,
@@ -57,18 +67,22 @@ router.get('/user/:userId/today', async (req, res) => {
 router.get('/user/:userId/date/:date', async (req, res) => {
   try {
     const { userId, date } = req.params;
-    
+    const uid = parseId(userId);
+
     const startDate = new Date(date);
     startDate.setHours(0, 0, 0, 0);
-    
+
     const endDate = new Date(date);
     endDate.setHours(23, 59, 59, 999);
-    
-    const goals = await DailyGoal.find({ 
-      user_id: userId,
-      goal_date: { $gte: startDate, $lte: endDate },
-    }).sort({ createdAt: 1 });
-    
+
+    const goals = await prisma.dailyGoal.findMany({
+      where: {
+        userId: uid,
+        goalDate: { gte: startDate, lte: endDate }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
     res.json({
       success: true,
       data: goals,
@@ -86,12 +100,16 @@ router.get('/user/:userId/date/:date', async (req, res) => {
 router.get('/user/:userId/incomplete', async (req, res) => {
   try {
     const { userId } = req.params;
-    
-    const goals = await DailyGoal.find({ 
-      user_id: userId,
-      completed: false,
-    }).sort({ goal_date: 1 });
-    
+    const uid = parseId(userId);
+
+    const goals = await prisma.dailyGoal.findMany({
+      where: {
+        userId: uid,
+        completed: false
+      },
+      orderBy: { goalDate: 'asc' }
+    });
+
     res.json({
       success: true,
       data: goals,
@@ -109,14 +127,17 @@ router.get('/user/:userId/incomplete', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { user_id, title, goal_date } = req.body;
-    
-    const goal = await DailyGoal.create({
-      user_id,
-      title,
-      goal_date: goal_date || new Date(),
-      completed: false,
+    const uid = parseId(user_id);
+
+    const goal = await prisma.dailyGoal.create({
+      data: {
+        userId: uid,
+        title: title,
+        goalDate: goal_date || new Date(),
+        completed: false
+      }
     });
-    
+
     res.status(201).json({
       success: true,
       message: 'Daily goal created successfully',
@@ -135,23 +156,19 @@ router.post('/', async (req, res) => {
 router.put('/:goalId', async (req, res) => {
   try {
     const { goalId } = req.params;
+    const id = parseId(goalId);
     const { title, goal_date, completed } = req.body;
-    
-    const goal = await DailyGoal.findById(goalId);
-    
-    if (!goal) {
-      return res.status(404).json({
-        success: false,
-        message: 'Daily goal not found',
-      });
-    }
-    
-    if (title !== undefined) goal.title = title;
-    if (goal_date !== undefined) goal.goal_date = goal_date;
-    if (completed !== undefined) goal.completed = completed;
-    
-    await goal.save();
-    
+
+    const dataUpdate = {};
+    if (title !== undefined) dataUpdate.title = title;
+    if (goal_date !== undefined) dataUpdate.goalDate = goal_date;
+    if (completed !== undefined) dataUpdate.completed = completed;
+
+    const goal = await prisma.dailyGoal.update({
+      where: { id: id },
+      data: dataUpdate
+    });
+
     res.json({
       success: true,
       message: 'Daily goal updated successfully',
@@ -170,20 +187,13 @@ router.put('/:goalId', async (req, res) => {
 router.patch('/:goalId/complete', async (req, res) => {
   try {
     const { goalId } = req.params;
-    
-    const goal = await DailyGoal.findByIdAndUpdate(
-      goalId,
-      { completed: true },
-      { new: true }
-    );
-    
-    if (!goal) {
-      return res.status(404).json({
-        success: false,
-        message: 'Daily goal not found',
-      });
-    }
-    
+    const id = parseId(goalId);
+
+    const goal = await prisma.dailyGoal.update({
+      where: { id: id },
+      data: { completed: true }
+    });
+
     res.json({
       success: true,
       message: 'Daily goal marked as completed',
@@ -202,16 +212,12 @@ router.patch('/:goalId/complete', async (req, res) => {
 router.delete('/:goalId', async (req, res) => {
   try {
     const { goalId } = req.params;
-    
-    const goal = await DailyGoal.findByIdAndDelete(goalId);
-    
-    if (!goal) {
-      return res.status(404).json({
-        success: false,
-        message: 'Daily goal not found',
-      });
-    }
-    
+    const id = parseId(goalId);
+
+    await prisma.dailyGoal.delete({
+      where: { id: id }
+    });
+
     res.json({
       success: true,
       message: 'Daily goal deleted successfully',

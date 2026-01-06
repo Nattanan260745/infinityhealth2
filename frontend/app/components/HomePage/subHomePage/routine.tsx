@@ -1,18 +1,20 @@
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
-  Platform, 
-  Modal, 
-  TextInput, 
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Platform,
+  Modal,
+  TextInput,
   TouchableWithoutFeedback,
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useRoutinePage } from '../../../hook/useRoutinePage';
+import { Calendar } from 'react-native-calendars';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function RoutineScreen() {
   const {
@@ -20,7 +22,11 @@ export default function RoutineScreen() {
     selectedTab,
     setSelectedTab,
     isGoalsTab,
+    viewMode,
+    setViewMode,
     currentList,
+    markedDates,
+    handleDayPress,
     showAddModal,
     showDeleteModal,
     editingRoutine,
@@ -47,15 +53,69 @@ export default function RoutineScreen() {
     getDeleteMessage,
   } = useRoutinePage();
 
+  // Local state for pickers
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  // Parse date string YYYY-MM-DD to Date object
+  const getParsedDate = () => {
+    if (!formDate) return new Date();
+    const d = new Date(formDate);
+    // Determine if date is valid
+    return isNaN(d.getTime()) ? new Date() : d;
+  };
+
+  // Parse time string HH:MM to Date object
+  const getParsedTime = () => {
+    if (!formTime) return new Date();
+    const [h, m] = formTime.split(':');
+    const d = new Date();
+    d.setHours(Number(h) || 0, Number(m) || 0);
+    return d;
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    // On Android, the dialog closes automatically. 
+    // On iOS with 'default' display, we also want to close it after selection logic if we treat it as simple picker.
+    // Ideally on iOS you'd have a Confirm button or standard behavior.
+    // For simplicity, we toggle off on Android (event.type === 'set' or 'dismissed').
+    // On iOS, we might need to keep it open or rely on user tapping out.
+    // However, keeping consistent with 'default' platform behavior:
+
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+
+    if (selectedDate) {
+      setFormDate(selectedDate.toISOString().split('T')[0]);
+    }
+  };
+
+  const onTimeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
+    if (selectedDate) {
+      const hours = selectedDate.getHours().toString().padStart(2, '0');
+      const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
+      setFormTime(`${hours}:${minutes}`);
+    }
+  };
+
+  // Close picker on iOS if needed (e.g. wrapped in Modal or simple conditional)
+  // With display='default' (Compact/Inline/Spinner), we often need a "Done" button on iOS.
+  // But let's try standard 'default' behavior.
+
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Back Button - Fixed position */}
       <TouchableOpacity
         onPress={() => router.back()}
-        style={{ 
-          position: 'absolute', 
-          top: Platform.OS === 'ios' ? 50 : 40, 
-          left: 20, 
+        style={{
+          position: 'absolute',
+          top: Platform.OS === 'ios' ? 50 : 40,
+          left: 20,
           zIndex: 10,
           padding: 8,
         }}
@@ -74,10 +134,10 @@ export default function RoutineScreen() {
           {/* Modal Header */}
           <TouchableOpacity
             onPress={handleCloseAddModal}
-            style={{ 
-              position: 'absolute', 
-              top: Platform.OS === 'ios' ? 50 : 40, 
-              left: 20, 
+            style={{
+              position: 'absolute',
+              top: Platform.OS === 'ios' ? 50 : 40,
+              left: 20,
               zIndex: 10,
               padding: 8,
             }}
@@ -85,7 +145,7 @@ export default function RoutineScreen() {
             <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
           </TouchableOpacity>
 
-          <ScrollView 
+          <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingBottom: 100 }}
           >
@@ -100,10 +160,10 @@ export default function RoutineScreen() {
             </View>
 
             <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
-              <Text style={{ 
-                fontSize: 28, 
-                fontWeight: 'bold', 
-                color: colors.textPrimary, 
+              <Text style={{
+                fontSize: 28,
+                fontWeight: 'bold',
+                color: colors.textPrimary,
                 textAlign: 'center',
                 marginBottom: 32,
               }}>
@@ -131,51 +191,87 @@ export default function RoutineScreen() {
                 }}
               />
 
-              {/* Date */}
+              {/* Date Picker Input */}
               <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>Date</Text>
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: colors.background,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: colors.border,
-                padding: 14,
-                marginBottom: 20,
-              }}>
-                <TextInput
-                  value={formDate}
-                  onChangeText={setFormDate}
-                  placeholder="DD/MM/YYYY"
-                  placeholderTextColor={colors.textPlaceholder}
-                  style={{ flex: 1, fontSize: 16, color: colors.textPrimary }}
-                />
-                <Ionicons name="calendar" size={20} color={colors.textMuted} />
-              </View>
+              <TouchableOpacity onPress={() => setShowDatePicker(prev => !prev)}>
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: colors.background,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: 14,
+                  marginBottom: 20,
+                }}>
+                  <Text style={{ flex: 1, fontSize: 16, color: colors.textPrimary }}>
+                    {formDate || "DD/MM/YYYY"}
+                  </Text>
+                  <Ionicons name="calendar" size={20} color={colors.textMuted} />
+                </View>
+              </TouchableOpacity>
 
-              {/* Time - Only for Routines */}
+              {showDatePicker && (
+                <View>
+                  {Platform.OS === 'ios' && (
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
+                      <TouchableOpacity onPress={() => setShowDatePicker(false)} style={{ padding: 8, backgroundColor: colors.primaryLight, borderRadius: 8 }}>
+                        <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  <DateTimePicker
+                    value={getParsedDate()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    onChange={onDateChange}
+                    themeVariant="light"
+                    style={{ backgroundColor: colors.background }} // iOS inline fix
+                  />
+                </View>
+              )}
+
+              {/* Time Picker Input - Only for Routines */}
               {!isGoalsTab && (
                 <>
                   <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>Time</Text>
-                  <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: colors.background,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    padding: 14,
-                    marginBottom: 20,
-                  }}>
-                    <TextInput
-                      value={formTime}
-                      onChangeText={setFormTime}
-                      placeholder="--:--"
-                      placeholderTextColor={colors.textPlaceholder}
-                      style={{ flex: 1, fontSize: 16, color: colors.textPrimary }}
-                    />
-                    <Ionicons name="time" size={20} color={colors.textMuted} />
-                  </View>
+                  <TouchableOpacity onPress={() => setShowTimePicker(prev => !prev)}>
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: colors.background,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      padding: 14,
+                      marginBottom: 20,
+                    }}>
+                      <Text style={{ flex: 1, fontSize: 16, color: colors.textPrimary }}>
+                        {formTime || "--:--"}
+                      </Text>
+                      <Ionicons name="time" size={20} color={colors.textMuted} />
+                    </View>
+                  </TouchableOpacity>
+
+                  {showTimePicker && (
+                    <View>
+                      {Platform.OS === 'ios' && (
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
+                          <TouchableOpacity onPress={() => setShowTimePicker(false)} style={{ padding: 8, backgroundColor: colors.primaryLight, borderRadius: 8 }}>
+                            <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Done</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                      <DateTimePicker
+                        value={getParsedTime()}
+                        mode="time"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'} // Spinner is clearer for Time on iOS
+                        is24Hour={true}
+                        onChange={onTimeChange}
+                        themeVariant="light"
+                      />
+                    </View>
+                  )}
 
                   {/* Enable Notifications - Only for Routines */}
                   <View style={{
@@ -343,11 +439,11 @@ export default function RoutineScreen() {
 
         <View style={{ paddingHorizontal: 20 }}>
           {/* Header */}
-          <Text style={{ 
-            fontSize: 28, 
-            fontWeight: 'bold', 
-            color: colors.textPrimary, 
-            textAlign: 'center', 
+          <Text style={{
+            fontSize: 28,
+            fontWeight: 'bold',
+            color: colors.textPrimary,
+            textAlign: 'center',
             marginTop: 24,
             marginBottom: 24,
           }}>
@@ -406,7 +502,9 @@ export default function RoutineScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Empty State */}
+
+
+          {/* Empty State / List */}
           {currentList.length === 0 ? (
             <View style={{ alignItems: 'center', paddingVertical: 40 }}>
               <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textPrimary, marginBottom: 8 }}>

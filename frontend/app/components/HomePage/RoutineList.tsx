@@ -8,6 +8,10 @@ interface RoutineListProps {
 }
 
 export function RoutineList({ routines }: RoutineListProps) {
+  if (!routines || routines.length === 0) {
+    return null;
+  }
+
   const getRoutineStyle = (status: Routine['status']) => {
     switch (status) {
       case 'completed':

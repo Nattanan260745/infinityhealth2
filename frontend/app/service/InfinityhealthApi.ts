@@ -6,6 +6,7 @@ import {
   RegisterRequest,
   RegisterResponse,
   UserProfile,
+  UserProfileData,
   UpdateProfileRequest,
   ApiResponse,
   Mission,
@@ -16,7 +17,7 @@ import {
   HealthTrack,
 } from '../interface/infinityhealth.interface';
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'http://192.168.1.40:3000'; // Updated to LAN IP for device access
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -55,8 +56,11 @@ export const logout = async (): Promise<ApiResponse<null>> => {
 // ============================================
 // User Profile
 // ============================================
-export const getUserProfile = async (): Promise<ApiResponse<UserProfile>> => {
-  const response = await api.get<ApiResponse<UserProfile>>('/user/profile');
+// ============================================
+// User Profile
+// ============================================
+export const getUserProfile = async (userId: string): Promise<ApiResponse<UserProfileData>> => {
+  const response = await api.get<ApiResponse<UserProfileData>>(`/profile/${userId}`);
   return response.data;
 };
 
@@ -166,6 +170,72 @@ export const getHealthTrackToday = async (userId: string): Promise<ApiResponse<H
 
 export const getHealthTrackRange = async (userId: string, startDate: string, endDate: string): Promise<ApiResponse<HealthTrack[]>> => {
   const response = await api.get<ApiResponse<HealthTrack[]>>(`/health-track/user/${userId}/range?startDate=${startDate}&endDate=${endDate}`);
+  return response.data;
+};
+
+export const saveHealthData = async (userId: string, data: any): Promise<ApiResponse<HealthTrack>> => {
+  const response = await api.post<ApiResponse<HealthTrack>>(`/health-track/user/${userId}`, data);
+  return response.data;
+};
+
+// ============================================
+// Routine
+// ============================================
+export const getUserRoutines = async (userId: string): Promise<ApiResponse<any[]>> => {
+  const response = await api.get<ApiResponse<any[]>>(`/routine/user/${userId}`);
+  return response.data;
+};
+
+export const getUserRoutinesByDate = async (userId: string, date: string): Promise<ApiResponse<any[]>> => {
+  const response = await api.get<ApiResponse<any[]>>(`/routine/user/${userId}/date/${date}`);
+  return response.data;
+};
+
+export const createRoutine = async (data: any): Promise<ApiResponse<any>> => {
+  const response = await api.post<ApiResponse<any>>('/routine', data);
+  return response.data;
+};
+
+export const updateRoutine = async (routineId: number, data: any): Promise<ApiResponse<any>> => {
+  const response = await api.put<ApiResponse<any>>(`/routine/${routineId}`, data);
+  return response.data;
+};
+
+export const completeRoutine = async (routineId: number): Promise<ApiResponse<any>> => {
+  const response = await api.patch<ApiResponse<any>>(`/routine/${routineId}/complete`);
+  return response.data;
+};
+
+export const deleteRoutine = async (routineId: number): Promise<ApiResponse<any>> => {
+  const response = await api.delete<ApiResponse<any>>(`/routine/${routineId}`);
+  return response.data;
+};
+
+// ============================================
+// Daily Goal
+// ============================================
+export const getUserGoals = async (userId: string): Promise<ApiResponse<any[]>> => {
+  const response = await api.get<ApiResponse<any[]>>(`/daily-goal/user/${userId}`);
+  return response.data;
+};
+
+export const getUserGoalsByDate = async (userId: string, date: string): Promise<ApiResponse<any[]>> => {
+  const response = await api.get<ApiResponse<any[]>>(`/daily-goal/user/${userId}/date/${date}`);
+  return response.data;
+};
+
+export const createGoal = async (data: any): Promise<ApiResponse<any>> => {
+  const response = await api.post<ApiResponse<any>>('/daily-goal', data);
+  return response.data;
+};
+
+export const updateGoal = async (goalId: number, data: any): Promise<ApiResponse<any>> => {
+  const response = await api.put<ApiResponse<any>>(`/daily-goal/${goalId}`, data);
+  return response.data;
+};
+
+export const deleteGoal = async (goalId: number): Promise<ApiResponse<any>> => {
+  const response = await api.delete<ApiResponse<any>>(`/daily-goal/${goalId}`);
   return response.data;
 };
 

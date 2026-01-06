@@ -1,4 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import storage from "../utils/storage";
+import { getUserRoutinesByDate, getUserGoalsByDate, updateRoutine, updateGoal } from "../service/InfinityhealthApi";
+import { useFocusEffect } from "expo-router";
 
 export const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const MONTHS = [
@@ -20,62 +23,85 @@ export interface MonthDay {
     hasTask: boolean;
 }
 
-// Tasks organized by date (key format: 'YYYY-MM-DD')
-const tasksByDate: Record<string, Task[]> = {
-    '2025-12-01': [
-        { id: 1, title: 'Morning Meditation', time: '6.00 AM', completed: true, category: 'routine' },
-        { id: 2, title: 'Team Meeting', time: '10.00 AM', completed: true, category: 'routine' },
-        { id: 3, title: 'Drink 8 glasses of water', completed: false, category: 'goal' },
-    ],
-    '2025-12-02': [
-        { id: 4, title: 'Yoga Class', time: '7.00 AM', completed: true, category: 'routine' },
-        { id: 5, title: 'Read 20 pages', completed: false, category: 'goal' },
-    ],
-    '2025-12-04': [
-        { id: 6, title: 'Go Shopping', time: '2.00 PM', completed: true, category: 'routine' },
-        { id: 7, title: 'Clean up', time: '4.00 PM', completed: false, category: 'routine' },
-        { id: 8, title: 'Exercise for 30 minutes', completed: true, category: 'goal' },
-        { id: 9, title: 'No Sugar', completed: false, category: 'goal' },
-    ],
-    '2025-12-06': [
-        { id: 10, title: 'Dentist Appointment', time: '9.00 AM', completed: false, category: 'routine' },
-        { id: 11, title: 'Read 30 pages', completed: false, category: 'goal' },
-    ],
-    '2025-12-08': [
-        { id: 12, title: 'Gym Session', time: '6.00 AM', completed: true, category: 'routine' },
-        { id: 13, title: 'Walk 10,000 steps', completed: true, category: 'goal' },
-    ],
-    '2025-12-10': [
-        { id: 14, title: 'Project Deadline', time: '5.00 PM', completed: false, category: 'routine' },
-        { id: 15, title: 'Finish report', completed: false, category: 'goal' },
-    ],
-    '2025-12-15': [
-        { id: 16, title: 'Birthday Party', time: '6.00 PM', completed: false, category: 'routine' },
-        { id: 17, title: 'Call parents', completed: true, category: 'goal' },
-    ],
-    '2025-12-20': [
-        { id: 18, title: 'Christmas Shopping', time: '10.00 AM', completed: false, category: 'routine' },
-        { id: 19, title: 'Wrap gifts', completed: false, category: 'goal' },
-    ],
-    '2025-12-25': [
-        { id: 20, title: 'Christmas Celebration', time: '12.00 PM', completed: false, category: 'routine' },
-        { id: 21, title: 'Family dinner', time: '7.00 PM', completed: false, category: 'routine' },
-    ],
-    '2025-12-31': [
-        { id: 22, title: 'New Year Eve Party', time: '8.00 PM', completed: false, category: 'routine' },
-        { id: 23, title: 'Set 2026 goals', completed: false, category: 'goal' },
-    ],
-};
-
 export const useCalendar = () => {
     const today = new Date();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState(today.getDate());
     const [showMonthPicker, setShowMonthPicker] = useState(false);
-    const [tasks, setTasks] = useState(tasksByDate);
+
+    // Store tasks by date key 'YYYY-MM-DD'
+    const [tasks, setTasks] = useState<Record<string, Task[]>>({});
+    const [userId, setUserId] = useState<string | null>(null);
 
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
+
+    // Load User ID
+    useEffect(() => {
+        const loadUser = async () => {
+            const id = await storage.getItem('userId');
+            setUserId(id);
+        };
+        loadUser();
+    }, []);
+
+    const getDateKey = (date: number) => {
+        return `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+    };
+
+    // Fetch tasks for the selected date
+    const fetchTasksForDate = useCallback(async () => {
+        if (!userId) return;
+
+        const dateKey = getDateKey(selectedDay);
+
+        try {
+            const [routineRes, goalRes] = await Promise.all([
+                getUserRoutinesByDate(userId, dateKey),
+                getUserGoalsByDate(userId, dateKey)
+            ]);
+
+            const newTasks: Task[] = [];
+
+            if (routineRes.success && Array.isArray(routineRes.data)) {
+                routineRes.data.forEach((r: any) => {
+                    newTasks.push({
+                        id: r.id,
+                        title: r.title,
+                        time: r.scheduledTime || '',
+                        completed: r.completed,
+                        category: 'routine'
+                    });
+                });
+            }
+
+            if (goalRes.success && Array.isArray(goalRes.data)) {
+                goalRes.data.forEach((g: any) => {
+                    newTasks.push({
+                        id: g.id,
+                        title: g.title,
+                        completed: g.completed,
+                        category: 'goal'
+                    });
+                });
+            }
+
+            setTasks(prev => ({
+                ...prev,
+                [dateKey]: newTasks
+            }));
+
+        } catch (error) {
+            console.error('Error fetching calendar tasks:', error);
+        }
+    }, [userId, selectedDay, year, month]);
+
+    // Re-fetch when date changes or screen is focused
+    useFocusEffect(
+        useCallback(() => {
+            fetchTasksForDate();
+        }, [fetchTasksForDate])
+    );
 
     // Get all days of the current month
     const monthDays = useMemo<MonthDay[]>(() => {
@@ -86,19 +112,17 @@ export const useCalendar = () => {
         for (let i = 1; i <= daysInMonth; i++) {
             const date = new Date(year, month, i);
             const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            // Note: In a real app we might want to fetch "hasTask" for the entire month
+            // For now, it only checks if we have loaded data for that day
             days.push({
                 day: DAYS[date.getDay()],
                 date: i,
-                hasTask: !!tasks[dateKey],
+                hasTask: !!tasks[dateKey] && tasks[dateKey].length > 0,
             });
         }
         return days;
     }, [year, month, tasks]);
 
-    // Get date key for current selection
-    const getDateKey = (d: number) => {
-        return `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    };
 
     // Get tasks for selected date
     const selectedDateTasks = tasks[getDateKey(selectedDay)] || [];
@@ -137,14 +161,31 @@ export const useCalendar = () => {
         );
     };
 
-    const toggleTask = (taskId: number) => {
+    const toggleTask = async (taskId: number, category: 'routine' | 'goal') => {
         const dateKey = getDateKey(selectedDay);
+        const task = tasks[dateKey]?.find(t => t.id === taskId && t.category === category);
+        if (!task || !userId) return;
+
+        // Optimistic Update
         setTasks(prev => ({
             ...prev,
-            [dateKey]: prev[dateKey]?.map(task =>
-                task.id === taskId ? { ...task, completed: !task.completed } : task
+            [dateKey]: prev[dateKey]?.map(t =>
+                (t.id === taskId && t.category === category) ? { ...t, completed: !t.completed } : t
             ) || [],
         }));
+
+        try {
+            // Call API
+            if (category === 'routine') {
+                // Use updateRoutine to allow toggling (completeRoutine might only set to true)
+                await updateRoutine(taskId, { completed: !task.completed });
+            } else {
+                await updateGoal(taskId, { completed: !task.completed });
+            }
+        } catch (error) {
+            console.error('Error toggling task:', error);
+            // Revert logic could be added here
+        }
     };
 
     return {
@@ -168,4 +209,3 @@ export const useCalendar = () => {
         toggleTask,
     };
 };
-

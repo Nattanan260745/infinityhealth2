@@ -8,8 +8,10 @@ import ChartSection from '../components/SummaryDashBoard/ChartSection';
 import { useDashBoardPage } from '../hook/useDashBoardPage';
 
 
-export default function DashboardPage() {
+import { useRouter } from 'expo-router';
 
+export default function DashboardPage() {
+  const router = useRouter();
   const { selectedTab, setSelectedTab, maxValue, chartData, statCards, filterTabs, trendValue, trendDirection } = useDashBoardPage();
 
   return (
@@ -34,16 +36,22 @@ export default function DashboardPage() {
         }}
       >
         {/* Stats Grid */}
-        <DashBoardCard statCards={statCards} />
+        <DashBoardCard
+          statCards={statCards}
+          selectedId={selectedTab}
+          onCardPress={(id) => {
+            router.push({ pathname: '/health-detail', params: { metric: id } });
+          }}
+        />
 
-        {/* Filter Tabs */}
+        {/* Filter Tabs (Metric) */}
         <Filter
           filterTabs={filterTabs}
           selectedTab={selectedTab}
           setSelectedTab={setSelectedTab}
         />
 
-        {/* Chart Section */}
+        {/* Chart Section - Read Only */}
         <ChartSection
           statCards={statCards}
           selectedTab={selectedTab}

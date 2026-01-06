@@ -1,9 +1,12 @@
 import { StatCard } from '@/app/interface/infinityhealth.interface';
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, Image, ImageSourcePropType } from 'react-native';
+import { TouchableOpacity, Dimensions, Image, ImageSourcePropType, View, Text, StyleSheet } from 'react-native';
+import { MetricType } from '@/app/interface/infinityhealth.interface';
 
 interface DashBoardCardProps {
-    statCards: StatCard[]
+    statCards: StatCard[];
+    onCardPress?: (id: MetricType) => void;
+    selectedId?: string;
 }
 
 const { width } = Dimensions.get('window');
@@ -19,45 +22,52 @@ const cardIcons: Record<string, ImageSourcePropType> = {
 };
 
 const DashBoardCard: React.FC<DashBoardCardProps> = (props) => {
-    
+
     return (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 20,  }}>
-            {props.statCards.map((card) => (
-                <View
-                    key={card.id}
-                    style={{
-                        width: CARD_WIDTH,
-                        backgroundColor: card.bgColor,
-                        borderRadius: 16,
-                        padding: 16,
-                        marginBottom: 16,
-                    }}
-                >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                        <View style={{ 
-                            width: 28, 
-                            height: 28, 
-                            borderRadius: 14, 
-                            backgroundColor: '#FFFFFF', 
-                            alignItems: 'center', 
-                            justifyContent: 'center' 
-                        }}>
-                            <Image 
-                                source={cardIcons[card.id]} 
-                                style={{ width: 16, height: 16 }} 
-                                resizeMode="contain"
-                            />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 20, }}>
+            {props.statCards.map((card) => {
+                const isSelected = props.selectedId === card.id;
+                return (
+                    <TouchableOpacity
+                        key={card.id}
+                        onPress={() => props.onCardPress && props.onCardPress(card.id as MetricType)}
+                        activeOpacity={0.7}
+                        style={{
+                            width: CARD_WIDTH,
+                            backgroundColor: card.bgColor,
+                            borderRadius: 16,
+                            padding: 16,
+                            marginBottom: 16,
+                            borderWidth: 0,
+                            // borderColor: '#1F2937', // Removed highlight border
+                        }}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                            <View style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: 14,
+                                backgroundColor: '#FFFFFF',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <Image
+                                    source={cardIcons[card.id]}
+                                    style={{ width: 16, height: 16 }}
+                                    resizeMode="contain"
+                                />
+                            </View>
+                            <Text style={{ marginLeft: 6, fontSize: 14, color: '#4B5563' }}>{card.id}</Text>
                         </View>
-                        <Text style={{ marginLeft: 6, fontSize: 14, color: '#4B5563' }}>{card.id}</Text>
-                    </View>
-                    <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937' }}>
-                        {card.value}
-                    </Text>
-                    {card.unit && (
-                        <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{card.unit}</Text>
-                    )}
-                </View>
-            ))}
+                        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937' }}>
+                            {card.value}
+                        </Text>
+                        {card.unit && (
+                            <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{card.unit}</Text>
+                        )}
+                    </TouchableOpacity>
+                );
+            })}
         </View>
     );
 };

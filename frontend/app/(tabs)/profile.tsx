@@ -1,35 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Platform, Image } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import storage from '../utils/storage';
+import { getUserProfile } from '../service/InfinityhealthApi';
 
 export default function ProfileScreen() {
   const [userName, setUserName] = useState('User');
 
-  // Load user data from storage
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const fullName = await storage.getItem('userFullName');
-        if (fullName) {
-          setUserName(fullName);
-        }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      }
-    };
-    loadUserData();
-  }, []);
-
-  // Mock data - ในอนาคตดึงจาก API
-  const userData = {
+  const [userData, setUserData] = useState({
     avatar: 'https://i.pinimg.com/736x/5b/2c/47/5b2c4756f84f6a0478b67df75e2fd1c0.jpg',
-    level: 10,
+    level: 1, // Default to 1
     rank: 'Beginner',
-    experience: 500,
+    experience: 0,
     maxExperience: 1000,
-    totalPoints: 500,
-  };
+    totalPoints: 0,
+  });
+
+  // Load user data from storage and API whenever screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      const loadUserData = async () => {
+        try {
+          const storedName = await storage.getItem('userFullName');
+          if (storedName) setUserName(storedName);
+
+          const userId = await storage.getItem('userId');
+          if (userId) {
+            const res = await getUserProfile(userId);
+            if (res.success && res.data) {
+              setUserData({
+                avatar: res.data.profile_img || 'https://i.pinimg.com/736x/5b/2c/47/5b2c4756f84f6a0478b67df75e2fd1c0.jpg',
+                level: res.data.level_id || 1,
+                rank: 'Beginner', // You might want to calculate rank based on level
+                experience: res.data.exp || 0,
+                maxExperience: 1000, // Or fetch next level requirement
+                totalPoints: res.data.points || 0
+              });
+              // Update name if returned
+              if (res.data.user?.firstName) {
+                setUserName(`${res.data.user.firstName} ${res.data.user.lastName}`);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error loading user data:', error);
+        }
+      };
+
+      loadUserData();
+    }, [])
+  );
 
   const experienceProgress = (userData.experience / userData.maxExperience) * 100;
 
@@ -45,10 +66,10 @@ export default function ProfileScreen() {
         }}
       >
         {/* Title */}
-        <Text style={{ 
-          fontSize: 24, 
-          fontWeight: 'bold', 
-          color: '#1F2937', 
+        <Text style={{
+          fontSize: 24,
+          fontWeight: 'bold',
+          color: '#1F2937',
           textAlign: 'center',
           marginBottom: 24,
         }}>
@@ -60,9 +81,9 @@ export default function ProfileScreen() {
           <View style={{ position: 'relative' }}>
             <Image
               source={{ uri: userData.avatar }}
-              style={{ 
-                width: 120, 
-                height: 120, 
+              style={{
+                width: 120,
+                height: 120,
                 borderRadius: 60,
                 borderWidth: 3,
                 borderColor: '#E5E7EB',
@@ -88,11 +109,11 @@ export default function ProfileScreen() {
               <Ionicons name="camera" size={20} color="#6B7280" />
             </TouchableOpacity>
           </View>
-          
+
           {/* Username */}
-          <Text style={{ 
-            fontSize: 22, 
-            fontWeight: 'bold', 
+          <Text style={{
+            fontSize: 22,
+            fontWeight: 'bold',
             color: '#1F2937',
             marginTop: 16,
           }}>
@@ -122,7 +143,7 @@ export default function ProfileScreen() {
                 {userData.level}
               </Text>
             </View>
-            
+
             {/* Level Info */}
             <View>
               <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937' }}>
@@ -144,7 +165,7 @@ export default function ProfileScreen() {
                 {userData.experience} / {userData.maxExperience}
               </Text>
             </View>
-            
+
             {/* Progress Bar */}
             <View style={{
               height: 12,
@@ -173,8 +194,8 @@ export default function ProfileScreen() {
             Total Points
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Image 
-              source={require('../../assets/images/point.png')} 
+            <Image
+              source={require('../../assets/images/point.png')}
               style={{ width: 28, height: 28, marginRight: 8 }}
             />
             <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937' }}>
@@ -203,17 +224,17 @@ export default function ProfileScreen() {
             <Ionicons name="trophy" size={32} color="#A855F7" />
           </View>
 
-          <Text style={{ 
-            fontSize: 14, 
-            color: '#6B7280', 
+          <Text style={{
+            fontSize: 14,
+            color: '#6B7280',
             textAlign: 'center',
             marginBottom: 4,
           }}>
             Complete missions to earn EXP and Points
           </Text>
-          <Text style={{ 
-            fontSize: 14, 
-            color: '#6B7280', 
+          <Text style={{
+            fontSize: 14,
+            color: '#6B7280',
             textAlign: 'center',
             marginBottom: 20,
           }}>

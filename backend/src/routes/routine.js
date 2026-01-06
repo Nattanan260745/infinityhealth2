@@ -1,16 +1,25 @@
 const express = require('express');
-const Routine = require('../models/Routine');
+const prisma = require('../prisma');
 
 const router = express.Router();
+
+// Helper: Get integer userId
+const parseId = (id) => parseInt(id, 10);
 
 // Get all routines by user ID
 router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    
-    const routines = await Routine.find({ user_id: userId })
-      .sort({ scheduled_date: 1, scheduled_time: 1 });
-    
+    const uid = parseId(userId);
+
+    const routines = await prisma.routine.findMany({
+      where: { userId: uid },
+      orderBy: [
+        { scheduledDate: 'asc' },
+        { scheduledTime: 'asc' }
+      ]
+    });
+
     res.json({
       success: true,
       data: routines,
@@ -28,12 +37,19 @@ router.get('/user/:userId', async (req, res) => {
 router.get('/user/:userId/upcoming', async (req, res) => {
   try {
     const { userId } = req.params;
-    
-    const routines = await Routine.find({ 
-      user_id: userId,
-      completed: false,
-    }).sort({ scheduled_date: 1, scheduled_time: 1 });
-    
+    const uid = parseId(userId);
+
+    const routines = await prisma.routine.findMany({
+      where: {
+        userId: uid,
+        completed: false
+      },
+      orderBy: [
+        { scheduledDate: 'asc' },
+        { scheduledTime: 'asc' }
+      ]
+    });
+
     res.json({
       success: true,
       data: routines,
@@ -51,18 +67,22 @@ router.get('/user/:userId/upcoming', async (req, res) => {
 router.get('/user/:userId/date/:date', async (req, res) => {
   try {
     const { userId, date } = req.params;
-    
+    const uid = parseId(userId); // Ensure userId is int
+
     const startDate = new Date(date);
     startDate.setHours(0, 0, 0, 0);
-    
+
     const endDate = new Date(date);
     endDate.setHours(23, 59, 59, 999);
-    
-    const routines = await Routine.find({ 
-      user_id: userId,
-      scheduled_date: { $gte: startDate, $lte: endDate },
-    }).sort({ scheduled_time: 1 });
-    
+
+    const routines = await prisma.routine.findMany({
+      where: {
+        userId: uid,
+        scheduledDate: { gte: startDate, lte: endDate }
+      },
+      orderBy: { scheduledTime: 'asc' }
+    });
+
     res.json({
       success: true,
       data: routines,
@@ -80,15 +100,18 @@ router.get('/user/:userId/date/:date', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { user_id, title, scheduled_time, scheduled_date } = req.body;
-    
-    const routine = await Routine.create({
-      user_id,
-      title,
-      scheduled_time,
-      scheduled_date: scheduled_date || new Date(),
-      completed: false,
+    const uid = parseId(user_id);
+
+    const routine = await prisma.routine.create({
+      data: {
+        userId: uid,
+        title: title,
+        scheduledTime: scheduled_time,
+        scheduledDate: scheduled_date || new Date(),
+        completed: false
+      }
     });
-    
+
     res.status(201).json({
       success: true,
       message: 'Routine created successfully',
@@ -107,24 +130,20 @@ router.post('/', async (req, res) => {
 router.put('/:routineId', async (req, res) => {
   try {
     const { routineId } = req.params;
+    const id = parseId(routineId);
     const { title, scheduled_time, scheduled_date, completed } = req.body;
-    
-    const routine = await Routine.findById(routineId);
-    
-    if (!routine) {
-      return res.status(404).json({
-        success: false,
-        message: 'Routine not found',
-      });
-    }
-    
-    if (title !== undefined) routine.title = title;
-    if (scheduled_time !== undefined) routine.scheduled_time = scheduled_time;
-    if (scheduled_date !== undefined) routine.scheduled_date = scheduled_date;
-    if (completed !== undefined) routine.completed = completed;
-    
-    await routine.save();
-    
+
+    const dataUpdate = {};
+    if (title !== undefined) dataUpdate.title = title;
+    if (scheduled_time !== undefined) dataUpdate.scheduledTime = scheduled_time;
+    if (scheduled_date !== undefined) dataUpdate.scheduledDate = scheduled_date;
+    if (completed !== undefined) dataUpdate.completed = completed;
+
+    const routine = await prisma.routine.update({
+      where: { id: id },
+      data: dataUpdate
+    });
+
     res.json({
       success: true,
       message: 'Routine updated successfully',
@@ -143,20 +162,13 @@ router.put('/:routineId', async (req, res) => {
 router.patch('/:routineId/complete', async (req, res) => {
   try {
     const { routineId } = req.params;
-    
-    const routine = await Routine.findByIdAndUpdate(
-      routineId,
-      { completed: true },
-      { new: true }
-    );
-    
-    if (!routine) {
-      return res.status(404).json({
-        success: false,
-        message: 'Routine not found',
-      });
-    }
-    
+    const id = parseId(routineId);
+
+    const routine = await prisma.routine.update({
+      where: { id: id },
+      data: { completed: true }
+    });
+
     res.json({
       success: true,
       message: 'Routine marked as completed',
@@ -175,16 +187,12 @@ router.patch('/:routineId/complete', async (req, res) => {
 router.delete('/:routineId', async (req, res) => {
   try {
     const { routineId } = req.params;
-    
-    const routine = await Routine.findByIdAndDelete(routineId);
-    
-    if (!routine) {
-      return res.status(404).json({
-        success: false,
-        message: 'Routine not found',
-      });
-    }
-    
+    const id = parseId(routineId);
+
+    await prisma.routine.delete({
+      where: { id: id }
+    });
+
     res.json({
       success: true,
       message: 'Routine deleted successfully',

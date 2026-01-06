@@ -36,7 +36,7 @@ export default function CalendarScreen() {
     return (
         <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
 
-            <View style={{ backgroundColor: '#FFFFFF',  paddingTop: Platform.OS === 'web' ? 40 : 60 }}>
+            <View style={{ backgroundColor: '#FFFFFF', paddingTop: Platform.OS === 'web' ? 40 : 60 }}>
                 <CalendarHeader />
                 <MonthNavigation
                     month={month}
@@ -68,8 +68,16 @@ export default function CalendarScreen() {
 
                 {selectedDateTasks.length > 0 ? (
                     <View style={{ paddingHorizontal: 20 }}>
-                        <TaskGroup title="Routine" tasks={routineTasks} onToggleTask={toggleTask} />
-                        <TaskGroup title="Goal" tasks={goalTasks} onToggleTask={toggleTask} />
+                        <TaskGroup
+                            title="Routine"
+                            tasks={routineTasks}
+                            onToggleTask={(id) => toggleTask(id, 'routine')}
+                        />
+                        <TaskGroup
+                            title="Goal"
+                            tasks={goalTasks}
+                            onToggleTask={(id) => toggleTask(id, 'goal')}
+                        />
                     </View>
                 ) : (
                     <EmptyState />

@@ -1,17 +1,20 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const Profile = require('../models/Profile');
+const bcrypt = require('bcryptjs');
+const prisma = require('../prisma');
 
 const router = express.Router();
 
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { fullName, email, password } = req.body;
+    const { fullName, email, password, dateOfBirth, gender } = req.body;
 
     // Check if user exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email },
+    });
+
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -19,34 +22,58 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Create user
-    const user = await User.create({
-      fullName,
-      email,
-      password,
-    });
+    // Split fullName
+    let firstName = 'User';
+    let lastName = '';
+    if (fullName) {
+      const parts = fullName.trim().split(' ');
+      if (parts.length > 0) firstName = parts[0];
+      if (parts.length > 1) lastName = parts.slice(1).join(' ');
+    }
 
-    // Create profile for user
-    await Profile.create({
-      user_id: user._id,
-      level_id: 1,
-      exp: 0,
-      points: 0,
-      profile_img: '',
-      bio: '',
+    // Default values for backward compatibility
+    const dob = dateOfBirth ? new Date(dateOfBirth) : new Date();
+    const userGender = gender || 'other';
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create user and stats transactionally (implicit by nested write)
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        dateOfBirth: dob,
+        gender: userGender,
+        role: 'user',
+        profileImg: '',
+        userStats: {
+          create: {
+            level: 1,
+            currentExp: 0,
+            totalPoints: 0,
+          }
+        }
+      },
+      include: {
+        userStats: true
+      }
     });
 
     // Generate token
     const token = jwt.sign(
-      { userId: user._id },
+      { userId: user.id }, // Using integer ID
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
     // Set cookie
-    res.cookie('userId', user._id.toString(), {
+    res.cookie('userId', user.id.toString(), {
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       sameSite: 'lax',
     });
 
@@ -55,9 +82,9 @@ router.post('/register', async (req, res) => {
       message: 'Registration successful',
       token,
       user: {
-        id: user._id,
-        userId: user.userId,
-        fullName: user.fullName,
+        id: user.id,
+        userId: user.id, // Keeping compatibility
+        fullName: `${user.firstName} ${user.lastName}`.trim(),
         email: user.email,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -78,7 +105,11 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     // Find user
-    const user = await User.findOne({ email });
+    const user = await prisma.user.findUnique({
+      where: { email: email },
+      include: { userStats: true } // Include stats if needed
+    });
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -87,7 +118,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Check password
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -97,15 +128,15 @@ router.post('/login', async (req, res) => {
 
     // Generate token
     const token = jwt.sign(
-      { userId: user._id },
+      { userId: user.id },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
     // Set cookie
-    res.cookie('userId', user._id.toString(), {
+    res.cookie('userId', user.id.toString(), {
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       sameSite: 'lax',
     });
 
@@ -114,9 +145,9 @@ router.post('/login', async (req, res) => {
       message: 'Login successful',
       token,
       user: {
-        id: user._id,
-        userId: user.userId,
-        fullName: user.fullName,
+        id: user.id,
+        userId: user.id,
+        fullName: `${user.firstName} ${user.lastName}`.trim(),
         email: user.email,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,

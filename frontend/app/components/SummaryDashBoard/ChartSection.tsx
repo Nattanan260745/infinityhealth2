@@ -2,6 +2,8 @@ import { MetricType, StatCard } from '@/app/interface/infinityhealth.interface';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LineChart } from "react-native-chart-kit";
+import { Dimensions } from "react-native";
 
 interface ChartSectionProps {
     selectedTab: MetricType
@@ -11,6 +13,8 @@ interface ChartSectionProps {
     trendValue: number
     trendDirection: 'up' | 'down' | 'neutral'
 }
+
+const screenWidth = Dimensions.get("window").width;
 
 const ChartSection: React.FC<ChartSectionProps> = (props) => {
     // Determine trend color and icon
@@ -28,6 +32,48 @@ const ChartSection: React.FC<ChartSectionProps> = (props) => {
         iconName = 'arrow-down';
     }
 
+    const labels = props.chartData.map(d => d.date);
+    const rawData = props.chartData.map(d => d.value);
+    const data = rawData.map(v => (typeof v === 'number' && isFinite(v)) ? v : 0);
+
+    // Dynamic Y-Axis Segments
+    const max = Math.max(...data, 0);
+    const min = Math.min(...data, max);
+    let segments = 4;
+
+    if (isFinite(max) && isFinite(min)) {
+        if (max - min < 5 && max - min > 0) {
+            segments = Math.ceil(max - min);
+        } else if (max - min === 0) {
+            segments = 1;
+        }
+    }
+    // Ensure segments is valid
+    if (isNaN(segments) || segments < 1) segments = 4;
+
+    // Filter labels
+    const filteredLabels = labels.map((label, index) => {
+        if (labels.length <= 4) return label; // Show all if few
+        if (index === 0) return label; // First
+        if (index === labels.length - 1) return label; // Last
+        if (index === Math.floor(labels.length / 2)) return label; // Middle
+        return '';
+    });
+
+    const chartConfig = {
+        backgroundGradientFrom: "#FFFFFF",
+        backgroundGradientTo: "#FFFFFF",
+        color: (opacity = 1) => `rgba(31, 41, 55, ${opacity})`,
+        strokeWidth: 2,
+        barPercentage: 0.7,
+        decimalPlaces: (props.selectedTab === 'Weight' || props.selectedTab === 'Sleep' || props.selectedTab === 'BMI') ? 1 : 0,
+        labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+        propsForBackgroundLines: {
+            strokeDasharray: "",
+            stroke: "#E5E7EB"
+        }
+    };
+
     return (
         <View
             style={{
@@ -42,6 +88,7 @@ const ChartSection: React.FC<ChartSectionProps> = (props) => {
                 shadowOpacity: 0.05,
                 shadowRadius: 8,
                 elevation: 2,
+                overflow: 'hidden'
             }}
         >
             {/* Chart Header */}
@@ -68,39 +115,47 @@ const ChartSection: React.FC<ChartSectionProps> = (props) => {
             </View>
 
             {/* Chart */}
-            <View style={{ height: 150, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-                {/* Y-axis labels */}
-                {/* Y-axis labels */}
-                <View style={{ position: 'absolute', left: 0, top: 0, bottom: 20, justifyContent: 'space-between' }}>
-                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{Math.round(props.maxValue)}</Text>
-                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{Math.round(props.maxValue * 0.75)}</Text>
-                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{Math.round(props.maxValue * 0.5)}</Text>
-                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{Math.round(props.maxValue * 0.25)}</Text>
-                </View>
-
-                {/* Bars */}
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', marginLeft: 30 }}>
-                    {props.chartData.map((item, index) => {
-                        const barHeight = (item.value / props.maxValue) * 100;
-                        const isHighlighted = index === 1 || index === 5;
-                        return (
-                            <View key={index} style={{ alignItems: 'center' }}>
-                                <View
-                                    style={{
-                                        width: 20,
-                                        height: barHeight,
-                                        backgroundColor: isHighlighted
-                                            ? (index === 1 ? '#86EFAC' : '#93C5FD')
-                                            : '#E5E7EB',
-                                        borderRadius: 4,
-                                        marginBottom: 8,
-                                    }}
-                                />
-                                <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{item.date}</Text>
-                            </View>
-                        );
-                    })}
-                </View>
+            <View style={{ alignItems: 'center', marginLeft: -20, height: 220, justifyContent: 'center' }}>
+                {props.chartData.length > 0 ? (
+                    <LineChart
+                        data={{
+                            labels: filteredLabels,
+                            datasets: [{ data: data }]
+                        }}
+                        width={screenWidth - 60}
+                        height={220}
+                        segments={segments} // Dynamic segments
+                        chartConfig={{
+                            ...chartConfig,
+                            // Dynamic color based on metric type
+                            color: (opacity = 1) => {
+                                if (props.selectedTab === 'Weight' || props.selectedTab === 'BMI') return `rgba(16, 185, 129, ${opacity})`; // Green
+                                if (props.selectedTab === 'Sleep') return `rgba(245, 158, 11, ${opacity})`; // Yellow
+                                if (props.selectedTab === 'Water') return `rgba(59, 130, 246, ${opacity})`; // Blue
+                                return `rgba(139, 92, 246, ${opacity})`; // Violet (Steps)
+                            },
+                            propsForDots: {
+                                r: "4",
+                                strokeWidth: "2",
+                            }
+                        }}
+                        bezier
+                        style={{ borderRadius: 16 }}
+                        withDots={false}
+                        withInnerLines={true}
+                        withOuterLines={false}
+                        withVerticalLines={false}
+                        formatYLabel={(y) => {
+                            try {
+                                return parseFloat(y).toFixed(props.selectedTab === 'Weight' || props.selectedTab === 'BMI' || props.selectedTab === 'Sleep' ? 1 : 0);
+                            } catch (e) {
+                                return y;
+                            }
+                        }}
+                    />
+                ) : (
+                    <Text style={{ color: '#9CA3AF', marginBottom: 20 }}>No data available for this period</Text>
+                )}
             </View>
 
         </View>

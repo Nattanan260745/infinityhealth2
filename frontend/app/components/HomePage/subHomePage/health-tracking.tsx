@@ -1,40 +1,99 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import storage from '../../../utils/storage';
+import { saveHealthData } from '../../../service/InfinityhealthApi';
 
 type TabType = 'workout' | 'health';
 
 const moods = ['😁', '😊', '😐', '😢', '😭'];
+const moodEnums = ['Excited', 'Happy', 'Neutral', 'Sad', 'Sad'];
 const activityTypes = ['Walking', 'Running', 'Cycling', 'Swimming', 'Yoga', 'Gym Workout'];
 
 export default function HealthTrackingScreen() {
   const [selectedTab, setSelectedTab] = useState<TabType>('workout');
-  
-  // Workout state
+
+  // Workout state - initialize empty to show placeholders
   const [activityType, setActivityType] = useState('Walking');
   const [showActivityPicker, setShowActivityPicker] = useState(false);
-  const [duration, setDuration] = useState('30');
-  const [distance, setDistance] = useState('8.5');
-  const [calories, setCalories] = useState('800');
-  
-  // Health state
-  const [weight, setWeight] = useState('70.5');
-  const [height, setHeight] = useState('180');
-  const [sleep, setSleep] = useState('8');
-  const [water, setWater] = useState('2000');
-  const [steps, setSteps] = useState('10000');
+  const [duration, setDuration] = useState('');
+  const [distance, setDistance] = useState('');
+  const [calories, setCalories] = useState('');
+
+  // Health state - initialize empty
+  const [weight, setWeight] = useState('');
+  const [height, setHeight] = useState('');
+  const [sleep, setSleep] = useState('');
+  const [water, setWater] = useState('');
+  const [steps, setSteps] = useState('');
   const [selectedMood, setSelectedMood] = useState(1);
+
+  // Helper to allow only numbers
+  const handleNumericInput = (text: string, setter: (val: string) => void, isFloat: boolean = false) => {
+    // allow digits and one decimal point if float
+    let validText = '';
+    if (isFloat) {
+      validText = text.replace(/[^0-9.]/g, '');
+      // Prevent multiple dots
+      if ((validText.match(/\./g) || []).length > 1) {
+        return; // or strip the second dot
+      }
+    } else {
+      validText = text.replace(/[^0-9]/g, '');
+    }
+    setter(validText);
+  };
+
+  const handleSave = async () => {
+    try {
+      const userId = await storage.getItem('userId');
+      if (!userId) {
+        Alert.alert('Error', 'User not found');
+        return;
+      }
+
+      const payload = {
+        date: new Date().toISOString(),
+        weight: weight ? parseFloat(weight) : null,
+        height: height ? parseFloat(height) : null,
+        water: water ? parseInt(water) : null,
+        sleep_hours: sleep ? parseFloat(sleep) : null,
+        steps_count: steps ? parseInt(steps) : null,
+        mood: moodEnums[selectedMood],
+      };
+
+      const response = await saveHealthData(userId, payload);
+
+      if (response && response.success) {
+        if (Platform.OS === 'web') {
+          alert('Health data saved successfully! 🎉');
+        } else {
+          Alert.alert('Success', 'Health data saved successfully! 🎉');
+        }
+        router.back();
+      } else {
+        throw new Error(response?.message || 'Failed to save');
+      }
+    } catch (error: any) {
+      console.error('Save error:', error);
+      if (Platform.OS === 'web') {
+        alert('Failed to save data');
+      } else {
+        Alert.alert('Error', 'Failed to save data');
+      }
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       {/* Back Button - Fixed position */}
       <TouchableOpacity
         onPress={() => router.back()}
-        style={{ 
-          position: 'absolute', 
-          top: Platform.OS === 'ios' ? 50 : 40, 
-          left: 20, 
+        style={{
+          position: 'absolute',
+          top: Platform.OS === 'ios' ? 50 : 40,
+          left: 20,
           zIndex: 10,
           padding: 8,
         }}
@@ -183,16 +242,16 @@ export default function HealthTrackingScreen() {
             <Text style={{ fontSize: 14, color: '#374151', marginBottom: 8 }}>Duration (minutes)</Text>
             <TextInput
               value={duration}
-              onChangeText={setDuration}
+              onChangeText={(t) => handleNumericInput(t, setDuration, false)}
               keyboardType="number-pad"
-              placeholder="30"
+              placeholder="e.g. 30"
               placeholderTextColor="#D1D5DB"
               style={{
                 backgroundColor: '#FFFFFF',
                 borderRadius: 8,
                 padding: 14,
                 fontSize: 16,
-                color: '#9CA3AF',
+                color: '#374151',
                 marginBottom: 20,
                 borderWidth: 1,
                 borderColor: '#E5E7EB',
@@ -203,16 +262,16 @@ export default function HealthTrackingScreen() {
             <Text style={{ fontSize: 14, color: '#374151', marginBottom: 8 }}>Distance (km) - optional</Text>
             <TextInput
               value={distance}
-              onChangeText={setDistance}
+              onChangeText={(t) => handleNumericInput(t, setDistance, true)}
               keyboardType="decimal-pad"
-              placeholder="0.0"
+              placeholder="e.g. 5.0"
               placeholderTextColor="#D1D5DB"
               style={{
                 backgroundColor: '#FFFFFF',
                 borderRadius: 8,
                 padding: 14,
                 fontSize: 16,
-                color: '#9CA3AF',
+                color: '#374151',
                 marginBottom: 20,
                 borderWidth: 1,
                 borderColor: '#E5E7EB',
@@ -223,16 +282,16 @@ export default function HealthTrackingScreen() {
             <Text style={{ fontSize: 14, color: '#374151', marginBottom: 8 }}>Calories Burned (kcal) - optional</Text>
             <TextInput
               value={calories}
-              onChangeText={setCalories}
+              onChangeText={(t) => handleNumericInput(t, setCalories, false)}
               keyboardType="number-pad"
-              placeholder="0"
+              placeholder="e.g. 300"
               placeholderTextColor="#D1D5DB"
               style={{
                 backgroundColor: '#FFFFFF',
                 borderRadius: 8,
                 padding: 14,
                 fontSize: 16,
-                color: '#9CA3AF',
+                color: '#374151',
                 borderWidth: 1,
                 borderColor: '#E5E7EB',
               }}
@@ -259,14 +318,16 @@ export default function HealthTrackingScreen() {
                   <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>Weight (kg)</Text>
                   <TextInput
                     value={weight}
-                    onChangeText={setWeight}
+                    onChangeText={(t) => handleNumericInput(t, setWeight, true)}
                     keyboardType="decimal-pad"
+                    placeholder="0.0"
+                    placeholderTextColor="#D1D5DB"
                     style={{
                       backgroundColor: '#FFFFFF',
                       borderRadius: 8,
                       padding: 12,
                       fontSize: 16,
-                      color: '#9CA3AF',
+                      color: '#374151',
                     }}
                   />
                 </View>
@@ -274,14 +335,16 @@ export default function HealthTrackingScreen() {
                   <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>Height (cm)</Text>
                   <TextInput
                     value={height}
-                    onChangeText={setHeight}
+                    onChangeText={(t) => handleNumericInput(t, setHeight, true)}
                     keyboardType="decimal-pad"
+                    placeholder="0.0"
+                    placeholderTextColor="#D1D5DB"
                     style={{
                       backgroundColor: '#FFFFFF',
                       borderRadius: 8,
                       padding: 12,
                       fontSize: 16,
-                      color: '#9CA3AF',
+                      color: '#374151',
                     }}
                   />
                 </View>
@@ -302,14 +365,16 @@ export default function HealthTrackingScreen() {
               <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>Hours</Text>
               <TextInput
                 value={sleep}
-                onChangeText={setSleep}
+                onChangeText={(t) => handleNumericInput(t, setSleep, true)}
                 keyboardType="decimal-pad"
+                placeholder="0.0"
+                placeholderTextColor="#D1D5DB"
                 style={{
                   backgroundColor: '#FFFFFF',
                   borderRadius: 8,
                   padding: 12,
                   fontSize: 16,
-                  color: '#9CA3AF',
+                  color: '#374151',
                 }}
               />
               <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8 }}>
@@ -331,14 +396,16 @@ export default function HealthTrackingScreen() {
               <Text style={{ fontSize: 12, color: '#7DD1E0', marginBottom: 6 }}>Amount (ml)</Text>
               <TextInput
                 value={water}
-                onChangeText={setWater}
+                onChangeText={(t) => handleNumericInput(t, setWater, false)}
                 keyboardType="number-pad"
+                placeholder="0"
+                placeholderTextColor="#D1D5DB"
                 style={{
                   backgroundColor: '#FFFFFF',
                   borderRadius: 8,
                   padding: 12,
                   fontSize: 16,
-                  color: '#9CA3AF',
+                  color: '#374151',
                 }}
               />
               <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8 }}>
@@ -360,14 +427,16 @@ export default function HealthTrackingScreen() {
               <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>Count</Text>
               <TextInput
                 value={steps}
-                onChangeText={setSteps}
+                onChangeText={(t) => handleNumericInput(t, setSteps, false)}
                 keyboardType="number-pad"
+                placeholder="0"
+                placeholderTextColor="#D1D5DB"
                 style={{
                   backgroundColor: '#FFFFFF',
                   borderRadius: 8,
                   padding: 12,
                   fontSize: 16,
-                  color: '#9CA3AF',
+                  color: '#374151',
                 }}
               />
               <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8 }}>
@@ -416,6 +485,7 @@ export default function HealthTrackingScreen() {
         backgroundColor: '#FFFFFF',
       }}>
         <TouchableOpacity
+          onPress={handleSave}
           style={{
             backgroundColor: '#7DD1E0',
             borderRadius: 16,

@@ -1,10 +1,10 @@
 import { CalendarDay, Routine, Mission } from "@/src/types";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { StyleSheet, Platform, Alert } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import storage from "../utils/storage";
 import { HealthCheckResponse } from "../interface/infinityhealth.interface";
-import { getHealthCheck, logout } from "../service/InfinityhealthApi";
+import { getHealthCheck, logout, getUserRoutinesByDate } from "../service/InfinityhealthApi";
 
 const styles = StyleSheet.create({
     container: {
@@ -72,21 +72,29 @@ const styles = StyleSheet.create({
     },
 });
 
-const weekDays: CalendarDay[] = [
-    { day: 'Sun', date: 14 },
-    { day: 'Mon', date: 15 },
-    { day: 'Tue', date: 16 },
-    { day: 'Wed', date: 17 },
-    { day: 'Thu', date: 18 },
-    { day: 'Fri', date: 19 },
-    { day: 'Sat', date: 20 },
-];
+// Helper to get current week (Mon-Sun or Sun-Sat)
+const getWeekDays = () => {
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 = Sun
+    // Adjust to start on Sunday (or Monday? CalendarWeek usually starts Sun or Mon).
+    // Let's assume start on Sunday for typical calendar strip.
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - currentDay); // Go back to Sunday
 
-const routines: Routine[] = [
-    { id: 1, title: 'Clean Up', time: '13.00 A.M.', status: 'pending' },
-    { id: 2, title: 'Go Shopping', time: '12.00 A.M.', status: 'completed' },
-    { id: 3, title: 'Clean Up', time: '11.00 A.M.', status: 'cancelled' },
-];
+    const days: (CalendarDay & { fullDate: string })[] = [];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(startOfWeek);
+        d.setDate(startOfWeek.getDate() + i);
+        days.push({
+            day: dayNames[d.getDay()],
+            date: d.getDate(),
+            fullDate: d.toISOString().split('T')[0] // Store YYYY-MM-DD
+        });
+    }
+    return days;
+};
 
 const missions: Mission[] = [
     { id: 1, title: 'Missions', subtitle: "Complete daily tasks", icon: '🎯' },
@@ -96,10 +104,17 @@ const missions: Mission[] = [
 ];
 
 export const useHomePage = () => {
-    const [selectedDate, setSelectedDate] = useState(15);
+    const [weekDays, setWeekDays] = useState<any[]>([]); // Use state or memo
+    const [selectedDate, setSelectedDate] = useState(new Date().getDate());
     const [currentMission, setCurrentMission] = useState(0);
     const [isLoad, setisLoad] = useState<boolean>(false);
     const [userName, setUserName] = useState<string>('User');
+    const [userId, setUserId] = useState<string | null>(null);
+    const [routines, setRoutines] = useState<Routine[]>([]);
+
+    useEffect(() => {
+        setWeekDays(getWeekDays());
+    }, []);
 
     const getHealthCheckApi = async () => {
         if (isLoad) return;
@@ -122,13 +137,65 @@ export const useHomePage = () => {
     const loadUserData = async () => {
         try {
             const fullName = await storage.getItem('userFullName');
-            if (fullName) {
-                setUserName(fullName);
-            }
+            const id = await storage.getItem('userId');
+            if (fullName) setUserName(fullName);
+            if (id) setUserId(id);
         } catch (error) {
             console.error('Error loading user data:', error);
         }
     };
+
+    // Fetch Routines for Selected Date
+    const fetchRoutines = useCallback(async () => {
+        if (!userId) return;
+
+        // Try to find the exact date from weekDays
+        let queryDate = '';
+        const foundDay = weekDays.find((d: any) => d.date === selectedDate);
+
+        if (foundDay && foundDay.fullDate) {
+            queryDate = foundDay.fullDate;
+        } else {
+            // Fallback (e.g. initial load before weekDays populated, or user picked date outside range?)
+            // Or simple construction if weekDays empty
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(selectedDate).padStart(2, '0');
+            queryDate = `${year}-${month}-${day}`;
+        }
+
+        console.log('Fetching routines for:', queryDate);
+
+        try {
+            const res = await getUserRoutinesByDate(userId, queryDate);
+            if (res.success && Array.isArray(res.data)) {
+                const mapped: Routine[] = res.data.map((r: any) => ({
+                    id: r.id,
+                    title: r.title,
+                    time: r.scheduledTime || '',
+                    status: r.completed ? 'completed' : 'pending' // Map boolean to status string
+                }));
+                setRoutines(mapped);
+            } else {
+                setRoutines([]);
+            }
+        } catch (e) {
+            console.error('Error fetching routines for dashboard:', e);
+            setRoutines([]);
+        }
+    }, [userId, selectedDate, weekDays]);
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchRoutines();
+        }, [fetchRoutines])
+    );
+
+    // Trigger fetch when selectedDate changes (via fetchRoutines reference change)
+    useEffect(() => {
+        fetchRoutines();
+    }, [fetchRoutines]);
 
     // Logout function
     const handleLogout = async () => {
@@ -166,7 +233,7 @@ export const useHomePage = () => {
         await storage.removeItem('token');
 
         console.log('[HomePage] Logged out, redirecting to login...');
-        
+
         // Redirect to login
         router.replace('/(auth)/login');
     };
@@ -175,11 +242,6 @@ export const useHomePage = () => {
         getHealthCheckApi();
         loadUserData();
     }, [])
-
-    // useEffect(() => {
-    //   console.log('selectedDate', selectedDate);
-    // }, [selectedDate])
-    
 
 
     return {
