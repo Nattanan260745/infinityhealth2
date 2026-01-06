@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
 });
 
 export const useRegisterPage = () => {
-    
+
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -195,7 +195,7 @@ export const useRegisterPage = () => {
     }, []);
 
     const handleRegister = async () => {
-        
+
 
         if (watch('password') !== watch('confirmPassword')) {
             const message = 'Passwords do not match';
@@ -210,10 +210,10 @@ export const useRegisterPage = () => {
         }
 
         setIsLoading(true);
-        
+
         try {
             const response: RegisterResponse = await register({ fullName: watch('fullName'), email: watch('email'), password: watch('password') });
-            
+
             if (response.success && response.user) {
                 // Store userId and token in storage (works on both web and native)
                 await storage.setItem('userId', response.user.userId);
@@ -222,9 +222,9 @@ export const useRegisterPage = () => {
                 if (response.token) {
                     await storage.setItem('token', response.token);
                 }
-                
+
                 console.log('[RegisterPage] Registration successful, userId stored:', response.user.userId);
-                
+
                 const message = 'Registration successful!';
                 Platform.OS === 'web' ? alert(message) : Alert.alert('Success', message);
                 router.replace('/(auth)/login');
@@ -234,7 +234,7 @@ export const useRegisterPage = () => {
             }
         } catch (error: any) {
             console.error('[RegisterPage] Registration error:', error);
-            const message = error.response?.data?.message || 'Registration failed. Please try again.';
+            const message = error.response?.data?.message || (error.message ? 'Error: ' + error.message : 'Registration failed.');
             Platform.OS === 'web' ? alert(message) : Alert.alert('Error', message);
         } finally {
             setIsLoading(false);
@@ -280,7 +280,7 @@ export const useRegisterPage = () => {
         mode: 'all'
     });
 
-    const {control, handleSubmit, formState, watch, reset, setValue} = methods;
+    const { control, handleSubmit, formState, watch, reset, setValue } = methods;
 
     const onSubmit = (data: FormValues) => {
         console.log('data ', data)
