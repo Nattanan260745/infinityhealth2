@@ -19,8 +19,8 @@ interface LoginPageProps { }
 const LoginPage: React.FC<LoginPageProps> = () => {
   const controller = useLoginPage();
 
-  
-  
+
+
 
   return (
     <KeyboardAvoidingView
@@ -42,15 +42,13 @@ const LoginPage: React.FC<LoginPageProps> = () => {
           </Text>
         </View>
         <FormProvider {...controller.methods}>
-          <form onSubmit={controller.methods.handleSubmit(controller.onSubmit, controller.onError)}>
+          {/* Email Input */}
 
-            {/* Email Input */}
-
-            <View style={{ marginBottom: 16 }}>
-              <Text style={controller.styles.inputLabel}>Email</Text>
-              <View style={controller.styles.inputContainer}>
-                <Ionicons name="mail-outline" size={20} color="#9CA3AF" />
-                {/* <TextInput
+          <View style={{ marginBottom: 16 }}>
+            <Text style={controller.styles.inputLabel}>Email</Text>
+            <View style={controller.styles.inputContainer}>
+              <Ionicons name="mail-outline" size={20} color="#9CA3AF" />
+              {/* <TextInput
               value={controller.email}
               onChangeText={controller.setEmail}
               placeholder="Enter your email"
@@ -59,16 +57,16 @@ const LoginPage: React.FC<LoginPageProps> = () => {
               autoCapitalize="none"
               style={controller.styles.input}
             /> */}
-                <FormTextField name={'email'} placeholder='Enter your email' />
-              </View>
+              <FormTextField name={'email'} placeholder='Enter your email' />
             </View>
+          </View>
 
-            {/* Password Input */}
-            <View style={{ marginBottom: 24 }}>
-              <Text style={controller.styles.inputLabel}>Password</Text>
-              <View style={controller.styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" />
-                {/* <TextInput
+          {/* Password Input */}
+          <View style={{ marginBottom: 24 }}>
+            <Text style={controller.styles.inputLabel}>Password</Text>
+            <View style={controller.styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" />
+              {/* <TextInput
                   value={controller.password}
                   onChangeText={controller.setPassword}
                   placeholder="Enter your password"
@@ -76,45 +74,45 @@ const LoginPage: React.FC<LoginPageProps> = () => {
                   secureTextEntry={!controller.showPassword}
                   style={controller.styles.input}
                 /> */}
-                    <FormTextField name={'password'} placeholder='Enter your password' />
-                <TouchableOpacity onPress={controller.toggleShowPassword}>
-                  <Ionicons
-                    name={controller.showPassword ? "eye-outline" : "eye-off-outline"}
-                    size={20}
-                    color="#9CA3AF"
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Forgot Password */}
-            <TouchableOpacity style={controller.styles.forgotPassword}>
-              <Text style={controller.styles.forgotPasswordText}>
-                Forgot Password?
-              </Text>
-            </TouchableOpacity>
-
-            {/* Login Button */}
-            <TouchableOpacity
-              onPress={controller.methods.handleSubmit(controller.onSubmit, controller.onError)}
-              style={controller.styles.loginButton}
-            >
-              <Text style={controller.styles.loginButtonText}>Login</Text>
-            </TouchableOpacity>
-
-            {/* Sign Up Link */}
-            <View style={controller.styles.signUpContainer}>
-              <Text style={controller.styles.signUpText}>
-                Don't have an account?{' '}
-              </Text>
-              <TouchableOpacity onPress={controller.handleSignUp}>
-                <Text style={controller.styles.signUpLink}>Sign Up</Text>
+              <FormTextField name={'password'} placeholder='Enter your password' />
+              <TouchableOpacity onPress={controller.toggleShowPassword}>
+                <Ionicons
+                  name={controller.showPassword ? "eye-outline" : "eye-off-outline"}
+                  size={20}
+                  color="#9CA3AF"
+                />
               </TouchableOpacity>
             </View>
-          </form>
+          </View>
+
+          {/* Forgot Password */}
+          <TouchableOpacity style={controller.styles.forgotPassword}>
+            <Text style={controller.styles.forgotPasswordText}>
+              Forgot Password?
+            </Text>
+          </TouchableOpacity>
+
+          {/* Login Button */}
+          <TouchableOpacity
+            onPress={controller.methods.handleSubmit(controller.onSubmit, controller.onError)}
+            style={controller.styles.loginButton}
+          >
+            <Text style={controller.styles.loginButtonText}>Login</Text>
+          </TouchableOpacity>
+
+          {/* Sign Up Link */}
+          <View style={controller.styles.signUpContainer}>
+            <Text style={controller.styles.signUpText}>
+              Don't have an account?{' '}
+            </Text>
+            <TouchableOpacity onPress={controller.handleSignUp}>
+              <Text style={controller.styles.signUpLink}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+
         </FormProvider>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoidingView >
   );
 };
 

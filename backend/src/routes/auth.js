@@ -8,6 +8,8 @@ const router = express.Router();
 // Register
 router.post('/register', async (req, res) => {
   try {
+    console.log('DEBUG: Register Hit', req.body);
+    console.log('DEBUG: JWT_SECRET exists?', !!process.env.JWT_SECRET);
     const { fullName, email, password, dateOfBirth, gender } = req.body;
 
     // Check if user exists
