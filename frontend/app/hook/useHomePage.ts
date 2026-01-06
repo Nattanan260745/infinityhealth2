@@ -75,11 +75,8 @@ const styles = StyleSheet.create({
 // Helper to get current week (Mon-Sun or Sun-Sat)
 const getWeekDays = () => {
     const today = new Date();
-    const currentDay = today.getDay(); // 0 = Sun
-    // Adjust to start on Sunday (or Monday? CalendarWeek usually starts Sun or Mon).
-    // Let's assume start on Sunday for typical calendar strip.
     const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - currentDay); // Go back to Sunday
+    // startOfWeek.setDate(today.getDate() - currentDay); // Start from Today now
 
     const days: (CalendarDay & { fullDate: string })[] = [];
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
