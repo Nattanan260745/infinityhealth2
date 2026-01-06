@@ -3,11 +3,12 @@ import { Platform } from 'react-native';
 
 // Storage utility that works on both web and native
 const storage = {
-  async setItem(key: string, value: string): Promise<void> {
+  async setItem(key: string, value: any): Promise<void> {
+    const stringValue = String(value);
     if (Platform.OS === 'web') {
-      localStorage.setItem(key, value);
+      localStorage.setItem(key, stringValue);
     } else {
-      await AsyncStorage.setItem(key, value);
+      await AsyncStorage.setItem(key, stringValue);
     }
   },
 

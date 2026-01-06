@@ -216,7 +216,7 @@ export const useRegisterPage = () => {
 
             if (response.success && response.user) {
                 // Store userId and token in storage (works on both web and native)
-                await storage.setItem('userId', response.user.userId);
+                await storage.setItem('userId', String(response.user.userId));
                 await storage.setItem('userEmail', response.user.email);
                 await storage.setItem('userFullName', response.user.fullName);
                 if (response.token) {

@@ -256,7 +256,7 @@ export const useLoginPage = () => {
 
             if (response.success && response.user) {
                 // Store user data in storage
-                await storage.setItem('userId', response.user.userId);
+                await storage.setItem('userId', String(response.user.userId));
                 await storage.setItem('userEmail', response.user.email);
                 await storage.setItem('userFullName', response.user.fullName);
                 if (response.token) {
