@@ -13,19 +13,21 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
+        justifyContent: 'flex-end',
         alignItems: 'center',
     },
     notificationContainer: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        width: 300,
-        maxHeight: 400,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        width: '100%',
+        maxHeight: '80%', // Allow mostly full height
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
         elevation: 8,
+        paddingBottom: 20, // Add padding for bottom safe area
     },
     notificationHeader: {
         flexDirection: 'row',
@@ -95,7 +97,6 @@ const getWeekDays = () => {
 
 const missions: Mission[] = [
     { id: 1, title: 'Missions', subtitle: "Complete daily tasks", icon: '🎯' },
-    { id: 2, title: 'Health Tracking', subtitle: 'Track your health', icon: '❤️' },
     { id: 3, title: 'Exercise', subtitle: 'Workout routines', icon: '💪' },
     { id: 4, title: 'Routine', subtitle: 'Self-Care Planner', icon: '📋' },
 ];
@@ -108,6 +109,23 @@ export const useHomePage = () => {
     const [userName, setUserName] = useState<string>('User');
     const [userId, setUserId] = useState<string | null>(null);
     const [routines, setRoutines] = useState<Routine[]>([]);
+
+    // Notification State
+    const [notifications, setNotifications] = useState([
+        { id: 1, title: 'Planner Routine Await!', subtitle: '02.00 PM - Clean up', time: '10 min ago', type: 'planner' },
+        { id: 2, title: 'Mission is On', subtitle: "Don't forget to drink a water today", time: '30 min ago', type: 'mission' },
+        { id: 3, title: 'Mission Complete!', subtitle: 'Good job on - Avoid fried foods', time: '1 hour ago', type: 'success' },
+        { id: 4, title: 'Mission Complete!', subtitle: 'Good job on - Walk 5000 steps', time: '2 hours ago', type: 'success' },
+        { id: 5, title: 'Ready to go!', subtitle: 'You can now rank up!', time: '1 day ago', type: 'rankup' },
+    ]);
+
+    const handleDeleteNotification = (id: number) => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+    };
+
+    const handleClearAllNotifications = () => {
+        setNotifications([]);
+    };
 
     useEffect(() => {
         setWeekDays(getWeekDays());
@@ -253,6 +271,9 @@ export const useHomePage = () => {
         isLoad,
         userName,
         handleLogout,
+        notifications,
+        handleDeleteNotification,
+        handleClearAllNotifications,
     }
 }
 

@@ -1,6 +1,7 @@
 import { MetricType, StatCard } from '@/app/interface/infinityhealth.interface';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Circle, Text as SvgText, G, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from "react-native-chart-kit";
 import { Dimensions } from "react-native";
@@ -12,6 +13,8 @@ interface ChartSectionProps {
     statCards: StatCard[]
     trendValue: number
     trendDirection: 'up' | 'down' | 'neutral'
+    onDataPointClick?: (data: any) => void
+    selectedPointIndex?: number | null
 }
 
 const screenWidth = Dimensions.get("window").width;
@@ -117,42 +120,87 @@ const ChartSection: React.FC<ChartSectionProps> = (props) => {
             {/* Chart */}
             <View style={{ alignItems: 'center', marginLeft: -20, height: 220, justifyContent: 'center' }}>
                 {props.chartData.length > 0 ? (
-                    <LineChart
-                        data={{
-                            labels: filteredLabels,
-                            datasets: [{ data: data }]
-                        }}
-                        width={screenWidth - 60}
-                        height={220}
-                        segments={segments} // Dynamic segments
-                        chartConfig={{
-                            ...chartConfig,
-                            // Dynamic color based on metric type
-                            color: (opacity = 1) => {
-                                if (props.selectedTab === 'Weight' || props.selectedTab === 'BMI') return `rgba(16, 185, 129, ${opacity})`; // Green
-                                if (props.selectedTab === 'Sleep') return `rgba(245, 158, 11, ${opacity})`; // Yellow
-                                if (props.selectedTab === 'Water') return `rgba(59, 130, 246, ${opacity})`; // Blue
-                                return `rgba(139, 92, 246, ${opacity})`; // Violet (Steps)
-                            },
-                            propsForDots: {
-                                r: "4",
-                                strokeWidth: "2",
-                            }
-                        }}
-                        bezier
-                        style={{ borderRadius: 16 }}
-                        withDots={false}
-                        withInnerLines={true}
-                        withOuterLines={false}
-                        withVerticalLines={false}
-                        formatYLabel={(y) => {
-                            try {
-                                return parseFloat(y).toFixed(props.selectedTab === 'Weight' || props.selectedTab === 'BMI' || props.selectedTab === 'Sleep' ? 1 : 0);
-                            } catch (e) {
-                                return y;
-                            }
-                        }}
-                    />
+                    <View>
+                        <LineChart
+                            data={{
+                                labels: labels,
+                                datasets: [{ data: data }]
+                            }}
+                            width={screenWidth - 60}
+                            height={260} // Increased height for labels
+                            segments={segments} // Dynamic segments
+                            chartConfig={{
+                                ...chartConfig,
+                                // Dynamic color based on metric type
+                                color: (opacity = 1) => {
+                                    if (props.selectedTab === 'Weight' || props.selectedTab === 'BMI') return `rgba(16, 185, 129, ${opacity})`; // Green
+                                    if (props.selectedTab === 'Sleep') return `rgba(245, 158, 11, ${opacity})`; // Yellow
+                                    if (props.selectedTab === 'Water') return `rgba(59, 130, 246, ${opacity})`; // Blue
+                                    return `rgba(139, 92, 246, ${opacity})`; // Violet (Steps)
+                                },
+                                propsForDots: {
+                                    r: "4",
+                                    strokeWidth: "2",
+                                }
+                            }}
+                            renderDotContent={({ x, y, index, indexData }) => {
+                                const isSelected = index === props.selectedPointIndex;
+                                const dotColor = props.selectedTab === 'Weight' || props.selectedTab === 'BMI' ? "#10B981" :
+                                    props.selectedTab === 'Sleep' ? "#F59E0B" :
+                                        props.selectedTab === 'Water' ? "#3B82F6" : "#8B5CF6";
+
+                                return (
+                                    <G key={index} onPress={() => props.onDataPointClick && props.onDataPointClick({ index, value: indexData })}>
+                                        {/* Hitbox for full column clickability */}
+                                        <Rect
+                                            x={x - 20}
+                                            y={0}
+                                            width={40}
+                                            height={260}
+                                            fill="rgba(0,0,0,0.01)"
+                                        />
+
+                                        {/* The Dot */}
+                                        <Circle
+                                            cx={x}
+                                            cy={y}
+                                            r={isSelected ? 7 : 4}
+                                            fill={isSelected ? dotColor : "#FFFFFF"}
+                                            stroke={isSelected ? "#FFFFFF" : dotColor}
+                                            strokeWidth={isSelected ? 3 : 2}
+                                        />
+
+                                        {/* The Label */}
+                                        <SvgText
+                                            x={x}
+                                            y={240} // Positioned at bottom
+                                            textAnchor="middle"
+                                            fontSize="12"
+                                            fontWeight={isSelected ? "bold" : "normal"}
+                                            fill={isSelected ? "#374151" : "#9CA3AF"}
+                                        >
+                                            {props.chartData[index]?.date}
+                                        </SvgText>
+                                    </G>
+                                );
+                            }}
+                            onDataPointClick={props.onDataPointClick}
+                            bezier
+                            style={{ borderRadius: 16 }}
+                            withDots={true}
+                            withInnerLines={true}
+                            withOuterLines={false}
+                            withVerticalLines={false}
+                            withVerticalLabels={false} // Hide default labels
+                            formatYLabel={(y) => {
+                                try {
+                                    return parseFloat(y).toFixed(props.selectedTab === 'Weight' || props.selectedTab === 'BMI' || props.selectedTab === 'Sleep' ? 1 : 0);
+                                } catch (e) {
+                                    return y;
+                                }
+                            }}
+                        />
+                    </View>
                 ) : (
                     <Text style={{ color: '#9CA3AF', marginBottom: 20 }}>No data available for this period</Text>
                 )}

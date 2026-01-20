@@ -55,7 +55,7 @@ const getPresets = (mission: any) => {
     // If target is small (<= 20 mins), give smaller increments
     if (total <= 20) {
       return [
-        { label: '⏱️ 5m', value: 5 },
+        { label: '⏱️ 5hr', value: 5 },
         { label: '💪 15m', value: 15 }
       ];
     }
@@ -176,6 +176,7 @@ export default function MissionsScreen() {
     handleComplete,
     handleQuickUpdate,
     refreshMissions,
+    streak, // added streak
   } = useMissionPage();
 
   return (
@@ -353,6 +354,54 @@ export default function MissionsScreen() {
           </View>
 
 
+
+
+          {/* Mission Summary Card */}
+          {selectedTab === 'daily' && (
+            <View style={{
+              backgroundColor: '#E0F2F1', // Light teal background
+              borderRadius: 20,
+              padding: 20,
+              marginBottom: 24,
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#374151' }}>
+                  Missions Completed
+                </Text>
+                <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                  {completedCount}/{totalCount}
+                </Text>
+              </View>
+
+              {/* Progress Bar */}
+              <View style={{ height: 12, backgroundColor: '#FFFFFF', borderRadius: 6, marginBottom: 16, overflow: 'hidden' }}>
+                <View style={{
+                  height: '100%',
+                  backgroundColor: '#7DD1E0',
+                  width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%`,
+                  borderRadius: 6
+                }} />
+              </View>
+
+              {/* Stats Row */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, minWidth: 80, justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16 }}>⚡</Text>
+                  <Text style={{ marginLeft: 6, fontSize: 14, fontWeight: 'bold', color: '#374151' }}>{totalXP}</Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, minWidth: 80, justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16 }}>💎</Text>
+                  <Text style={{ marginLeft: 6, fontSize: 14, fontWeight: 'bold', color: '#374151' }}>{totalGems}</Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, minWidth: 80, justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 16 }}>🔥</Text>
+                  <Text style={{ marginLeft: 6, fontSize: 14, fontWeight: 'bold', color: '#374151' }}>{streak}</Text>
+                </View>
+              </View>
+            </View>
+          )}
 
           {/* Missions Title */}
           <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937', marginBottom: 16 }}>

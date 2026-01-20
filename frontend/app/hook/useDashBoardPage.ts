@@ -20,9 +20,11 @@ export const useDashBoardPage = () => {
     const [statCards, setStatCards] = useState<StatCard[]>(defaultStatCards);
     const [chartData, setChartData] = useState<{ date: string; value: number }[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
 
     const fetchData = async () => {
         setIsLoading(true);
+        setSelectedPointIndex(null);
         try {
             const userId = await storage.getItem('userId');
             if (!userId) {
@@ -52,8 +54,8 @@ export const useDashBoardPage = () => {
                     { id: 'Height', icon: 'swap-vertical', iconColor: '#009E0B', value: data.height?.toString() || '-', unit: 'cm', bgColor: '#D8F4DC' },
                     { id: 'BMI', icon: 'options', iconColor: '#FF5100', value: bmi, unit: '', bgColor: '#FFE2D7' },
                     { id: 'Water', icon: 'water', iconColor: '#00BFFF', value: data.water?.toString() || '-', unit: 'ml', bgColor: '#D8F4FF' },
-                    { id: 'Sleep', icon: 'moon', iconColor: '#FFEA00', value: data.sleepHours?.toString() || '-', unit: 'hr', bgColor: '#FAF5DE' },
-                    { id: 'Steps', icon: 'footsteps', iconColor: '#6004FF', value: data.stepsCount?.toString() || '-', unit: 'steps', bgColor: '#EAE1F9' },
+                    { id: 'Sleep', icon: 'moon', iconColor: '#FFEA00', value: (data.sleepHours || data.sleep_hours)?.toString() || '-', unit: 'hr', bgColor: '#FAF5DE' },
+                    { id: 'Steps', icon: 'footsteps', iconColor: '#6004FF', value: (data.stepsCount || data.steps_count)?.toString() || '-', unit: 'steps', bgColor: '#EAE1F9' },
                 ]);
             }
 
@@ -78,7 +80,7 @@ export const useDashBoardPage = () => {
                                 dateStr = item.date.substring(5, 10).replace('-', '/');
                             }
                         }
-                    } else if (item['trackingDate']) { // Fallback if property is trackingDate
+                    } else if ((item as any)['trackingDate']) { // Fallback if property is trackingDate
                         const d = new Date((item as any).trackingDate);
                         if (!isNaN(d.getTime())) {
                             dateStr = d.toLocaleDateString('en-US', { day: 'numeric', month: 'numeric' });
@@ -91,8 +93,8 @@ export const useDashBoardPage = () => {
                         case 'Weight': val = item.weight || 0; break;
                         case 'Height': val = item.height || 0; break;
                         case 'Water': val = item.water || 0; break;
-                        case 'Sleep': val = item.sleepHours || 0; break;
-                        case 'Steps': val = item.stepsCount || 0; break;
+                        case 'Sleep': val = item.sleepHours || item.sleep_hours || 0; break;
+                        case 'Steps': val = item.stepsCount || item.steps_count || 0; break;
                         case 'BMI':
                             // Check if weight and height exist and are valid numbers
                             if (typeof item.weight === 'number' && typeof item.height === 'number' && item.height > 0) {
@@ -119,8 +121,19 @@ export const useDashBoardPage = () => {
     useFocusEffect(
         useCallback(() => {
             fetchData();
-        }, [selectedTab]) // Re-fetch or re-calc when tab changes. optimizing to only calc chart would be better but this is simple.
+        }, [selectedTab])
     );
+
+    const handleDataPointClick = (data: any) => {
+        if (data.index === undefined) return;
+        if (selectedPointIndex === data.index) {
+            setSelectedPointIndex(null);
+        } else {
+            setSelectedPointIndex(data.index);
+        }
+    };
+
+
 
     const maxValue = chartData.length > 0 ? Math.max(...chartData.map(d => d.value)) : 100;
 
@@ -128,15 +141,33 @@ export const useDashBoardPage = () => {
     let trendValue = 0;
     let trendDirection: 'up' | 'down' | 'neutral' = 'neutral';
 
-    if (chartData.length >= 2) {
-        const latestInfo = chartData[chartData.length - 1];
-        const previousInfo = chartData[chartData.length - 2];
+    // Determine which points to compare
+    let currentVal = 0;
+    let prevVal = 0;
+    let hasComparison = false;
 
-        const latest = typeof latestInfo.value === 'number' ? latestInfo.value : 0;
-        const previous = typeof previousInfo.value === 'number' ? previousInfo.value : 0;
+    if (selectedPointIndex !== null) {
+        // Compare clicked point with previous point
+        if (selectedPointIndex > 0 && selectedPointIndex < chartData.length) {
+            currentVal = chartData[selectedPointIndex].value;
+            prevVal = chartData[selectedPointIndex - 1].value;
+            hasComparison = true;
+        } else {
+            // Index 0 or invalid
+            currentVal = chartData[selectedPointIndex]?.value || 0;
+            hasComparison = false; // No prev data to compare
+        }
+    } else {
+        // Default: Last vs 2nd Last
+        if (chartData.length >= 2) {
+            currentVal = chartData[chartData.length - 1].value;
+            prevVal = chartData[chartData.length - 2].value;
+            hasComparison = true;
+        }
+    }
 
-        const diff = latest - previous;
-
+    if (hasComparison) {
+        const diff = currentVal - prevVal;
         trendValue = Math.abs(parseFloat(diff.toFixed(2)));
         if (diff > 0) trendDirection = 'up';
         else if (diff < 0) trendDirection = 'down';
@@ -151,5 +182,8 @@ export const useDashBoardPage = () => {
         filterTabs,
         trendValue,
         trendDirection,
+        fetchData,
+        handleDataPointClick, // Export handler
+        selectedPointIndex,   // Export state
     }
 }

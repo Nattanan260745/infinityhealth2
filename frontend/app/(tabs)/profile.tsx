@@ -194,10 +194,7 @@ export default function ProfileScreen() {
             Total Points
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Image
-              source={require('../../assets/images/point.png')}
-              style={{ width: 28, height: 28, marginRight: 8 }}
-            />
+            <Text style={{ fontSize: 24, marginRight: 8 }}>💎</Text>
             <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937' }}>
               {userData.totalPoints}
             </Text>

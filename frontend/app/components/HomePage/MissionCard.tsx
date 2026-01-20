@@ -19,7 +19,6 @@ interface MissionCardProps {
 
 const missionRoutes: Record<string, string> = {
   'Missions': '/components/HomePage/subHomePage/missions',
-  'Health Tracking': '/components/HomePage/subHomePage/health-tracking',
   'Exercise': '/components/HomePage/subHomePage/exercise',
   'Routine': '/components/HomePage/subHomePage/routine',
 };
@@ -34,7 +33,7 @@ export function MissionCard({ useHomePageController }: MissionCardProps) {
 
 
   return (
-    <View style={{ marginTop: 8}}>
+    <View style={{ marginTop: 8 }}>
       <ScrollView
 
         horizontal

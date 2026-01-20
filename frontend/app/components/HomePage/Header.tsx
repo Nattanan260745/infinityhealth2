@@ -12,12 +12,13 @@ interface HeaderProps {
 
 export function Header({ userName, userAvatar, date, onNotificationPress, onLogoutPress }: HeaderProps) {
   return (
-    <View style={{ 
-      flexDirection: 'row', 
-      alignItems: 'center', 
-      justifyContent: 'space-between', 
+    <View style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
       paddingVertical: 16,
-      backgroundColor: '#FFFFFF' 
+      backgroundColor: '#FFFFFF',
+      position: 'relative'
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Image
@@ -31,10 +32,7 @@ export function Header({ userName, userAvatar, date, onNotificationPress, onLogo
           <Text style={{ fontSize: 12, color: '#9CA3AF' }}>{date}</Text>
         </View>
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <TouchableOpacity onPress={onNotificationPress}>
-          <Ionicons name="notifications" size={26} color="#F5A623" />
-        </TouchableOpacity>
+      <View style={{ position: 'absolute', right: 0, flexDirection: 'row', alignItems: 'center' }}>
         <TouchableOpacity onPress={onLogoutPress}>
           <Ionicons name="log-out-outline" size={26} color="#EF4444" />
         </TouchableOpacity>

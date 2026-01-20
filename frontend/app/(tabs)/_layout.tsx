@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
 
 export default function TabLayout() {
   return (
@@ -11,8 +11,8 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 0,
-          height: 65,
-          paddingBottom: 8,
+          height: Platform.OS === 'android' ? 85 : 65,
+          paddingBottom: Platform.OS === 'android' ? 20 : 8,
           paddingTop: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
@@ -55,7 +55,19 @@ export default function TabLayout() {
           ),
         }}
       />
-   
+
+      <Tabs.Screen
+        name="notification"
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={26} color={color} />
+              {/* Optional: Add a red dot if there are unread notifications */}
+            </View>
+          ),
+        }}
+      />
+
       <Tabs.Screen
         name="profile"
         options={{

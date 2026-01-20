@@ -56,7 +56,6 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="components/HomePage/subHomePage/missions" options={{ headerShown: false }} />
         <Stack.Screen name="components/HomePage/subHomePage/exercise" options={{ headerShown: false }} />
-        <Stack.Screen name="components/HomePage/subHomePage/health-tracking" options={{ headerShown: false }} />
         <Stack.Screen name="components/HomePage/subHomePage/routine" options={{ headerShown: false }} />
         <Stack.Screen name="components/HomePage/subHomePage/modal" options={{ presentation: 'modal' }} />
       </Stack>

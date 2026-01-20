@@ -1,12 +1,14 @@
 import { StatCard } from '@/app/interface/infinityhealth.interface';
 import React from 'react';
 import { TouchableOpacity, Dimensions, Image, ImageSourcePropType, View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { MetricType } from '@/app/interface/infinityhealth.interface';
 
 interface DashBoardCardProps {
     statCards: StatCard[];
     onCardPress?: (id: MetricType) => void;
     selectedId?: string;
+    onEdit?: (id: MetricType) => void;
 }
 
 const { width } = Dimensions.get('window');
@@ -62,9 +64,27 @@ const DashBoardCard: React.FC<DashBoardCardProps> = (props) => {
                         <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937' }}>
                             {card.value}
                         </Text>
-                        {card.unit && (
-                            <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{card.unit}</Text>
-                        )}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                            {card.unit ? (
+                                <Text style={{ fontSize: 12, color: '#6B7280' }}>{card.unit}</Text>
+                            ) : <View />}
+
+                            {/* Edit Icon Button */}
+                            {props.onEdit && card.id !== 'BMI' && (
+                                <TouchableOpacity
+                                    onPress={() => props.onEdit && props.onEdit(card.id)}
+                                    style={{
+                                        padding: 4,
+                                        borderRadius: 8,
+                                        backgroundColor: 'rgba(255,255,255,0.5)'
+                                    }}
+                                >
+                                    <View>
+                                        <Ionicons name="create-outline" size={16} color="#4B5563" />
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </TouchableOpacity>
                 );
             })}

@@ -60,6 +60,7 @@ export const useMissionPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [userLevel, setUserLevel] = useState<number>(1);
+  const [streak, setStreak] = useState<number>(0);
 
   // Modal state
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -76,6 +77,56 @@ export const useMissionPage = () => {
     };
     loadUserData();
   }, []);
+
+  // Load Streak
+  useEffect(() => {
+    const loadStreak = async () => {
+      if (!userId) return;
+      const storedStreak = await storage.getItem(`streak_${userId}`);
+      const lastDate = await storage.getItem(`last_streak_date_${userId}`);
+
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+      if (lastDate === today) {
+        setStreak(parseInt(storedStreak || '0'));
+      } else if (lastDate === yesterday) {
+        setStreak(parseInt(storedStreak || '0'));
+      } else {
+        // Streak broken
+        setStreak(0);
+        await storage.setItem(`streak_${userId}`, 0);
+      }
+    };
+    loadStreak();
+  }, [userId]);
+
+  // Update Streak when daily missions completed
+  useEffect(() => {
+    const updateStreak = async () => {
+      if (!userId || missions.length === 0) return;
+
+      const dailyMissions = missions.filter(m => m.type === 'daily');
+      if (dailyMissions.length === 0) return;
+
+      const isAllComplete = dailyMissions.every(m => m.user_status?.mission_status === 'completed');
+
+      if (isAllComplete) {
+        const today = new Date().toISOString().split('T')[0];
+        const lastDate = await storage.getItem(`last_streak_date_${userId}`);
+
+        if (lastDate !== today) {
+          const currentStreak = await storage.getItem(`streak_${userId}`);
+          const newStreak = (parseInt(currentStreak || '0') || 0) + 1;
+
+          await storage.setItem(`streak_${userId}`, newStreak);
+          await storage.setItem(`last_streak_date_${userId}`, today);
+          setStreak(newStreak);
+        }
+      }
+    };
+    updateStreak();
+  }, [missions, userId]);
 
   // Fetch missions
   const fetchMissions = useCallback(async () => {
@@ -295,6 +346,7 @@ export const useMissionPage = () => {
     unlockedCount,
     totalXP,
     totalGems,
+    streak, // Export streak
     userLevel,
     showUpdateModal,
     setShowUpdateModal,

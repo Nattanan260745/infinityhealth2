@@ -193,8 +193,10 @@ export interface HealthTrack {
   height: number;
   water: number;
   mood?: number;
-  sleepHours: number;
-  stepsCount: number;
+  sleepHours?: number;
+  stepsCount?: number;
+  sleep_hours?: number;
+  steps_count?: number;
   createdAt: string;
   updatedAt: string;
 }
