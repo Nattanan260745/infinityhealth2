@@ -15,6 +15,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMissionPage } from '@/app/hook/useMissionPage';
+import { formatNumber } from '@/app/utils/format';
+import StatusModal from '@/app/components/StatusModal';
 
 type TabType = 'daily' | 'challenge';
 
@@ -177,10 +179,19 @@ export default function MissionsScreen() {
     handleQuickUpdate,
     refreshMissions,
     streak, // added streak
+    statusModal,
+    closeStatusModal,
   } = useMissionPage();
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      <StatusModal
+        visible={statusModal.visible}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
+        onClose={closeStatusModal}
+      />
       {/* Update Progress Modal (Still kept for backup/custom input if needed, though hidden for now) */}
       <Modal
         visible={showUpdateModal}
@@ -536,7 +547,7 @@ export default function MissionsScreen() {
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                     <Text style={{ fontSize: 12, color: '#6B7280' }}>Progress</Text>
                     <Text style={{ fontSize: 12, color: '#6B7280' }}>
-                      {mission.progress}/{mission.total} {mission.targetUnit}
+                      {formatNumber(mission.progress)}/{formatNumber(mission.total)} {mission.targetUnit}
                     </Text>
                   </View>
                   <View style={{ height: 6, backgroundColor: '#E5E7EB', borderRadius: 3 }}>
@@ -551,6 +562,7 @@ export default function MissionsScreen() {
               )}
 
               {/* Rewards & Action */}
+
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <View style={{ flexDirection: 'row' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
@@ -560,7 +572,7 @@ export default function MissionsScreen() {
                       fontSize: 12,
                       color: mission.isLocked ? '#D1D5DB' : '#F59E0B'
                     }}>
-                      {mission.xp}
+                      {formatNumber(mission.xp)}
                     </Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -570,7 +582,7 @@ export default function MissionsScreen() {
                       fontSize: 12,
                       color: mission.isLocked ? '#D1D5DB' : '#EC4899'
                     }}>
-                      {mission.gems}
+                      {formatNumber(mission.gems)}
                     </Text>
                   </View>
                 </View>

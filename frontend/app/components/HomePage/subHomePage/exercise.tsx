@@ -2,6 +2,17 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Platform, Image, Linking, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { WebView } from 'react-native-webview';
+
+// Helper to extract YouTube Video ID
+const getYoutubeId = (url: string) => {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
+
+
 
 type TabType = 'cardio' | 'weight';
 
@@ -120,16 +131,16 @@ export default function ExerciseScreen() {
   // Video List View for a Category
   if (selectedCategory) {
     const videos = exerciseVideos[selectedCategory] || [];
-    
+
     return (
       <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
         {/* Back Button */}
         <TouchableOpacity
           onPress={() => setSelectedCategory(null)}
-          style={{ 
-            position: 'absolute', 
-            top: Platform.OS === 'ios' ? 50 : 40, 
-            left: 20, 
+          style={{
+            position: 'absolute',
+            top: Platform.OS === 'ios' ? 50 : 40,
+            left: 20,
             zIndex: 10,
             padding: 8,
           }}
@@ -243,36 +254,56 @@ export default function ExerciseScreen() {
           transparent={true}
           onRequestClose={() => setSelectedVideo(null)}
         >
-          <View style={{ 
-            flex: 1, 
-            backgroundColor: 'rgba(0,0,0,0.5)', 
-            justifyContent: 'center', 
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
             alignItems: 'center',
             padding: 20,
           }}>
-            <View style={{ 
-              backgroundColor: '#FFFFFF', 
-              borderRadius: 20, 
+            <View style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 20,
               width: '100%',
               maxWidth: 400,
               overflow: 'hidden',
+              height: 500,
             }}>
-              {/* Video Thumbnail */}
-              <Image
-                source={{ uri: selectedVideo?.thumbnail }}
-                style={{ width: '100%', height: 200, backgroundColor: '#1F2937' }}
-                resizeMode="cover"
-              />
-              
+              {/* Video Player */}
+              <View style={{ width: '100%', height: 225, backgroundColor: '#000' }}>
+                {selectedVideo && (
+                  Platform.OS === 'web' ? (
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      src={`https://www.youtube.com/embed/${getYoutubeId(selectedVideo.videoUrl)}`}
+                      title="YouTube video player"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <WebView
+                      style={{ flex: 1 }}
+                      javaScriptEnabled={true}
+                      domStorageEnabled={true}
+                      source={{ uri: `https://www.youtube.com/embed/${getYoutubeId(selectedVideo.videoUrl)}` }}
+                    />
+                  )
+                )}
+              </View>
+
               {/* Video Info */}
-              <View style={{ padding: 20 }}>
+              <View style={{ padding: 20, flex: 1 }}>
                 <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginBottom: 8 }}>
                   {selectedVideo?.title}
                 </Text>
-                <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 16 }}>
-                  {selectedVideo?.description}
-                </Text>
-                
+                <ScrollView style={{ flex: 1, marginBottom: 16 }}>
+                  <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                    {selectedVideo?.description}
+                  </Text>
+                </ScrollView>
+
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
                   <View style={{
                     width: 28,
@@ -287,25 +318,6 @@ export default function ExerciseScreen() {
                   </View>
                   <Text style={{ fontSize: 16, color: '#6B7280' }}>{selectedVideo?.duration}</Text>
                 </View>
-
-                {/* Play Button */}
-                <TouchableOpacity
-                  onPress={() => selectedVideo && handleOpenVideo(selectedVideo.videoUrl)}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: '#7DD1E0',
-                    paddingVertical: 16,
-                    borderRadius: 12,
-                    marginBottom: 12,
-                  }}
-                >
-                  <Ionicons name="play" size={20} color="#FFFFFF" />
-                  <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600', marginLeft: 8 }}>
-                    Play Video
-                  </Text>
-                </TouchableOpacity>
 
                 {/* Close Button */}
                 <TouchableOpacity
@@ -335,10 +347,10 @@ export default function ExerciseScreen() {
       {/* Back Button - Fixed position */}
       <TouchableOpacity
         onPress={() => router.back()}
-        style={{ 
-          position: 'absolute', 
-          top: Platform.OS === 'ios' ? 50 : 40, 
-          left: 20, 
+        style={{
+          position: 'absolute',
+          top: Platform.OS === 'ios' ? 50 : 40,
+          left: 20,
           zIndex: 10,
           padding: 8,
         }}

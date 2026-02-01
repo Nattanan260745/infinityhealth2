@@ -40,7 +40,6 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                     userName={useHomePageController.userName}
                     userAvatar="https://i.pravatar.cc/100?img=47"
                     date={formattedDate}
-                    onLogoutPress={useHomePageController.handleLogout}
                 />
             </View>
 

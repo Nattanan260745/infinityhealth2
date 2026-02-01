@@ -173,4 +173,78 @@ router.post('/logout', (req, res) => {
   });
 });
 
+// Clerk Sync: Get or Create Internal User ID from Email
+router.post('/clerk-sync', async (req, res) => {
+  try {
+    const { email, firstName, lastName, image } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    // Check if user exists
+    let user = await prisma.user.findUnique({
+      where: { email: email },
+      include: { userStats: true }
+    });
+
+    if (!user) {
+      console.log('Clerk Sync: Creating new user for', email);
+      // Create new user if not exists (Auto-register via Clerk)
+      // Hash a dummy password (they use Clerk to login anyway)
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash('clerk_auth_user_' + Date.now(), salt);
+      const dob = new Date(); // Default
+
+      user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          firstName: firstName || 'User',
+          lastName: lastName || '',
+          dateOfBirth: dob,
+          gender: 'other',
+          role: 'user',
+          profileImg: image || '',
+          userStats: {
+            create: {
+              level: 1,
+              currentExp: 0,
+              totalPoints: 0,
+            }
+          }
+        },
+        include: { userStats: true }
+      });
+    } else {
+      console.log('Clerk Sync: User found', user.id);
+      // Optionally update profile image if provided
+      if (image && user.profileImg !== image) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { profileImg: image }
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'User synced successfully',
+      user: {
+        id: user.id, // THE INTERNAL INTEGER ID
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        userStats: user.userStats
+      }
+    });
+  } catch (error) {
+    console.error('Clerk sync error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Clerk sync failed',
+    });
+  }
+});
+
 module.exports = router;

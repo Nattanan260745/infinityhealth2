@@ -51,6 +51,7 @@ export default function RoutineScreen() {
     getFormPlaceholder,
     getAddButtonText,
     getDeleteMessage,
+    error,
   } = useRoutinePage();
 
   // Local state for pickers
@@ -252,6 +253,13 @@ export default function RoutineScreen() {
                       <Ionicons name="time" size={20} color={colors.textMuted} />
                     </View>
                   </TouchableOpacity>
+
+                  {/* Validation Error Message */}
+                  {error && (
+                    <Text style={{ color: colors.danger, fontSize: 13, marginBottom: 12, marginTop: -12 }}>
+                      {error}
+                    </Text>
+                  )}
 
                   {showTimePicker && (
                     <View>

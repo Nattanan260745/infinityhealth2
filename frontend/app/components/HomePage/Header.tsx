@@ -7,10 +7,9 @@ interface HeaderProps {
   userAvatar: string;
   date: string;
   onNotificationPress?: () => void;
-  onLogoutPress?: () => void;
 }
 
-export function Header({ userName, userAvatar, date, onNotificationPress, onLogoutPress }: HeaderProps) {
+export function Header({ userName, userAvatar, date, onNotificationPress }: HeaderProps) {
   return (
     <View style={{
       flexDirection: 'row',
@@ -31,11 +30,6 @@ export function Header({ userName, userAvatar, date, onNotificationPress, onLogo
           </Text>
           <Text style={{ fontSize: 12, color: '#9CA3AF' }}>{date}</Text>
         </View>
-      </View>
-      <View style={{ position: 'absolute', right: 0, flexDirection: 'row', alignItems: 'center' }}>
-        <TouchableOpacity onPress={onLogoutPress}>
-          <Ionicons name="log-out-outline" size={26} color="#EF4444" />
-        </TouchableOpacity>
       </View>
     </View>
   );

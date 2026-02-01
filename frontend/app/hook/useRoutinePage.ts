@@ -224,8 +224,18 @@ export const useRoutinePage = () => {
     setShowDeleteModal(true);
   };
 
+  // Error state
+  const [error, setError] = useState<string | null>(null);
+
   const handleSave = async () => {
     if (!formTitle.trim() || !userId) return;
+    setError(null);
+
+    // Validate Time for Routines (Not Goals)
+    if (!isGoalsTab && !formTime) {
+      setError("Please select a time for your routine.");
+      return;
+    }
 
     try {
       if (isGoalsTab) {
@@ -254,7 +264,7 @@ export const useRoutinePage = () => {
           await createRoutine({
             user_id: userId,
             title: formTitle,
-            scheduled_time: formTime || '00:00',
+            scheduled_time: formTime, // Ensure we use the selected time
             scheduled_date: new Date(formDate).toISOString()
           });
         }
@@ -358,6 +368,7 @@ export const useRoutinePage = () => {
     handleCloseAddModal,
     handleCloseDeleteModal,
     toggleComplete,
+    error, // Export error state
     getModalTitle,
     getFormLabel,
     getFormPlaceholder,

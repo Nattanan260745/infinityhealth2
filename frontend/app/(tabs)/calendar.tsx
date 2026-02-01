@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, Platform } from 'react-native';
+import { View, ScrollView, Platform, TouchableOpacity } from 'react-native';
 import { useCalendar } from '../hook/useCalendar';
 import {
     CalendarHeader,
@@ -9,7 +9,9 @@ import {
     MonthPickerModal,
     EmptyState,
     SelectedDateInfo,
+    MonthGrid,
 } from '../components/Calendar';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function CalendarScreen() {
     const {
@@ -33,11 +35,31 @@ export default function CalendarScreen() {
         toggleTask,
     } = useCalendar();
 
+    const [viewMode, setViewMode] = React.useState<'week' | 'month'>('week');
+
     return (
         <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
 
             <View style={{ backgroundColor: '#FFFFFF', paddingTop: Platform.OS === 'web' ? 40 : 60 }}>
-                <CalendarHeader />
+                <View style={{ position: 'relative' }}>
+                    <CalendarHeader />
+                    <TouchableOpacity
+                        onPress={() => setViewMode(mode => mode === 'week' ? 'month' : 'week')}
+                        style={{
+                            position: 'absolute',
+                            right: 20,
+                            top: 4,
+                            padding: 4,
+                        }}
+                    >
+                        <Ionicons
+                            name={viewMode === 'week' ? "calendar-outline" : "grid-outline"}
+                            size={24}
+                            color="#4B5563"
+                        />
+                    </TouchableOpacity>
+                </View>
+
                 <MonthNavigation
                     month={month}
                     year={year}
@@ -46,12 +68,23 @@ export default function CalendarScreen() {
                     onOpenPicker={() => setShowMonthPicker(true)}
                 />
 
-                <DaySelector
-                    days={monthDays}
-                    selectedDay={selectedDay}
-                    onSelectDay={setSelectedDay}
-                    isToday={isToday}
-                />
+                {viewMode === 'week' ? (
+                    <DaySelector
+                        days={monthDays}
+                        selectedDay={selectedDay}
+                        onSelectDay={setSelectedDay}
+                        isToday={isToday}
+                    />
+                ) : (
+                    <MonthGrid
+                        days={monthDays}
+                        selectedDay={selectedDay}
+                        month={month}
+                        year={year}
+                        onSelectDay={setSelectedDay}
+                        isToday={isToday}
+                    />
+                )}
             </View>
             <ScrollView
                 style={{ flex: 1 }}

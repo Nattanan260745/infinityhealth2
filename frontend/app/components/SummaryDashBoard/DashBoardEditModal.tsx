@@ -29,9 +29,11 @@ export default function DashBoardEditModal({
     unit
 }: DashBoardEditModalProps) {
     const [value, setValue] = useState('');
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (visible) {
+            setError(null);
             // Pre-fill with number only if possible, or empty
             const isCumulative = ['Water', 'Steps'].includes(metricType || '');
             if (isCumulative) {
@@ -56,15 +58,6 @@ export default function DashBoardEditModal({
         }
     };
 
-    // Removed getIcon/iconName logic as we use mapping now
-
-    const color = metricType === 'Weight' ? '#059669' : // Green
-        metricType === 'Height' ? '#059669' :
-            metricType === 'Water' ? '#0EA5E9' : // Blue
-                metricType === 'Sleep' ? '#F59E0B' : // Yellow/Amber
-                    metricType === 'Steps' ? '#7C3AED' : // Purple
-                        '#6B7280'; // Gray
-
     const getInputLabel = () => {
         switch (metricType) {
             case 'Weight': return 'Weight (kg)';
@@ -85,6 +78,32 @@ export default function DashBoardEditModal({
         }
     };
 
+    const validateInput = (val: string): string | null => {
+        if (!val.trim()) return 'Value cannot be empty.';
+
+        const num = parseFloat(val);
+        if (isNaN(num)) return 'Invalid number.';
+
+        switch (metricType) {
+            case 'Weight':
+                if (num < 1 || num > 500) return 'Weight must be between 1 and 500 kg.';
+                break;
+            case 'Height':
+                if (num < 10 || num > 300) return 'Height must be between 10 and 300 cm.';
+                break;
+            case 'Sleep':
+                if (num < 0 || num > 24) return 'Sleep must be between 0 and 24 hours.';
+                break;
+            case 'Water':
+                if (num < 1 || num > 5000) return 'Water amount must be between 1 and 5000 ml.';
+                break;
+            case 'Steps':
+                if (num < 1 || num > 100000) return 'Steps must be between 1 and 100,000.';
+                break;
+        }
+        return null;
+    };
+
     const handleNumericInput = (text: string) => {
         let validText = '';
         // Determine if we allow decimals based on metric
@@ -97,11 +116,30 @@ export default function DashBoardEditModal({
             if ((validText.match(/\./g) || []).length > 1) {
                 return;
             }
+            // Limit decimal places to 2
+            if (validText.includes('.')) {
+                const [int, dec] = validText.split('.');
+                if (dec && dec.length > 2) {
+                    return;
+                }
+            }
         } else {
             // Integers only for Water, Steps
             validText = text.replace(/[^0-9]/g, '');
         }
         setValue(validText);
+
+        // Clear error when user types valid input (optional: could validate on fly)
+        if (error) setError(null);
+    };
+
+    const handleSave = () => {
+        const validationError = validateInput(value);
+        if (validationError) {
+            setError(validationError);
+            return;
+        }
+        onSave(value);
     };
 
     return (
@@ -141,9 +179,12 @@ export default function DashBoardEditModal({
                                     onChangeText={handleNumericInput}
                                     keyboardType="decimal-pad" // Changed to decimal-pad to allow dots on iOS
                                     placeholder={unit ? `0 ${unit}` : '0'}
-                                    style={styles.input}
+                                    style={[styles.input, error ? styles.inputError : null]}
                                     autoFocus={true}
                                 />
+                                {error && (
+                                    <Text style={styles.errorText}>{error}</Text>
+                                )}
 
                                 {getRecommendation() ? (
                                     <Text style={styles.recommendation}>{getRecommendation()}</Text>
@@ -151,8 +192,12 @@ export default function DashBoardEditModal({
 
                                 {/* Save Button */}
                                 <TouchableOpacity
-                                    style={[styles.saveButton, { backgroundColor: '#FDBA74' }]} // Orange/Yellowish from design
-                                    onPress={() => onSave(value)}
+                                    style={[
+                                        styles.saveButton,
+                                        { backgroundColor: '#FDBA74' },
+                                        // Optional: Disable button visually if needed, currently handling via onSave check
+                                    ]}
+                                    onPress={handleSave}
                                 >
                                     <Text style={styles.saveButtonText}>Save</Text>
                                 </TouchableOpacity>
@@ -211,6 +256,17 @@ const styles = StyleSheet.create({
         color: '#1F2937',
         backgroundColor: '#FFFFFF',
         marginBottom: 8,
+    },
+    inputError: {
+        borderColor: '#EF4444',
+        borderWidth: 1,
+    },
+    errorText: {
+        color: '#EF4444',
+        fontSize: 12,
+        marginBottom: 8,
+        marginTop: -4,
+        marginLeft: 4,
     },
     recommendation: {
         fontSize: 12,

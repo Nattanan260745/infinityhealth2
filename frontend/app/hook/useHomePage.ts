@@ -4,7 +4,8 @@ import { StyleSheet, Platform, Alert } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import storage from "../utils/storage";
 import { HealthCheckResponse } from "../interface/infinityhealth.interface";
-import { getHealthCheck, logout, getUserRoutinesByDate } from "../service/InfinityhealthApi";
+import { getHealthCheck, getUserRoutinesByDate } from "../service/InfinityhealthApi";
+import { useUser, useAuth } from "@clerk/clerk-expo";
 
 const styles = StyleSheet.create({
     container: {
@@ -102,6 +103,8 @@ const missions: Mission[] = [
 ];
 
 export const useHomePage = () => {
+    const { user } = useUser();
+    const { signOut } = useAuth();
     const [weekDays, setWeekDays] = useState<any[]>([]); // Use state or memo
     const [selectedDate, setSelectedDate] = useState(new Date().getDate());
     const [currentMission, setCurrentMission] = useState(0);
@@ -148,15 +151,16 @@ export const useHomePage = () => {
         }
     }
 
-    // Load user data from storage
+    // Load user data from Clerk and sync to storage
     const loadUserData = async () => {
-        try {
-            const fullName = await storage.getItem('userFullName');
-            const id = await storage.getItem('userId');
-            if (fullName) setUserName(fullName);
-            if (id) setUserId(id);
-        } catch (error) {
-            console.error('Error loading user data:', error);
+        if (user) {
+            const name = user.fullName || user.firstName || 'User';
+            setUserName(name);
+            setUserId(user.id);
+            await storage.setItem('userId', user.id);
+            if (user.primaryEmailAddress) {
+                await storage.setItem('userEmail', user.primaryEmailAddress.emailAddress);
+            }
         }
     };
 
@@ -235,8 +239,7 @@ export const useHomePage = () => {
         if (!confirmed) return;
 
         try {
-            // Call logout API
-            await logout();
+            await signOut();
         } catch (error) {
             console.error('Logout API error:', error);
         }
@@ -249,14 +252,17 @@ export const useHomePage = () => {
 
         console.log('[HomePage] Logged out, redirecting to login...');
 
-        // Redirect to login
-        router.replace('/(auth)/login');
+        // Redirect handled by auth state change in index.tsx usually, but explicit replace is fine
+        // router.replace('/(auth)/login'); 
     };
 
     useEffect(() => {
         getHealthCheckApi();
-        loadUserData();
     }, [])
+
+    useEffect(() => {
+        loadUserData();
+    }, [user]);
 
 
     return {

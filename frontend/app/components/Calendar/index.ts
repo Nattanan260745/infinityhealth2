@@ -5,4 +5,5 @@ export { TaskGroup } from './TaskGroup';
 export { MonthPickerModal } from './MonthPickerModal';
 export { EmptyState } from './EmptyState';
 export { SelectedDateInfo } from './SelectedDateInfo';
+export { MonthGrid } from './MonthGrid';
 

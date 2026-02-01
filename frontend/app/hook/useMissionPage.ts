@@ -67,16 +67,51 @@ export const useMissionPage = () => {
   const [selectedMission, setSelectedMission] = useState<DisplayMission | null>(null);
   const [inputValue, setInputValue] = useState('');
 
+  // Status Modal State (Replaces Alert)
+  const [statusModal, setStatusModal] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'success',
+    title: '',
+    message: '',
+  });
+
+  const closeStatusModal = () => {
+    setStatusModal(prev => ({ ...prev, visible: false }));
+  };
+
+
+
   // Load user ID and level
   useEffect(() => {
     const loadUserData = async () => {
-      const id = await storage.getItem('userId');
+      // Changed to use internalUserId from Sync
+      const id = await storage.getItem('internalUserId');
       const level = await storage.getItem('userLevel');
       setUserId(id);
       setUserLevel(level ? parseInt(level) : 1);
     };
     loadUserData();
   }, []);
+
+  // Load Streak (omitted unchanged parts for brevity if handled by diff, but need context)
+  // ... (keeping existing streak logic ideally, but since I'm replacing a huge chunk, let's just make sure I don't delete it. 
+  // Wait, I should target specific lines or be careful. The `replace_file_content` replaces a contiguous block. 
+  // I need to be careful not to delete the streak logic if it's in between.)
+
+  // Actually, let's just use `multi_replace_file_content` if I need to touch multiple places, 
+  // but here I need to inject state near top and replace handleSave/handleComplete logic.
+  // The state injection is at lines 65-68.
+  // The handleSave/handleComplete logic is further down.
+
+  // Let's do this in steps via `multi_replace_file_content` instead of one big replace.
+  // It's safer.
+
+
 
   // Load Streak
   useEffect(() => {
@@ -130,13 +165,26 @@ export const useMissionPage = () => {
 
   // Fetch missions
   const fetchMissions = useCallback(async () => {
-    if (!userId) return;
+    // Sync ID if needed (although profile likely syncs it first, safe to check)
+    let internalId = await storage.getItem('internalUserId');
+    if (!internalId) {
+      // If no internal ID, wait or fallback (profile should handle sync)
+      // But assuming profile handles it, we can just check storage.
+      // However, to be robust, let's just use what we have (userId state).
+      // Actually, useEffect at line 90 sets userId from storage.
+      // We should ensure that useEffect gets the RIGHT storage key.
+    }
+
+    // NOTE: The initial useEffect loads 'userId'. We must ensure it loads 'internalUserId'.
+    const idToUse = await storage.getItem('internalUserId') || userId;
+
+    if (!idToUse) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await getUserMissions(userId);
+      const response = await getUserMissions(idToUse);
 
       if (response.success && response.data) {
         setMissions(response.data);
@@ -222,14 +270,12 @@ export const useMissionPage = () => {
         if (response.success) {
           // Show reward notification
           const rewards = response.data?.rewards;
-          if (Platform.OS === 'web') {
-            alert(`🎉 Mission Complete!\n+${rewards?.exp || 0} XP\n+${rewards?.points || 0} Points`);
-          } else {
-            Alert.alert(
-              '🎉 Mission Complete!',
-              `+${rewards?.exp || 0} XP\n+${rewards?.points || 0} Points`
-            );
-          }
+          setStatusModal({
+            visible: true,
+            type: 'success',
+            title: 'Mission Complete!',
+            message: `You earned +${rewards?.exp || 0} XP and +${rewards?.points || 0} Gems!`,
+          });
         }
       } else {
         // Update progress
@@ -245,11 +291,12 @@ export const useMissionPage = () => {
       await fetchMissions();
     } catch (err: any) {
       console.error('Error updating mission:', err);
-      if (Platform.OS === 'web') {
-        alert('Failed to update mission');
-      } else {
-        Alert.alert('Error', 'Failed to update mission');
-      }
+      setStatusModal({
+        visible: true,
+        type: 'error',
+        title: 'Update Failed',
+        message: 'Could not update mission progress. Please try again.',
+      });
     }
 
     setShowUpdateModal(false);
@@ -266,14 +313,12 @@ export const useMissionPage = () => {
 
       if (response.success) {
         const rewards = response.data?.rewards;
-        if (Platform.OS === 'web') {
-          alert(`🎉 Mission Complete!\n+${rewards?.exp || 0} XP\n+${rewards?.points || 0} Points`);
-        } else {
-          Alert.alert(
-            '🎉 Mission Complete!',
-            `+${rewards?.exp || 0} XP\n+${rewards?.points || 0} Points`
-          );
-        }
+        setStatusModal({
+          visible: true,
+          type: 'success',
+          title: 'Mission Complete!',
+          message: `You earned +${rewards?.exp || 0} XP and +${rewards?.points || 0} Gems!`,
+        });
         await fetchMissions();
       }
     } catch (err: any) {
@@ -308,11 +353,12 @@ export const useMissionPage = () => {
         const response = await completeMission(userId, mission.missionId);
         if (response.success) {
           const rewards = response.data?.rewards;
-          if (Platform.OS === 'web') {
-            alert(`🎉 Mission Complete!\n+${rewards?.exp || 0} XP\n+${rewards?.points || 0} Points`);
-          } else {
-            Alert.alert('🎉 Mission Complete!', `+${rewards?.exp || 0} XP\n+${rewards?.points || 0} Points`);
-          }
+          setStatusModal({
+            visible: true,
+            type: 'success',
+            title: 'Mission Complete!',
+            message: `You earned +${rewards?.exp || 0} XP and +${rewards?.points || 0} Gems!`,
+          });
         }
       } else {
         await updateMissionProgress(
@@ -358,6 +404,8 @@ export const useMissionPage = () => {
     handleComplete,
     handleQuickUpdate,
     refreshMissions: fetchMissions,
+    statusModal,
+    closeStatusModal,
   };
 };
 

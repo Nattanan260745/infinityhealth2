@@ -4,6 +4,8 @@ import { TouchableOpacity, Dimensions, Image, ImageSourcePropType, View, Text, S
 import { Ionicons } from '@expo/vector-icons';
 import { MetricType } from '@/app/interface/infinityhealth.interface';
 
+import { formatNumber } from '@/app/utils/format';
+
 interface DashBoardCardProps {
     statCards: StatCard[];
     onCardPress?: (id: MetricType) => void;

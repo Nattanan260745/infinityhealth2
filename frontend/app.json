@@ -31,7 +31,14 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you set your profile picture.",
+          "cameraPermission": "The app accesses your camera to let you take a profile picture."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

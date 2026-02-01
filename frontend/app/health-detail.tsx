@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { View, Text, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Modal } from 'react-native';
+import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart, BarChart } from "react-native-chart-kit";
 import { getHealthTrackRange } from './service/InfinityhealthApi'; // Fixed import path
@@ -14,15 +14,19 @@ export default function HealthDetail() {
     const params = useLocalSearchParams();
     const metric = (params.metric as MetricType) || 'Weight';
 
-    const [period, setPeriod] = useState<'7D' | '30D' | '90D'>('7D');
+    const [period, setPeriod] = useState<'7D' | '30D' | '90D' | '1Y'>('7D');
     const [chartData, setChartData] = useState<{ date: string; value: number }[]>([]);
+    const [dropdownVisible, setDropdownVisible] = useState(false);
     const [history, setHistory] = useState<HealthTrack[]>([]);
     const [stats, setStats] = useState({ avg: '-', min: '-', max: '-' });
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchData();
-    }, [metric, period]);
+    // Use useFocusEffect to ensure data refreshes when navigating back or entering
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchData();
+        }, [metric, period])
+    );
 
     const fetchData = async () => {
         setLoading(true);
@@ -30,13 +34,20 @@ export default function HealthDetail() {
             const userId = await storage.getItem('userId');
             if (!userId) return;
 
-            const daysMap = { '7D': 7, '30D': 30, '90D': 90 };
+            const daysMap = { '7D': 7, '30D': 30, '90D': 90, '1Y': 365 };
             const days = daysMap[period];
 
             const endDate = new Date();
             const startDate = new Date();
             startDate.setDate(endDate.getDate() - days);
 
+            // Ensure we catch data from the start of the calculated start day
+            startDate.setHours(0, 0, 0, 0);
+
+            // Ensure we catch data until the end of the current day
+            endDate.setHours(23, 59, 59, 999);
+
+            // Fetch Data
             const res = await getHealthTrackRange(userId, startDate.toISOString(), endDate.toISOString());
 
             if (res.success && res.data) {
@@ -70,9 +81,7 @@ export default function HealthDetail() {
                 });
 
                 // Sort for chart (Ascending)
-                // Adjust if api returns desc
-                // Assuming API returns asc or we sort:
-                mapped.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()); // Rough sort if safe
+                mapped.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
                 setChartData(mapped);
 
@@ -89,7 +98,12 @@ export default function HealthDetail() {
                         min: isFinite(min) ? min.toFixed(1) : '-',
                         max: isFinite(max) ? max.toFixed(1) : '-'
                     });
+                } else {
+                    setStats({ avg: '-', min: '-', max: '-' });
                 }
+            } else {
+                setChartData([]);
+                setStats({ avg: '-', min: '-', max: '-' });
             }
         } catch (error) {
             console.error("Detail fetch error", error);
@@ -120,26 +134,65 @@ export default function HealthDetail() {
             </View>
 
             <ScrollView contentContainerStyle={{ paddingBottom: 30 }}>
-                {/* Period Tabs */}
-                <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20 }}>
-                    {(['7D', '30D', '90D'] as const).map((tab) => (
-                        <TouchableOpacity
-                            key={tab}
-                            onPress={() => setPeriod(tab)}
-                            style={{
-                                paddingHorizontal: 20,
-                                paddingVertical: 8,
-                                backgroundColor: period === tab ? '#1F2937' : '#F3F4F6',
-                                borderRadius: 20,
-                                marginHorizontal: 5
-                            }}
-                        >
-                            <Text style={{ color: period === tab ? '#FFFFFF' : '#4B5563', fontWeight: '600' }}>
-                                {tab === '7D' ? '7 Days' : tab === '30D' ? '30 Days' : '3 Months'}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                {/* Period Dropdown */}
+                <View style={{ alignItems: 'flex-end', paddingHorizontal: 20, marginBottom: 20 }}>
+                    <TouchableOpacity
+                        onPress={() => setDropdownVisible(true)}
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: '#F3F4F6',
+                            paddingHorizontal: 16,
+                            paddingVertical: 8,
+                            borderRadius: 20,
+                        }}
+                    >
+                        <Text style={{ color: '#4B5563', fontWeight: '600', marginRight: 8 }}>
+                            {period === '7D' ? '7 Days' : period === '30D' ? '30 Days' : period === '90D' ? '3 Months' : '1 Year'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={16} color="#4B5563" />
+                    </TouchableOpacity>
                 </View>
+
+                {/* Dropdown Modal */}
+                <Modal
+                    visible={dropdownVisible}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setDropdownVisible(false)}
+                >
+                    <TouchableOpacity
+                        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}
+                        activeOpacity={1}
+                        onPress={() => setDropdownVisible(false)}
+                    >
+                        <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 8, width: 200, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5 }}>
+                            {(['7D', '30D', '90D', '1Y'] as const).map((tab) => (
+                                <TouchableOpacity
+                                    key={tab}
+                                    onPress={() => {
+                                        setPeriod(tab);
+                                        setDropdownVisible(false);
+                                    }}
+                                    style={{
+                                        paddingVertical: 12,
+                                        paddingHorizontal: 16,
+                                        borderRadius: 12,
+                                        backgroundColor: period === tab ? '#F3F4F6' : 'transparent',
+                                    }}
+                                >
+                                    <Text style={{
+                                        color: period === tab ? '#1F2937' : '#4B5563',
+                                        fontWeight: period === tab ? 'bold' : '500',
+                                        textAlign: 'center'
+                                    }}>
+                                        {tab === '7D' ? '7 Days' : tab === '30D' ? '30 Days' : tab === '90D' ? '3 Months' : '1 Year'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </TouchableOpacity>
+                </Modal>
 
                 {/* Chart */}
                 <View style={{ alignItems: 'center', paddingHorizontal: 10 }}>
