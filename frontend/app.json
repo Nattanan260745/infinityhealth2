@@ -44,7 +44,8 @@
         {
           "motionPermission": "Allow Infinity Health to access your device motion to count your steps."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": false
