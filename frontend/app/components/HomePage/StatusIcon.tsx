@@ -4,9 +4,25 @@ import { Ionicons } from '@expo/vector-icons';
 
 interface StatusIconProps {
   status: 'pending' | 'completed' | 'cancelled';
+  isOverdue?: boolean; // New prop
 }
 
-export function StatusIcon({ status }: StatusIconProps) {
+export function StatusIcon({ status, isOverdue }: StatusIconProps) {
+  if (isOverdue) {
+    return (
+      <View style={{
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#F87171',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <Ionicons name="close" size={16} color="white" />
+      </View>
+    );
+  }
+
   switch (status) {
     case 'completed':
       return (

@@ -8,6 +8,8 @@ import {
   ScrollView,
   ActivityIndicator,
   TextInput,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -24,9 +26,20 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState('');
+  const [resendCountdown, setResendCountdown] = useState(0); // Countdown state
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+
+  // Countdown timer effect
+  React.useEffect(() => {
+    if (resendCountdown > 0) {
+      const timer = setInterval(() => {
+        setResendCountdown((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [resendCountdown]);
 
   // Schema for Sign Up Form
   const signUpSchema = z.object({
@@ -75,6 +88,7 @@ export default function RegisterPage() {
 
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setPendingVerification(true);
+      setResendCountdown(20); // Start countdown immediately upon landing on verify screen
     } catch (err: any) {
       console.error(JSON.stringify(err, null, 2));
       alert(err.errors?.[0]?.message || 'Registration failed');
@@ -122,6 +136,22 @@ export default function RegisterPage() {
     }
   };
 
+  const onResendPress = async () => {
+    if (!isLoaded) return;
+    setIsLoading(true);
+
+    try {
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      setResendCountdown(20); // Start 20s countdown
+      alert('Verification code resent! Please check your email.');
+    } catch (err: any) {
+      console.error(JSON.stringify(err, null, 2));
+      alert(err.errors?.[0]?.message || 'Failed to resend code');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
 
   const onGoogleSignUpPress = React.useCallback(async () => {
@@ -140,33 +170,48 @@ export default function RegisterPage() {
 
   if (pendingVerification) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#F9FAFB' }}>
-        <View style={{ alignItems: 'center', marginBottom: 24 }}>
-          <Ionicons name="mail-unread-outline" size={64} color="#008080" />
-          <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1F2937', marginTop: 16 }}>Verify your Email</Text>
-          <Text style={{ fontSize: 16, color: '#6B7280', textAlign: 'center', marginTop: 8 }}>
-            We sent a verification code to your email. Please enter it below.
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 12, height: 48, marginBottom: 24 }}>
-          <Ionicons name="key-outline" size={20} color="#9CA3AF" />
-          <TextInput
-            value={code}
-            onChangeText={setCode}
-            placeholder="Enter Verification Code"
-            keyboardType="numeric"
-            placeholderTextColor="#9CA3AF"
-            style={{ flex: 1, marginLeft: 8, fontSize: 16, color: '#1F2937' }}
-          />
-        </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: '#F9FAFB' }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
+          <View style={{ alignItems: 'center', marginBottom: 24 }}>
+            <Ionicons name="mail-unread-outline" size={64} color="#008080" />
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1F2937', marginTop: 16 }}>Verify your Email</Text>
+            <Text style={{ fontSize: 16, color: '#6B7280', textAlign: 'center', marginTop: 8 }}>
+              We sent a verification code to your email. Please enter it below.
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 12, height: 48, marginBottom: 24 }}>
+            <Ionicons name="key-outline" size={20} color="#9CA3AF" />
+            <TextInput
+              value={code}
+              onChangeText={setCode}
+              placeholder="Enter Verification Code"
+              keyboardType="numeric"
+              placeholderTextColor="#9CA3AF"
+              style={{ flex: 1, marginLeft: 8, fontSize: 16, color: '#1F2937' }}
+            />
+          </View>
 
-        <TouchableOpacity
-          onPress={onPressVerify}
-          style={{ backgroundColor: '#008080', borderRadius: 12, height: 48, justifyContent: 'center', alignItems: 'center' }}
-        >
-          {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' }}>Verify Email</Text>}
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            onPress={onPressVerify}
+            style={{ backgroundColor: '#008080', borderRadius: 12, height: 48, justifyContent: 'center', alignItems: 'center' }}
+          >
+            {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' }}>Verify Email</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={onResendPress}
+            disabled={isLoading || resendCountdown > 0}
+            style={{ marginTop: 16, alignItems: 'center', padding: 10 }}
+          >
+            <Text style={{ fontSize: 14, color: resendCountdown > 0 ? '#9CA3AF' : '#008080', fontWeight: '600' }}>
+              {resendCountdown > 0 ? `Resend Code in ${resendCountdown}s` : 'Resend Code'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   }
 
@@ -296,6 +341,9 @@ export default function RegisterPage() {
               <Text style={{ color: '#008080', fontSize: 14, fontWeight: '600' }}>Login</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Captcha Container for Web */}
+          <View nativeID="clerk-captcha" />
         </FormProvider>
       </ScrollView >
     </KeyboardAvoidingView >

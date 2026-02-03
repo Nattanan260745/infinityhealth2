@@ -65,7 +65,7 @@ router.put('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const uid = parseId(userId);
-    const { level_id, exp, points, profile_img, bio } = req.body;
+    const { level_id, exp, points, profile_img, bio, pushToken } = req.body;
 
     // Update UserStats
     const statsUpdate = {};
@@ -85,6 +85,7 @@ router.put('/:userId', async (req, res) => {
     const userUpdate = {};
     if (profile_img !== undefined) userUpdate.profileImg = profile_img;
     if (bio !== undefined) userUpdate.bio = bio;
+    if (pushToken !== undefined) userUpdate.pushToken = pushToken;
 
     if (Object.keys(userUpdate).length > 0) {
       await prisma.user.update({
@@ -146,12 +147,9 @@ router.post('/:userId/add-exp', async (req, res) => {
     // But `mission.js` queries `prisma.level`.
 
     // Let's use `prisma.level` for consistency.
-    const levelObj = await prisma.level.findFirst({
-      where: { minExp: { lte: newExp } },
-      orderBy: { levelNumber: 'desc' }
-    });
-
-    const newLevel = levelObj ? levelObj.levelNumber : (Math.floor(newExp / 1000) + 1);
+    // Level logic using centralized utility
+    const { calculateLevelWithCap } = require('../utils/levelUtils');
+    const newLevel = await calculateLevelWithCap(stats.level, newExp, uid);
 
     const updatedStats = await prisma.userStats.update({
       where: { userId: uid },
@@ -204,6 +202,44 @@ router.post('/:userId/add-points', async (req, res) => {
       success: false,
       message: error.message || 'Failed to add points',
     });
+  }
+});
+
+// Manual Rank Up Endpoint
+router.post('/rank-up/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const uid = parseId(userId);
+
+    const stats = await prisma.userStats.findUnique({ where: { userId: uid } });
+    if (!stats) return res.status(404).json({ success: false, message: 'User stats not found' });
+
+    // Try to calculate new level with Manual Flag = TRUE
+    const { calculateLevelWithCap } = require('../utils/levelUtils');
+    const newLevel = await calculateLevelWithCap(stats.level, stats.currentExp, uid, true);
+
+    if (newLevel > stats.level) {
+      // Success! Level Up
+      await prisma.userStats.update({
+        where: { userId: uid },
+        data: { level: newLevel }
+      });
+
+      return res.json({
+        success: true,
+        message: 'Rank Up Successful!',
+        data: { level: newLevel }
+      });
+    } else {
+      // Conditions not met (e.g. Challenge not done)
+      return res.status(400).json({
+        success: false,
+        message: 'Rank up conditions not met. Complete the challenge first.'
+      });
+    }
+  } catch (error) {
+    console.error('Rank up error:', error);
+    res.status(500).json({ success: false, message: 'Failed to rank up' });
   }
 });
 

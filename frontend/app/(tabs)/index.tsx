@@ -38,7 +38,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
             <View style={{ paddingTop: Platform.OS === 'web' ? 20 : 50, paddingHorizontal: 20, backgroundColor: '#FFFFFF' }}>
                 <Header
                     userName={useHomePageController.userName}
-                    userAvatar="https://i.pravatar.cc/100?img=47"
+                    userAvatar={useHomePageController.userAvatar}
                     date={formattedDate}
                 />
             </View>

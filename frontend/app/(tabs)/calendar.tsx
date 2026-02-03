@@ -91,7 +91,7 @@ export default function CalendarScreen() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{
                     // paddingTop: Platform.OS === 'web' ? 40 : 60,
-                    // paddingBottom: 30,
+                    paddingBottom: 100, // Safe space for nav bar
                     flexGrow: 1,
                 }}
             >

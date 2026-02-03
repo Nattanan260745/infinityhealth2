@@ -4,7 +4,8 @@ import storage from '../utils/storage';
 import {
   getUserMissions,
   completeMission,
-  updateMissionProgress
+  updateMissionProgress,
+  getUserProfile
 } from '../service/InfinityhealthApi';
 import { MissionWithStatus } from '../interface/infinityhealth.interface';
 
@@ -51,6 +52,7 @@ export interface DisplayMission {
   targetValue: number;
   targetUnit: string;
   isLocked: boolean;
+  presets?: any[];
 }
 
 export const useMissionPage = () => {
@@ -60,6 +62,8 @@ export const useMissionPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [userLevel, setUserLevel] = useState<number>(1);
+  const [userXP, setUserXP] = useState<number>(0);
+  const [userGems, setUserGems] = useState<number>(0);
   const [streak, setStreak] = useState<number>(0);
 
   // Modal state
@@ -164,15 +168,11 @@ export const useMissionPage = () => {
   }, [missions, userId]);
 
   // Fetch missions
-  const fetchMissions = useCallback(async () => {
+  const fetchMissions = useCallback(async (silent = false) => {
     // Sync ID if needed (although profile likely syncs it first, safe to check)
     let internalId = await storage.getItem('internalUserId');
     if (!internalId) {
       // If no internal ID, wait or fallback (profile should handle sync)
-      // But assuming profile handles it, we can just check storage.
-      // However, to be robust, let's just use what we have (userId state).
-      // Actually, useEffect at line 90 sets userId from storage.
-      // We should ensure that useEffect gets the RIGHT storage key.
     }
 
     // NOTE: The initial useEffect loads 'userId'. We must ensure it loads 'internalUserId'.
@@ -180,7 +180,7 @@ export const useMissionPage = () => {
 
     if (!idToUse) return;
 
-    setIsLoading(true);
+    if (!silent) setIsLoading(true);
     setError(null);
 
     try {
@@ -196,6 +196,21 @@ export const useMissionPage = () => {
       setError(err.message || 'Failed to load missions');
     } finally {
       setIsLoading(false);
+    }
+
+    // Fetch User Profile for latest Stats
+    if (idToUse) {
+      try {
+        const profileRes = await getUserProfile(idToUse);
+        if (profileRes.success && profileRes.data) {
+          setUserXP(profileRes.data.exp || 0);
+          setUserGems(profileRes.data.points || 0);
+          // Also update level if changed
+          if (profileRes.data.level_id) setUserLevel(profileRes.data.level_id);
+        }
+      } catch (e) {
+        console.error('Failed to fetch profile stats', e);
+      }
     }
   }, [userId]);
 
@@ -227,6 +242,7 @@ export const useMissionPage = () => {
       targetValue: mission.target_value || 1,
       targetUnit: mission.target_unit || '',
       isLocked: isLocked,
+      presets: mission.presets,
     };
   };
 
@@ -245,8 +261,9 @@ export const useMissionPage = () => {
 
   // Stats
   const completedCount = filteredMissions.filter(m => m.completed).length;
-  const totalXP = filteredMissions.reduce((sum, m) => sum + m.xp, 0);
-  const totalGems = filteredMissions.reduce((sum, m) => sum + m.gems, 0);
+  // Use actual user stats instead of potential rewards
+  const totalXP = userXP;
+  const totalGems = userGems;
 
   // Handle update press
   const handleUpdatePress = (mission: DisplayMission) => {
@@ -288,7 +305,7 @@ export const useMissionPage = () => {
       }
 
       // Refresh missions
-      await fetchMissions();
+      await fetchMissions(true);
     } catch (err: any) {
       console.error('Error updating mission:', err);
       setStatusModal({
@@ -319,7 +336,7 @@ export const useMissionPage = () => {
           title: 'Mission Complete!',
           message: `You earned +${rewards?.exp || 0} XP and +${rewards?.points || 0} Gems!`,
         });
-        await fetchMissions();
+        await fetchMissions(true);
       }
     } catch (err: any) {
       console.error('Error completing mission:', err);
@@ -370,11 +387,11 @@ export const useMissionPage = () => {
       }
 
       // Refresh to get sync backend state
-      await fetchMissions();
+      await fetchMissions(true);
     } catch (err) {
       console.error('Quick update error:', err);
       // Revert optimistic update if needed or just re-fetch
-      await fetchMissions();
+      await fetchMissions(true);
     }
   };
 

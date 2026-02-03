@@ -6,6 +6,32 @@ import type { Mission } from '@/src/types';
 import { IuseHomePage } from '@/app/hook/useHomePage';
 
 const missionIcon = require('../../../assets/images/Group.png');
+const exerciseIcon = require('../../../assets/images/exercise.png');
+const routineIcon = require('../../../assets/images/selfcare.png');
+const missionsIcon = require('../../../assets/images/missions.png');
+
+const getIcon = (title: string) => {
+  switch (title) {
+    case 'Exercise': return exerciseIcon;
+    case 'Routine': return routineIcon;
+    case 'Missions': return missionsIcon;
+    default: return missionIcon;
+  }
+};
+
+const getThemedColors = (title: string) => {
+  switch (title) {
+    case 'Routine':
+      return { bg: '#FBCFC9', iconBox: '#FFF5F5' }; // Peach / Light Pink
+    case 'Exercise':
+      return { bg: '#DBEAFE', iconBox: '#EFF6FF' }; // Light Blue / Pale Blue
+    case 'Missions':
+      return { bg: '#FEF3C7', iconBox: '#FFFBEB' }; // Light Yellow / Pale Yellow
+    default:
+      return { bg: '#FBCFC9', iconBox: '#FDE8E4' }; // Fallback (original)
+  }
+};
+
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 50;
@@ -47,61 +73,64 @@ export function MissionCard({ useHomePageController }: MissionCardProps) {
           useHomePageController.setCurrentMission(index);
         }}
       >
-        {useHomePageController.missions.map((mission) => (
-          <TouchableOpacity
-            key={mission.id}
-            onPress={() => handlePress(mission.title)}
-            activeOpacity={0.8}
-            style={{
-              marginRight: 20,
-              width: CARD_WIDTH,
-              backgroundColor: '#FBCFC9',
-              borderRadius: 24,
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 16,
-              paddingHorizontal: 16,
-              overflow: 'hidden',
-            }}
-          >
-            {/* Illustration Box */}
-            <View
+        {useHomePageController.missions.map((mission) => {
+          const colors = getThemedColors(mission.title);
+          return (
+            <TouchableOpacity
+              key={mission.id}
+              onPress={() => handlePress(mission.title)}
+              activeOpacity={0.8}
               style={{
-                width: 100,
-                height: 100,
-                backgroundColor: '#FDE8E4',
-                borderRadius: 16,
+                marginRight: 20,
+                width: CARD_WIDTH,
+                backgroundColor: colors.bg,
+                borderRadius: 24,
+                flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'center',
+                paddingVertical: 16,
+                paddingHorizontal: 16,
                 overflow: 'hidden',
               }}
             >
-              {/* Checkmark badge */}
-              <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
-                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+              {/* Illustration Box */}
+              <View
+                style={{
+                  width: 100,
+                  height: 100,
+                  backgroundColor: colors.iconBox,
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Checkmark badge */}
+                <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                </View>
+                {/* Illustration */}
+                <Image
+                  source={getIcon(mission.title)}
+                  style={{ width: 70, height: 70 }}
+                  resizeMode="contain"
+                />
               </View>
-              {/* Illustration */}
-              <Image
-                source={missionIcon}
-                style={{ width: 70, height: 70 }}
-                resizeMode="contain"
-              />
-            </View>
 
-            {/* Text Content */}
-            <View style={{ flex: 1, marginLeft: 16 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937' }}>
-                {mission.title}
-              </Text>
-              <Text style={{ color: '#4B5563', fontSize: 14, marginTop: 4 }}>
-                {mission.subtitle}
-              </Text>
-            </View>
+              {/* Text Content */}
+              <View style={{ flex: 1, marginLeft: 16 }}>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937' }}>
+                  {mission.title}
+                </Text>
+                <Text style={{ color: '#4B5563', fontSize: 14, marginTop: 4 }}>
+                  {mission.subtitle}
+                </Text>
+              </View>
 
-            {/* Arrow */}
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-        ))}
+              {/* Arrow */}
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* Pagination Dots */}

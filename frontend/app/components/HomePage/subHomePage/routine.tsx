@@ -9,7 +9,9 @@ import {
   TextInput,
   TouchableWithoutFeedback,
   Switch,
+  Image,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useRoutinePage } from '../../../hook/useRoutinePage';
@@ -53,6 +55,8 @@ export default function RoutineScreen() {
     getDeleteMessage,
     error,
   } = useRoutinePage();
+
+  const insets = useSafeAreaInsets();
 
   // Local state for pickers
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -151,14 +155,10 @@ export default function RoutineScreen() {
             contentContainerStyle={{ paddingBottom: 100 }}
           >
             {/* Hero Image */}
-            <View style={{
-              height: 180,
-              backgroundColor: colors.backgroundHero,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <Text style={{ fontSize: 80 }}>📝</Text>
-            </View>
+            <Image
+              source={require('@/assets/images/selfcare.png')}
+              style={{ width: '100%', height: 180, resizeMode: 'cover' }}
+            />
 
             <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
               <Text style={{
@@ -212,25 +212,42 @@ export default function RoutineScreen() {
                 </View>
               </TouchableOpacity>
 
-              {showDatePicker && (
-                <View>
-                  {Platform.OS === 'ios' && (
-                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
-                      <TouchableOpacity onPress={() => setShowDatePicker(false)} style={{ padding: 8, backgroundColor: colors.primaryLight, borderRadius: 8 }}>
-                        <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Done</Text>
-                      </TouchableOpacity>
+              {/* Date Picker Modal */}
+              <Modal
+                visible={showDatePicker}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowDatePicker(false)}
+              >
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }}
+                  activeOpacity={1}
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <TouchableWithoutFeedback>
+                    <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 20, overflow: 'hidden' }}>
+                      <Calendar
+                        onDayPress={(day: any) => {
+                          setFormDate(day.dateString);
+                          setShowDatePicker(false);
+                        }}
+                        markedDates={{
+                          [formDate]: { selected: true, selectedColor: colors.primary }
+                        }}
+                        theme={{
+                          todayTextColor: colors.primary,
+                          selectedDayBackgroundColor: colors.primary,
+                          arrowColor: colors.primary,
+                          textDayFontWeight: '500',
+                          textMonthFontWeight: 'bold',
+                          textDayHeaderFontWeight: '500',
+                          calendarBackground: '#fff'
+                        }}
+                      />
                     </View>
-                  )}
-                  <DateTimePicker
-                    value={getParsedDate()}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                    onChange={onDateChange}
-                    themeVariant="light"
-                    style={{ backgroundColor: colors.background }} // iOS inline fix
-                  />
-                </View>
-              )}
+                  </TouchableWithoutFeedback>
+                </TouchableOpacity>
+              </Modal>
 
               {/* Time Picker Input - Only for Routines */}
               {!isGoalsTab && (
@@ -262,23 +279,48 @@ export default function RoutineScreen() {
                   )}
 
                   {showTimePicker && (
-                    <View>
-                      {Platform.OS === 'ios' && (
-                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
-                          <TouchableOpacity onPress={() => setShowTimePicker(false)} style={{ padding: 8, backgroundColor: colors.primaryLight, borderRadius: 8 }}>
-                            <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Done</Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
+                    Platform.OS === 'ios' ? (
+                      <Modal
+                        visible={showTimePicker}
+                        transparent={true}
+                        animationType="fade"
+                        onRequestClose={() => setShowTimePicker(false)}
+                      >
+                        <TouchableOpacity
+                          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }}
+                          activeOpacity={1}
+                          onPress={() => setShowTimePicker(false)}
+                        >
+                          <TouchableWithoutFeedback>
+                            <View style={{ backgroundColor: '#fff', borderRadius: 20, padding: 20, alignItems: 'center' }}>
+                              <DateTimePicker
+                                value={getParsedTime()}
+                                mode="time"
+                                display="spinner"
+                                is24Hour={true}
+                                onChange={onTimeChange}
+                                themeVariant="light"
+                                style={{ width: '100%', height: 200 }}
+                              />
+                              <TouchableOpacity
+                                onPress={() => setShowTimePicker(false)}
+                                style={{ marginTop: 10, paddingVertical: 10, paddingHorizontal: 30, backgroundColor: colors.primary, borderRadius: 20 }}
+                              >
+                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Done</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </TouchableWithoutFeedback>
+                        </TouchableOpacity>
+                      </Modal>
+                    ) : (
                       <DateTimePicker
                         value={getParsedTime()}
                         mode="time"
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'} // Spinner is clearer for Time on iOS
+                        display="default"
                         is24Hour={true}
                         onChange={onTimeChange}
-                        themeVariant="light"
                       />
-                    </View>
+                    )
                   )}
 
                   {/* Enable Notifications - Only for Routines */}
@@ -436,14 +478,10 @@ export default function RoutineScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* Hero Image */}
-        <View style={{
-          height: 200,
-          backgroundColor: colors.backgroundHero,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <Text style={{ fontSize: 100 }}>📋</Text>
-        </View>
+        <Image
+          source={require('@/assets/images/selfcare.png')}
+          style={{ width: '100%', height: 200, resizeMode: 'cover' }}
+        />
 
         <View style={{ paddingHorizontal: 20 }}>
           {/* Header */}
@@ -609,7 +647,7 @@ export default function RoutineScreen() {
         left: 0,
         right: 0,
         padding: 20,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+        paddingBottom: Platform.OS === 'ios' ? 34 : Math.max(insets.bottom, 20) + 20, // Dynamic safe area
         backgroundColor: colors.background,
       }}>
         <TouchableOpacity

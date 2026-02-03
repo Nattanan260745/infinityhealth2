@@ -77,6 +77,9 @@ const ChartSection: React.FC<ChartSectionProps> = (props) => {
         }
     };
 
+    // Check if there is actual data to show (non-zero)
+    const hasData = props.chartData.length > 0 && props.chartData.some(d => d.value > 0);
+
     return (
         <View
             style={{
@@ -118,15 +121,15 @@ const ChartSection: React.FC<ChartSectionProps> = (props) => {
             </View>
 
             {/* Chart */}
-            <View style={{ alignItems: 'center', marginLeft: -20, height: 220, justifyContent: 'center' }}>
-                {props.chartData.length > 0 ? (
+            <View style={{ alignItems: 'flex-start', height: 260, justifyContent: 'center', marginLeft: -15 }}>
+                {hasData ? (
                     <View>
                         <LineChart
                             data={{
                                 labels: labels,
                                 datasets: [{ data: data }]
                             }}
-                            width={screenWidth - 60}
+                            width={screenWidth - 85}
                             height={260} // Increased height for labels
                             segments={segments} // Dynamic segments
                             chartConfig={{
@@ -154,9 +157,9 @@ const ChartSection: React.FC<ChartSectionProps> = (props) => {
                                         {/* Hitbox for full column clickability */}
                                         <Rect
                                             x={x - 20}
-                                            y={0}
+                                            y={10}
                                             width={40}
-                                            height={260}
+                                            height={240}
                                             fill="rgba(0,0,0,0.01)"
                                         />
 
@@ -202,7 +205,9 @@ const ChartSection: React.FC<ChartSectionProps> = (props) => {
                         />
                     </View>
                 ) : (
-                    <Text style={{ color: '#9CA3AF', marginBottom: 20 }}>No data available for this period</Text>
+                    <View style={{ width: '100%', alignItems: 'center', paddingLeft: 15 }}>
+                        <Text style={{ color: '#9CA3AF', marginBottom: 20 }}>No data available for this period</Text>
+                    </View>
                 )}
             </View>
 

@@ -1,13 +1,19 @@
 const express = require('express');
-const Exercise = require('../models/Exercise');
+const prisma = require('../prisma');
 
 const router = express.Router();
+
+// Helper: Get integer ID
+const parseId = (id) => parseInt(id, 10);
 
 // Get all exercises
 router.get('/', async (req, res) => {
   try {
-    const exercises = await Exercise.find().sort({ createdAt: -1 });
-    
+    const exercises = await prisma.exercise.findMany({
+      orderBy: { id: 'desc' } // Prisma uses 'id', not 'createdAt' usually, unless we added createdAt. 
+      // Schema doesn't have createdAt for Exercise, so we sort by ID desc.
+    });
+
     res.json({
       success: true,
       data: exercises,
@@ -25,9 +31,12 @@ router.get('/', async (req, res) => {
 router.get('/type/:type', async (req, res) => {
   try {
     const { type } = req.params;
-    
-    const exercises = await Exercise.find({ type }).sort({ createdAt: -1 });
-    
+
+    const exercises = await prisma.exercise.findMany({
+      where: { type: type },
+      orderBy: { id: 'desc' }
+    });
+
     res.json({
       success: true,
       data: exercises,
@@ -45,9 +54,12 @@ router.get('/type/:type', async (req, res) => {
 router.get('/difficulty/:difficulty', async (req, res) => {
   try {
     const { difficulty } = req.params;
-    
-    const exercises = await Exercise.find({ difficulty }).sort({ createdAt: -1 });
-    
+
+    const exercises = await prisma.exercise.findMany({
+      where: { difficulty: difficulty },
+      orderBy: { id: 'desc' }
+    });
+
     res.json({
       success: true,
       data: exercises,
@@ -65,13 +77,16 @@ router.get('/difficulty/:difficulty', async (req, res) => {
 router.get('/filter', async (req, res) => {
   try {
     const { type, difficulty } = req.query;
-    
+
     const filter = {};
     if (type) filter.type = type;
     if (difficulty) filter.difficulty = difficulty;
-    
-    const exercises = await Exercise.find(filter).sort({ createdAt: -1 });
-    
+
+    const exercises = await prisma.exercise.findMany({
+      where: filter,
+      orderBy: { id: 'desc' }
+    });
+
     res.json({
       success: true,
       data: exercises,
@@ -89,16 +104,19 @@ router.get('/filter', async (req, res) => {
 router.get('/:exerciseId', async (req, res) => {
   try {
     const { exerciseId } = req.params;
-    
-    const exercise = await Exercise.findById(exerciseId);
-    
+    const id = parseId(exerciseId);
+
+    const exercise = await prisma.exercise.findUnique({
+      where: { id: id }
+    });
+
     if (!exercise) {
       return res.status(404).json({
         success: false,
         message: 'Exercise not found',
       });
     }
-    
+
     res.json({
       success: true,
       data: exercise,
@@ -116,15 +134,17 @@ router.get('/:exerciseId', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { type, difficulty, title, description, video_url } = req.body;
-    
-    const exercise = await Exercise.create({
-      type,
-      difficulty,
-      title,
-      description,
-      video_url,
+
+    const exercise = await prisma.exercise.create({
+      data: {
+        type,
+        difficulty,
+        title,
+        description,
+        videoUrl: video_url, // Map camelCase frontend/body to Prisma field
+      }
     });
-    
+
     res.status(201).json({
       success: true,
       message: 'Exercise created successfully',
@@ -143,25 +163,21 @@ router.post('/', async (req, res) => {
 router.put('/:exerciseId', async (req, res) => {
   try {
     const { exerciseId } = req.params;
+    const id = parseId(exerciseId);
     const { type, difficulty, title, description, video_url } = req.body;
-    
-    const exercise = await Exercise.findById(exerciseId);
-    
-    if (!exercise) {
-      return res.status(404).json({
-        success: false,
-        message: 'Exercise not found',
-      });
-    }
-    
-    if (type !== undefined) exercise.type = type;
-    if (difficulty !== undefined) exercise.difficulty = difficulty;
-    if (title !== undefined) exercise.title = title;
-    if (description !== undefined) exercise.description = description;
-    if (video_url !== undefined) exercise.video_url = video_url;
-    
-    await exercise.save();
-    
+
+    const dataToUpdate = {};
+    if (type !== undefined) dataToUpdate.type = type;
+    if (difficulty !== undefined) dataToUpdate.difficulty = difficulty;
+    if (title !== undefined) dataToUpdate.title = title;
+    if (description !== undefined) dataToUpdate.description = description;
+    if (video_url !== undefined) dataToUpdate.videoUrl = video_url;
+
+    const exercise = await prisma.exercise.update({
+      where: { id: id },
+      data: dataToUpdate
+    });
+
     res.json({
       success: true,
       message: 'Exercise updated successfully',
@@ -169,6 +185,13 @@ router.put('/:exerciseId', async (req, res) => {
     });
   } catch (error) {
     console.error('Update exercise error:', error);
+    // Handle record not found
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        message: 'Exercise not found',
+      });
+    }
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to update exercise',
@@ -180,22 +203,24 @@ router.put('/:exerciseId', async (req, res) => {
 router.delete('/:exerciseId', async (req, res) => {
   try {
     const { exerciseId } = req.params;
-    
-    const exercise = await Exercise.findByIdAndDelete(exerciseId);
-    
-    if (!exercise) {
-      return res.status(404).json({
-        success: false,
-        message: 'Exercise not found',
-      });
-    }
-    
+    const id = parseId(exerciseId);
+
+    await prisma.exercise.delete({
+      where: { id: id }
+    });
+
     res.json({
       success: true,
       message: 'Exercise deleted successfully',
     });
   } catch (error) {
     console.error('Delete exercise error:', error);
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        message: 'Exercise not found',
+      });
+    }
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to delete exercise',

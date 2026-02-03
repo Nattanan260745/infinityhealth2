@@ -112,14 +112,25 @@ export const useRoutinePage = () => {
     if (!userId) return;
     setLoading(true);
     try {
-      // Fetch selected date data
+      // Fetch ALL data once (bypass broken /date endpoints which return 500)
       const [routineRes, goalRes] = await Promise.all([
-        getUserRoutinesByDate(userId, formDate),
-        getUserGoalsByDate(userId, formDate)
+        getUserRoutines(userId),
+        getUserGoals(userId)
       ]);
 
       if (routineRes.success && Array.isArray(routineRes.data)) {
-        const mappedRoutines = routineRes.data.map((r: any) => ({
+        // Set All for Calendar
+        setAllRoutines(routineRes.data);
+
+        // Filter for specific date
+        const dayRoutines = routineRes.data.filter((r: any) => {
+          if (!r.scheduledDate) return false;
+          // Handle potentially different date formats if needed, but assuming ISO
+          const rDate = new Date(r.scheduledDate).toISOString().split('T')[0];
+          return rDate === formDate;
+        });
+
+        const mappedRoutines = dayRoutines.map((r: any) => ({
           id: r.id,
           title: r.title,
           time: r.scheduledTime,
@@ -130,10 +141,23 @@ export const useRoutinePage = () => {
           scheduledTime: r.scheduledTime
         }));
         setRoutines(mappedRoutines);
+      } else {
+        setRoutines([]);
+        setAllRoutines([]);
       }
 
       if (goalRes.success && Array.isArray(goalRes.data)) {
-        const mappedGoals = goalRes.data.map((g: any) => ({
+        // Set All for Calendar
+        setAllGoals(goalRes.data);
+
+        // Filter for specific date
+        const dayGoals = goalRes.data.filter((g: any) => {
+          if (!g.goalDate) return false;
+          const gDate = new Date(g.goalDate).toISOString().split('T')[0];
+          return gDate === formDate;
+        });
+
+        const mappedGoals = dayGoals.map((g: any) => ({
           id: g.id,
           title: g.title,
           time: '',
@@ -143,15 +167,10 @@ export const useRoutinePage = () => {
           scheduledDate: g.goalDate
         }));
         setGoals(mappedGoals);
+      } else {
+        setGoals([]);
+        setAllGoals([]);
       }
-
-      // Fetch ALL for calendar
-      const [allR, allG] = await Promise.all([
-        getUserRoutines(userId),
-        getUserGoals(userId)
-      ]);
-      if (allR.success) setAllRoutines(allR.data || []);
-      if (allG.success) setAllGoals(allG.data || []);
 
     } catch (e) {
       console.error("Fetch routine error", e);

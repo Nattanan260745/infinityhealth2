@@ -7,7 +7,7 @@ import Filter from '../components/SummaryDashBoard/Filter';
 import ChartSection from '../components/SummaryDashBoard/ChartSection';
 import { useDashBoardPage } from '../hook/useDashBoardPage';
 import DashBoardEditModal from '../components/SummaryDashBoard/DashBoardEditModal';
-import { saveHealthData } from '../service/InfinityhealthApi';
+import { saveHealthData, getHealthTrackRange } from '../service/InfinityhealthApi';
 import storage from '../utils/storage';
 
 
@@ -27,7 +27,10 @@ export default function DashboardPage() {
 
   const handleSave = async (value: string) => {
     try {
-      const userId = await storage.getItem('userId');
+      let userId = await storage.getItem('internalUserId');
+      if (!userId) {
+        userId = await storage.getItem('userId');
+      }
       if (!userId) {
         console.error('User not found');
         return;
@@ -41,45 +44,82 @@ export default function DashboardPage() {
         return;
       }
 
-      const today = new Date().toISOString().split('T')[0]; // Send YYYY-MM-DD
-      const payload: any = {
-        date: today,
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      // Widen the range to avoid potential backend bugs with single-day 'today-today' queries
+      // Fetch last 3 days
+      const past = new Date(now);
+      past.setDate(now.getDate() - 3);
+      const pastDate = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, '0')}-${String(past.getDate()).padStart(2, '0')}`;
+
+      // Try to get existing record ID for update using Range Query
+      let existingId = undefined;
+      try {
+        const rangeRes = await getHealthTrackRange(userId, pastDate, today);
+        if (rangeRes.success && rangeRes.data && rangeRes.data.length > 0) {
+          const found = rangeRes.data.find((d: any) => d.date === today || d.date?.startsWith(today));
+          if (found) {
+            existingId = (found as any).id || found._id;
+            console.log('[Dashboard] Found existing record via Wide Range Query, ID:', existingId);
+          }
+        }
+      } catch (err) {
+        console.log('[Dashboard] Could not fetch existing record via wide range:', err);
+      }
+
+      // Construct base payload from existing cards to avoid missing fields
+      const getCardValue = (id: string) => {
+        const card = statCards.find(c => c.id === id);
+        if (!card || card.value === '-') return null; // Return null instead of 0
+        return parseFloat(card.value) || 0;
       };
 
-      // Map metric to payload key
-      // Map metric to payload key
+      const basePayload: any = {
+        date: today,
+        ...(existingId ? { id: existingId } : {}), // If we found an ID, include it to force Update
+        weight: getCardValue('Weight'),
+        height: getCardValue('Height'),
+        water: getCardValue('Water'),
+        sleep_hours: getCardValue('Sleep'),
+        sleepHours: getCardValue('Sleep'),
+        steps_count: getCardValue('Steps'),
+        stepsCount: getCardValue('Steps'),
+      };
+
+      // Update specific metric
       switch (editingMetric) {
-        case 'Weight': payload.weight = numVal; break;
-        case 'Height': payload.height = numVal; break;
+        case 'Weight': basePayload.weight = numVal; break;
+        case 'Height': basePayload.height = numVal; break;
         case 'Water':
-          // Water accumulates
-          const currentWater = parseFloat((getCurrentValue() || '0').replace('-', '0')) || 0;
-          payload.water = currentWater + numVal;
+          const currentWater = getCardValue('Water') || 0;
+          const newWater = currentWater + numVal;
+          basePayload.water = newWater;
           break;
         case 'Sleep':
-          // Sleep overwrites or accumulates? Usually daily sleep is entered as total or sessions.
-          // Let's assume overwrite or single entry for now based on UI "Edit".
-          // Actually user might want to add. But for "sleepHours", usually it's "I slept 8 hours".
-          payload.sleepHours = numVal;
-          payload.sleep_hours = numVal;
+          basePayload.sleep_hours = numVal;
+          basePayload.sleepHours = numVal;
           break;
         case 'Steps':
-          // Steps accumulate
-          const currentSteps = parseFloat((getCurrentValue() || '0').replace('-', '0')) || 0;
-          payload.stepsCount = currentSteps + numVal;
-          payload.steps_count = currentSteps + numVal;
+          const currentSteps = getCardValue('Steps') || 0;
+          const newSteps = currentSteps + numVal;
+          basePayload.steps_count = newSteps;
+          basePayload.stepsCount = newSteps;
           break;
         default: break;
       }
 
-      const response = await saveHealthData(userId, payload);
+      console.log('[Dashboard] Saving FULL payload:', JSON.stringify(basePayload));
+      const response = await saveHealthData(userId, basePayload);
       if (response && response.success) {
         // Refresh data
         await fetchData();
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save health data:', error);
+      console.error('Error Response:', error.response?.data);
+      console.error('Error Status:', error.response?.status);
     } finally {
       setModalVisible(false);
       setEditingMetric(null);

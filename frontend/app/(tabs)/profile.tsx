@@ -3,14 +3,17 @@ import { View, Text, ScrollView, TouchableOpacity, Platform, Image, Alert, Activ
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import storage from '../utils/storage';
-import { getUserProfile, getMissionsByType, getUserMissions, syncClerkUser } from '../service/InfinityhealthApi';
+import { getUserProfile, getMissionsByType, getUserMissions, syncClerkUser, getLevelByExp, getLevelById, rankUpUser } from '../service/InfinityhealthApi';
 import { useUser, useAuth } from '@clerk/clerk-expo';
 
 import LogoutModal from '../shared/LogoutModal';
 import ImagePickerModal from '../shared/ImagePickerModal';
 import ChallengeModal from '../shared/ChallengeModal';
+import CustomAlert from '../shared/CustomAlert';
 import * as ImagePicker from 'expo-image-picker';
+import * as Notifications from 'expo-notifications';
 import { Mission, MissionWithStatus } from '../interface/infinityhealth.interface';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ProfileScreen() {
   const { user } = useUser();
@@ -27,11 +30,23 @@ export default function ProfileScreen() {
   const [challengeMission, setChallengeMission] = useState<Mission | null>(null);
   const [userMissionStatus, setUserMissionStatus] = useState<MissionWithStatus | null>(null);
 
+  // Custom Alert State
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    title: '',
+    message: '',
+    onConfirm: undefined as (() => void) | undefined,
+    confirmText: 'OK',
+    icon: undefined as React.ReactNode | undefined,
+    showCancel: true,
+  });
+
   const [userData, setUserData] = useState({
     avatar: 'https://i.pinimg.com/736x/5b/2c/47/5b2c4756f84f6a0478b67df75e2fd1c0.jpg',
     level: 1,
     rank: 'Beginner',
     experience: 0,
+    minExperience: 0,
     maxExperience: 1000,
     totalPoints: 0,
   });
@@ -63,6 +78,7 @@ export default function ProfileScreen() {
                 if (syncData.success && syncData.user) {
                   internalUserId = syncData.user.id.toString();
                   await storage.setItem('internalUserId', internalUserId);
+                  await storage.setItem('userId', internalUserId);
                   console.log('Synced! Internal ID:', internalUserId);
                 }
               } catch (e) {
@@ -80,6 +96,21 @@ export default function ProfileScreen() {
                   experience: res.data?.exp || 0,
                   totalPoints: res.data?.points || 0
                 }));
+
+                // Fetch Level Data by ID to ensure correct progress bar even if XP overflows
+                try {
+                  const currentLevel = res.data?.level_id || 1;
+                  const levelRes = await getLevelById(currentLevel);
+                  if (levelRes.success && levelRes.data) {
+                    setUserData(prev => ({
+                      ...prev,
+                      minExperience: levelRes.data?.min_exp || 0,
+                      maxExperience: levelRes.data?.max_exp || 1000,
+                    }));
+                  }
+                } catch (e) {
+                  console.error('Failed to fetch level data:', e);
+                }
 
                 // Check for Level Challenge
                 const currentLevel = res.data?.level_id || 1;
@@ -112,7 +143,45 @@ export default function ProfileScreen() {
     }, [user])
   );
 
-  const experienceProgress = (userData.experience / userData.maxExperience) * 100;
+  // Notification Handler
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true, // required for newer expo-notifications types
+      shouldShowList: true,
+    }),
+  });
+
+  const hasNotifiedRef = React.useRef(false);
+
+  // Notify user if they are ready to rank up
+  React.useEffect(() => {
+    const checkCapAndNotify = async () => {
+      const nextLevelCap = Math.ceil((userData.level + 1) / 10) * 10;
+      // Check if at cap (10, 20...) and XP is maxed
+      if (userData.level % 10 === 0 && userData.experience >= userData.maxExperience) {
+
+        if (!hasNotifiedRef.current) {
+          hasNotifiedRef.current = true;
+
+          // 1. External Notification (System Tray)
+
+          // 2. In-App Alert
+          Alert.alert(
+            "Rank Up Ready!",
+            "You have reached the level cap! Complete the Rank Up Challenge to proceed to the next level.",
+            [{ text: "OK" }]
+          );
+        }
+      }
+    };
+
+    checkCapAndNotify();
+  }, [userData.level, userData.experience, userData.maxExperience]);
+
+  const experienceProgress = Math.min(100, Math.max(0, ((userData.experience - userData.minExperience) / (userData.maxExperience - userData.minExperience + 1)) * 100)) || 0;
 
   const handlePickImage = () => {
     if (Platform.OS === 'web') {
@@ -190,31 +259,76 @@ export default function ProfileScreen() {
     uploadImage(result);
   };
 
-  const handleRankUpPress = () => {
-    if (!challengeMission) {
-      Alert.alert("Error", "No challenge found for this level!");
+  const handleRankUpPress = async () => {
+    console.log('Rank Up Pressed! Level:', userData.level);
+
+    const showAlert = (title: string, message: string, onConfirm?: () => void, confirmText = "OK", icon?: React.ReactNode, showCancel = true) => {
+      setAlertConfig({ title, message, onConfirm, confirmText, icon, showCancel });
+      setAlertVisible(true);
+    };
+
+    // 1. Check Level Requirement
+    const level = Number(userData.level);
+    if (level % 10 !== 0) {
+      showAlert("Not Ready", `You must reach Level ${Math.ceil(level / 10) * 10} to Rank Up! Continue gaining EXP.`);
       return;
     }
 
+    // 2. Check EXP Requirement
+    if (userData.experience < userData.maxExperience) {
+      showAlert("Not Ready", "You need to max out your experience first!");
+      return;
+    }
+
+    if (!challengeMission) {
+      // If no challenge exists, we might need to assume it's allowed or ask user to contact support.
+      // But for now, let's try to rank up anyway (maybe standard level up logic allows it if no challenge)
+      // Or block it. User said "must do challenge".
+      // Let's try calling rankUpUser regardless. If backend fails, it returns message.
+    }
+
+    // Try to Rank Up
+    // Note: We don't check `isCompleted` frontend-side strictly if we trust backend.
+    // But helpful for UX.
     const isCompleted = userMissionStatus?.user_status?.mission_status === 'completed';
 
-    if (!isCompleted) {
-      Alert.alert("Challenge Incomplete", "You haven't completed the Rank Up Challenge yet!", [
-        { text: "View Challenge", onPress: () => setChallengeModalVisible(true) },
-        { text: "Cancel", style: "cancel" }
-      ]);
-    } else {
-      // Proceed to Rank Up
-      // TODO: Call API to actually level up if backend requires, or just show success
-      Alert.alert("Congratulations!", "You have proved your worth. Ranking Up...", [
-        {
-          text: "Yeah!", onPress: async () => {
-            // Determine logic for simple level up or just refresh
-            // For now, refresh
+    if (challengeMission && !isCompleted) {
+      showAlert("Challenge Incomplete", "You haven't completed the Rank Up Challenge yet!", () => {
+        setChallengeModalVisible(true);
+        setAlertVisible(false); // Close alert when opening challenge
+      }, "View Challenge");
+      return;
+    }
+
+    // Proceed to Rank Up API Call
+    try {
+      const internalId = await storage.getItem('internalUserId');
+      if (internalId) {
+        const res = await rankUpUser(internalId);
+        if (res.success) {
+          showAlert("Congratulations! 🎉", "You have successfully ranked up!\nKeep up the great work!", async () => {
+            // Reload user data
             router.replace('/(tabs)/profile');
-          }
+            setAlertVisible(false);
+          }, "Awesome!", (
+            <View style={{
+              width: 80,
+              height: 80,
+              borderRadius: 40,
+              backgroundColor: '#F3E8FF',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Ionicons name="trophy" size={40} color="#9333EA" />
+            </View>
+          ), false); // Hide Cancel Button
+        } else {
+          showAlert("Rank Up Failed", res.message || "Conditions not met.");
         }
-      ]);
+      }
+    } catch (e) {
+      console.error(e);
+      showAlert("Error", "Something went wrong.");
     }
   };
 
@@ -234,13 +348,43 @@ export default function ProfileScreen() {
 
     // Clear storage
     await storage.removeItem('userId');
+    await storage.removeItem('internalUserId'); // Fix: Clear internal ID
     await storage.removeItem('userEmail');
     await storage.removeItem('userFullName');
     await storage.removeItem('token');
 
     // Router redirect handled by auth state mostly, but for safety:
-    // router.replace('/(auth)/login'); 
+    router.replace('/(auth)/login');
   };
+
+  const getLevelColor = (level: number) => {
+    if (level <= 10) return '#86EFAC'; // Pastel Green
+    if (level <= 20) return '#93C5FD'; // Pastel Blue
+    if (level <= 30) return '#A5B4FC'; // Pastel Indigo
+    if (level <= 40) return '#FDBA74'; // Pastel Orange
+    if (level <= 50) return '#67E8F9'; // Pastel Cyan
+    if (level <= 60) return '#D8B4FE'; // Pastel Violet
+    if (level <= 70) return '#C084FC'; // Pastel Deep Purple
+    if (level <= 80) return '#F472B6'; // Pastel Pink
+    if (level <= 90) return '#FCA5A5'; // Pastel Red
+    return '#FDE047'; // Pastel Gold
+  };
+
+  // Helper to convert hex to rgba for background tint
+  const hexToRgba = (hex: string, opacity: number) => {
+    let c: any;
+    if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+      c = hex.substring(1).split('');
+      if (c.length === 3) {
+        c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+      }
+      c = '0x' + c.join('');
+      return 'rgba(' + [(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',') + ',' + opacity + ')';
+    }
+    return hex;
+  };
+
+  const levelColor = getLevelColor(userData.level);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
@@ -341,12 +485,12 @@ export default function ProfileScreen() {
               width: 50,
               height: 50,
               borderRadius: 25,
-              backgroundColor: '#7DD1E0',
+              backgroundColor: hexToRgba(levelColor, 0.2), // Light background tint
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: 12,
             }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#FFFFFF' }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: levelColor }}>
                 {userData.level}
               </Text>
             </View>
@@ -369,7 +513,7 @@ export default function ProfileScreen() {
                 Experience
               </Text>
               <Text style={{ fontSize: 14, color: '#6B7280' }}>
-                {userData.experience} / {userData.maxExperience}
+                {userData.experience - userData.minExperience} / {userData.maxExperience - userData.minExperience + 1}
               </Text>
             </View>
 
@@ -383,7 +527,7 @@ export default function ProfileScreen() {
               <View style={{
                 width: `${experienceProgress}%`,
                 height: '100%',
-                backgroundColor: '#7DD1E0',
+                backgroundColor: '#7DD1E0', // Fixed Cyan color
                 borderRadius: 6,
               }} />
             </View>
@@ -401,66 +545,83 @@ export default function ProfileScreen() {
             Total Points
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ fontSize: 24, marginRight: 8 }}>💎</Text>
-            <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937' }}>
+            <Image
+              source={require('../../assets/images/point.png')}
+              style={{ width: 20, height: 20, marginRight: 8 }}
+              resizeMode="contain"
+            />
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1F2937' }}>
               {userData.totalPoints}
             </Text>
           </View>
         </View>
 
-        {/* Ranks Up Card - Only show if capped */}
-        {isLevelCapped && (
-          <View style={{
-            backgroundColor: '#F9FAFB',
-            borderRadius: 16,
-            padding: 20,
-            alignItems: 'center',
-          }}>
-            {/* Trophy Icon */}
+        {/* Ranks Up Card - Always Visible */}
+        {/* Ranks Up / Progress Card - Always Visible */}
+        {(() => {
+          const nextLevelCap = Math.ceil((userData.level + 1) / 10) * 10;
+          const isLevelReady = userData.level % 10 === 0 && userData.level >= nextLevelCap;
+          const isExpReady = userData.experience >= userData.maxExperience;
+          const isReadyToRankUp = (userData.level % 10 === 0) && isExpReady;
+
+          return (
             <View style={{
-              width: 60,
-              height: 60,
-              borderRadius: 30,
-              backgroundColor: '#F3E8FF',
+              backgroundColor: '#F3F4F6',
+              borderRadius: 20,
+              padding: 24,
+              marginBottom: 24,
               alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 16,
+              justifyContent: 'center'
             }}>
-              <Ionicons name="trophy" size={32} color="#A855F7" />
-            </View>
-
-            <Text style={{
-              fontSize: 14,
-              color: '#6B7280',
-              textAlign: 'center',
-              marginBottom: 4,
-            }}>
-              Complete missions to earn EXP and Points
-            </Text>
-            <Text style={{
-              fontSize: 14,
-              color: '#6B7280',
-              textAlign: 'center',
-              marginBottom: 20,
-            }}>
-              Use {userData.totalPoints} points and {userData.maxExperience} exp
-            </Text>
-
-            {/* Ranks Up Button */}
-            <TouchableOpacity
-              onPress={handleRankUpPress}
-              style={{
-                backgroundColor: '#F472B6',
-                paddingHorizontal: 32,
-                paddingVertical: 14,
-                borderRadius: 25,
+              {/* Icon Circle */}
+              <View style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: '#E9D5FF', // Light Purple
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16
               }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>
-                Ranks Up!
+                <Ionicons name="trophy-outline" size={28} color="#A855F7" />
+              </View>
+
+              {/* Description Text */}
+              <Text style={{ fontSize: 13, color: '#4B5563', textAlign: 'center', marginBottom: 4 }}>
+                Complete missions to earn EXP and Points
               </Text>
-            </TouchableOpacity>
-          </View>
-        )}
+
+              {/* Requirements Text */}
+              <Text style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20 }}>
+                {isReadyToRankUp
+                  ? "You are ready to ascend!"
+                  : `Use ${nextLevelCap * 100} points and Max EXP`}
+              </Text>
+
+              {/* Button */}
+              <TouchableOpacity
+                onPress={handleRankUpPress}
+                style={{
+                  backgroundColor: '#7DD1E0', // Cyan/Blue matching other UI elements
+                  paddingVertical: 12,
+                  paddingHorizontal: 32,
+                  borderRadius: 25,
+                  shadowColor: '#7DD1E0',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 4,
+                  opacity: isReadyToRankUp ? 1 : 0.6 // Dim if not ready
+                }}
+                disabled={!isReadyToRankUp} // Optional: disable if strictly following "Use X points" logic
+              >
+                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
+                  Ranks Up!
+                </Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })()}
 
         {/* Logout Button */}
         <TouchableOpacity
@@ -478,16 +639,17 @@ export default function ProfileScreen() {
           <Ionicons name="log-out-outline" size={20} color="#EF4444" style={{ marginRight: 8 }} />
           <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#EF4444' }}>Logout</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </ScrollView >
       {/* Logout Modal */}
-      <LogoutModal
+      < LogoutModal
         visible={logoutModalVisible}
-        onClose={() => setLogoutModalVisible(false)}
+        onClose={() => setLogoutModalVisible(false)
+        }
         onConfirm={confirmLogout}
       />
 
       {/* Image Picker Modal */}
-      <ImagePickerModal
+      < ImagePickerModal
         visible={imagePickerModalVisible}
         onClose={() => setImagePickerModalVisible(false)}
         onTakePhoto={takePhoto}
@@ -503,6 +665,17 @@ export default function ProfileScreen() {
           router.push('/components/HomePage/subHomePage/missions');
         }}
       />
-    </View>
+
+      <CustomAlert
+        visible={alertVisible}
+        onClose={() => setAlertVisible(false)}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onConfirm={alertConfig.onConfirm}
+        confirmText={alertConfig.confirmText}
+        icon={alertConfig.icon}
+        showCancel={alertConfig.showCancel}
+      />
+    </View >
   );
 }

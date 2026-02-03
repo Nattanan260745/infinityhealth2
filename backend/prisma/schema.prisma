@@ -18,6 +18,7 @@ model User {
   role        Role      @default(user)
   profileImg  String?   @map("profile_img")
   bio         String?
+  pushToken   String?   @map("push_token")
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
 
@@ -102,6 +103,7 @@ model Mission {
   startTime    String?      @map("start_time")
   endTime      String?      @map("end_time")
   isActive     Boolean      @default(true) @map("is_active")
+  presets      Json?        @map("presets")
 
   userMissions UserMission[]
 
@@ -114,6 +116,7 @@ model Exercise {
   description String?
   type        String
   difficulty  String
+  videoUrl    String? @map("video_url")
 
   @@map("exercises")
 }

@@ -12,8 +12,36 @@ export function RoutineList({ routines }: RoutineListProps) {
     return null;
   }
 
-  const getRoutineStyle = (status: Routine['status']) => {
-    switch (status) {
+  const isOverdue = (routine: Routine) => {
+    if (routine.status === 'completed' || routine.status === 'cancelled') return false;
+    // Assuming time is "HH:MM" 24-hour format logic
+    if (!routine.time || !routine.time.includes(':')) return false;
+
+    const [hStr, mStr] = routine.time.split(':');
+    const scheduledHours = parseInt(hStr, 10);
+    const scheduledMinutes = parseInt(mStr, 10);
+
+    if (isNaN(scheduledHours) || isNaN(scheduledMinutes)) return false;
+
+    const now = new Date();
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
+
+    if (currentHours > scheduledHours) return true;
+    if (currentHours === scheduledHours && currentMinutes > scheduledMinutes) return true;
+
+    return false;
+  };
+
+  const getRoutineStyle = (routine: Routine) => {
+    if (isOverdue(routine)) {
+      return {
+        backgroundColor: '#FEF2F2', // Red-50
+        borderColor: '#F87171', // Red-400
+      };
+    }
+
+    switch (routine.status) {
       case 'completed':
         return {
           backgroundColor: '#ECFDF5',
@@ -21,8 +49,8 @@ export function RoutineList({ routines }: RoutineListProps) {
         };
       case 'cancelled':
         return {
-          backgroundColor: '#FEF2F2',
-          borderColor: '#FECACA',
+          backgroundColor: '#F3F4F6', // Gray/Cancelled
+          borderColor: '#E5E7EB',
         };
       default:
         return {
@@ -32,8 +60,10 @@ export function RoutineList({ routines }: RoutineListProps) {
     }
   };
 
-  const getTextColor = (status: Routine['status']) => {
-    switch (status) {
+  const getTextColor = (routine: Routine) => {
+    if (isOverdue(routine)) return '#B91C1C'; // Red-700
+
+    switch (routine.status) {
       case 'completed':
         return '#059669';
       case 'cancelled':
@@ -43,8 +73,10 @@ export function RoutineList({ routines }: RoutineListProps) {
     }
   };
 
-  const getTimeColor = (status: Routine['status']) => {
-    switch (status) {
+  const getTimeColor = (routine: Routine) => {
+    if (isOverdue(routine)) return '#EF4444'; // Red-500
+
+    switch (routine.status) {
       case 'completed':
         return '#10B981';
       case 'cancelled':
@@ -61,7 +93,7 @@ export function RoutineList({ routines }: RoutineListProps) {
       </Text>
 
       {routines.map((routine) => {
-        const style = getRoutineStyle(routine.status);
+        const style = getRoutineStyle(routine);
         return (
           <TouchableOpacity
             key={routine.id}
@@ -76,13 +108,13 @@ export function RoutineList({ routines }: RoutineListProps) {
               borderColor: style.borderColor,
             }}
           >
-            <StatusIcon status={routine.status} />
+            <StatusIcon status={routine.status} isOverdue={isOverdue(routine)} />
             <View style={{ marginLeft: 16, flex: 1 }}>
               <Text
                 style={{
                   fontSize: 16,
                   fontWeight: '600',
-                  color: getTextColor(routine.status),
+                  color: getTextColor(routine),
                   textDecorationLine: routine.status === 'completed' ? 'line-through' : 'none',
                 }}
               >
@@ -92,7 +124,7 @@ export function RoutineList({ routines }: RoutineListProps) {
                 style={{
                   fontSize: 12,
                   marginTop: 2,
-                  color: getTimeColor(routine.status),
+                  color: getTimeColor(routine),
                 }}
               >
                 {routine.time}

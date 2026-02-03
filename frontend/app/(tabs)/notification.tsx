@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFocusEffect } from 'expo-router';
 import storage from '../utils/storage';
-import { getUserRoutinesByDate, getUserGoalsByDate } from '../service/InfinityhealthApi';
+import { getUserRoutinesByDate, getUserGoalsByDate, getUserProfile } from '../service/InfinityhealthApi';
 
 export default function NotificationScreen() {
     const [notifications, setNotifications] = useState<any[]>([]);
@@ -21,12 +21,29 @@ export default function NotificationScreen() {
             }
 
             const today = new Date().toISOString().split('T')[0];
-            const [routineRes, goalRes] = await Promise.all([
+            const [routineRes, goalRes, profileRes] = await Promise.all([
                 getUserRoutinesByDate(userId, today),
-                getUserGoalsByDate(userId, today)
+                getUserGoalsByDate(userId, today),
+                getUserProfile(userId)
             ]);
 
             let newNotifications: any[] = [];
+
+            // 1. Rank Up Notification (Priority)
+            if (profileRes.success && profileRes.data) {
+                const userLevel = profileRes.data.level_id;
+                // Assuming Level 10 is the cap for Beginner
+                if (userLevel === 10) {
+                    newNotifications.push({
+                        id: 'rank-up-10',
+                        title: 'Rank Up Available! 🏆',
+                        subtitle: 'You reached Level 10. Tap to Rank Up!',
+                        time: 'Now',
+                        type: 'alert', // Use a distinct type or map to existing styles
+                        isLocal: false
+                    });
+                }
+            }
 
             if (routineRes.success && Array.isArray(routineRes.data)) {
                 // Current time in minutes
@@ -78,6 +95,13 @@ export default function NotificationScreen() {
                 newNotifications = [...goalNotifs, ...newNotifications];
             }
 
+            // FILTER DISMISSED NOTIFICATIONS
+            const dismissedKey = `dismissed_notifications_${today}`;
+            const dismissedData = await storage.getItem(dismissedKey);
+            const dismissedIds = dismissedData ? JSON.parse(dismissedData) : [];
+
+            newNotifications = newNotifications.filter(n => !dismissedIds.includes(n.id));
+
             setNotifications(newNotifications);
 
         } catch (error) {
@@ -94,13 +118,40 @@ export default function NotificationScreen() {
         }, [])
     );
 
-    const handleDeleteNotification = (id: string) => {
-        // Just remove from view (Dismiss)
+    const handleDeleteNotification = async (id: string) => {
+        // 1. Update UI immediately
         setNotifications(prev => prev.filter(n => n.id !== id));
+
+        // 2. Persist dismissal
+        const today = new Date().toISOString().split('T')[0];
+        const dismissedKey = `dismissed_notifications_${today}`;
+        try {
+            const dismissedData = await storage.getItem(dismissedKey);
+            const dismissedIds = dismissedData ? JSON.parse(dismissedData) : [];
+            if (!dismissedIds.includes(id)) {
+                dismissedIds.push(id);
+                await storage.setItem(dismissedKey, JSON.stringify(dismissedIds));
+            }
+        } catch (error) {
+            console.error("Failed to save dismissed notification", error);
+        }
     };
 
-    const handleClearAllNotifications = () => {
-        setNotifications([]);
+    const handleClearAllNotifications = async () => {
+        const currentIds = notifications.map(n => n.id);
+        setNotifications([]); // Clear UI immediately
+
+        const today = new Date().toISOString().split('T')[0];
+        const dismissedKey = `dismissed_notifications_${today}`;
+        try {
+            const dismissedData = await storage.getItem(dismissedKey);
+            let dismissedIds = dismissedData ? JSON.parse(dismissedData) : [];
+            // Merge new ids
+            const uniqueIds = Array.from(new Set([...dismissedIds, ...currentIds]));
+            await storage.setItem(dismissedKey, JSON.stringify(uniqueIds));
+        } catch (error) {
+            console.error("Failed to save cleared notifications", error);
+        }
     };
 
     return (
@@ -183,6 +234,7 @@ const styles = StyleSheet.create({
     scrollView: {
         flex: 1,
         padding: 20,
+        paddingBottom: 100, // Safe space for nav bar
     },
     emptyState: {
         alignItems: 'center',

@@ -4,8 +4,9 @@ import { StyleSheet, Platform, Alert } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import storage from "../utils/storage";
 import { HealthCheckResponse } from "../interface/infinityhealth.interface";
-import { getHealthCheck, getUserRoutinesByDate } from "../service/InfinityhealthApi";
+import { getHealthCheck, getUserRoutinesByDate, syncClerkUser } from "../service/InfinityhealthApi";
 import { useUser, useAuth } from "@clerk/clerk-expo";
+import * as Notifications from 'expo-notifications';
 
 const styles = StyleSheet.create({
     container: {
@@ -110,6 +111,7 @@ export const useHomePage = () => {
     const [currentMission, setCurrentMission] = useState(0);
     const [isLoad, setisLoad] = useState<boolean>(false);
     const [userName, setUserName] = useState<string>('User');
+    const [userAvatar, setUserAvatar] = useState<string>('https://i.pravatar.cc/100?img=47');
     const [userId, setUserId] = useState<string | null>(null);
     const [routines, setRoutines] = useState<Routine[]>([]);
 
@@ -156,10 +158,38 @@ export const useHomePage = () => {
         if (user) {
             const name = user.fullName || user.firstName || 'User';
             setUserName(name);
-            setUserId(user.id);
-            await storage.setItem('userId', user.id);
+            // setUserId(user.id); // DO NOT SET CLERK ID IMMEDIATELY to avoid race condition with fetchRoutines
+
+            // Check if we have Internal ID in storage first
+            const cachedInternalId = await storage.getItem('internalUserId');
+            if (cachedInternalId) {
+                setUserId(cachedInternalId);
+                console.log('[HomePage] Loaded cached Internal ID:', cachedInternalId);
+            }
+
+            if (user.imageUrl) {
+                setUserAvatar(user.imageUrl);
+            }
             if (user.primaryEmailAddress) {
-                await storage.setItem('userEmail', user.primaryEmailAddress.emailAddress);
+                const email = user.primaryEmailAddress.emailAddress;
+                await storage.setItem('userEmail', email);
+
+                // SYNC W/ BACKEND TO GET INTERNAL ID
+                try {
+                    const syncRes = await syncClerkUser(email, user.firstName || 'User', user.lastName || '', user.imageUrl || '');
+                    if (syncRes && syncRes.success && (syncRes as any).user) {
+                        const internalId = String(((syncRes as any).user).id);
+                        setUserId(internalId);
+                        await storage.setItem('userId', internalId);
+                        await storage.setItem('internalUserId', internalId);
+                        console.log('[HomePage] User Synced. Internal ID:', internalId);
+                    } else {
+                        // Fallback? If sync fails, we can't really do much API wise if backend requires Int ID.
+                        console.warn('[HomePage] Sync failed or no user returned');
+                    }
+                } catch (e) {
+                    console.error('[HomePage] Failed to sync user:', e);
+                }
             }
         }
     };
@@ -167,6 +197,13 @@ export const useHomePage = () => {
     // Fetch Routines for Selected Date
     const fetchRoutines = useCallback(async () => {
         if (!userId) return;
+
+        // Extra Safety: Check if userId looks like an internal ID (numeric)
+        // If it starts with "user", it's likely a Clerk ID and we should skip to avoid 500 Error
+        if (userId.toString().startsWith('user')) {
+            console.warn('[HomePage] Skipping fetch with likely Clerk ID:', userId);
+            return;
+        }
 
         // Try to find the exact date from weekDays
         let queryDate = '';
@@ -196,6 +233,40 @@ export const useHomePage = () => {
                     status: r.completed ? 'completed' : 'pending' // Map boolean to status string
                 }));
                 setRoutines(mapped);
+
+                // SCHEDULE LOCAL NOTIFICATIONS FOR TODAY'S PENDING ROUTINES
+                // Only if looking at TODAY
+                const todayStr = new Date().toISOString().split('T')[0];
+                if (queryDate === todayStr) {
+                    // Cancel all existing to avoid dupes (optional, but cleaner)
+                    await Notifications.cancelAllScheduledNotificationsAsync();
+
+                    for (const r of mapped) {
+                        if (r.status === 'pending' && r.time) {
+                            const [hours, minutes] = r.time.split(':').map(Number);
+                            const triggerDate = new Date();
+                            triggerDate.setHours(hours, minutes, 0, 0);
+
+                            // Only schedule if time is in future
+                            if (triggerDate > new Date()) {
+                                await Notifications.scheduleNotificationAsync({
+                                    content: {
+                                        title: "InfinityHealth Routine",
+                                        body: `It's time for: ${r.title}`,
+                                        data: { routineId: r.id },
+                                    },
+                                    trigger: {
+                                        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+                                        hour: hours,
+                                        minute: minutes,
+                                        repeats: false,
+                                    },
+                                });
+                                console.log(`Scheduled notification for ${r.title} at ${r.time}`);
+                            }
+                        }
+                    }
+                }
             } else {
                 setRoutines([]);
             }
@@ -276,6 +347,7 @@ export const useHomePage = () => {
         setCurrentMission,
         isLoad,
         userName,
+        userAvatar,
         handleLogout,
         notifications,
         handleDeleteNotification,

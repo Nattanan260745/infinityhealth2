@@ -11,7 +11,9 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMissionPage } from '@/app/hook/useMissionPage';
@@ -31,6 +33,11 @@ const getPresets = (mission: any) => {
   const unit = mission.targetUnit?.toLowerCase() || '';
   const total = mission.total || 0;
 
+  // Case 0: Configurable Presets from Admin
+  if (mission.presets && Array.isArray(mission.presets) && mission.presets.length > 0) {
+    return mission.presets;
+  }
+
   // Case 1: Binary/Daily Task (e.g., "Avoid Fried Food" 0/1 day) -> No +/- buttons
   if (total <= 1 || unit.includes('day') || unit.includes('time') || unit.includes('playlist')) {
     return null; // Signals to render a simple "Done" button
@@ -39,16 +46,16 @@ const getPresets = (mission: any) => {
   // Case 2: Water (Standard)
   if (title.includes('water') || unit.includes('ml')) {
     return [
-      { label: '💧 250ml', value: 250 },
-      { label: '🍼 600ml', value: 600 }
+      { label: '250ml', value: 250 },
+      { label: '600ml', value: 600 }
     ];
   }
 
   // Case 3: Steps (Standard)
   if (title.includes('step') || unit.includes('step')) {
     return [
-      { label: '👣 500', value: 500 },
-      { label: '🏃 1000', value: 1000 }
+      { label: '500', value: 500 },
+      { label: '1000', value: 1000 }
     ];
   }
 
@@ -57,29 +64,29 @@ const getPresets = (mission: any) => {
     // If target is small (<= 20 mins), give smaller increments
     if (total <= 20) {
       return [
-        { label: '⏱️ 5hr', value: 5 },
-        { label: '💪 15m', value: 15 }
+        { label: '5hr', value: 5 },
+        { label: '15m', value: 15 }
       ];
     }
     // Standard duration
     return [
-      { label: '⏱️ 15m', value: 15 },
-      { label: '💪 30m', value: 30 }
+      { label: '15m', value: 15 },
+      { label: '30m', value: 30 }
     ];
   }
 
   // Case 5: Calories/Food
   if (title.includes('cal') || title.includes('food')) {
     return [
-      { label: '🍎 50', value: 50 },
-      { label: '🍔 200', value: 200 }
+      { label: '50', value: 50 },
+      { label: '200', value: 200 }
     ];
   }
 
   // Default fallback
   return [
-    { label: 'Item', value: 1 },
-    { label: 'Pack', value: 5 }
+    { label: '1', value: 1 },
+    { label: '5', value: 5 }
   ];
 };
 
@@ -103,7 +110,6 @@ const QuickUpdateControl = ({ mission, onUpdate }: { mission: any, onUpdate: (m:
           gap: 4
         }}
       >
-        <Ionicons name="checkmark-circle-outline" size={16} color="#FFFFFF" />
         <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>Done</Text>
       </TouchableOpacity>
     );
@@ -178,10 +184,11 @@ export default function MissionsScreen() {
     handleComplete,
     handleQuickUpdate,
     refreshMissions,
-    streak, // added streak
+    streak, // restore streak
     statusModal,
     closeStatusModal,
   } = useMissionPage();
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
@@ -302,7 +309,7 @@ export default function MissionsScreen() {
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingBottom: 30,
+          paddingBottom: Math.max(insets.bottom, 20) + 80, // Dynamic bottom padding
         }}
         refreshControl={
           <RefreshControl
@@ -314,14 +321,11 @@ export default function MissionsScreen() {
         }
       >
         {/* Hero Image */}
-        <View style={{
-          height: 200,
-          backgroundColor: '#FEF3C7',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <Text style={{ fontSize: 100 }}>🧗</Text>
-        </View>
+        <Image
+          source={require('@/assets/images/missions.png')}
+          style={{ width: '100%', height: 200 }}
+          resizeMode="cover"
+        />
 
         <View style={{ paddingHorizontal: 20 }}>
           {/* Header */}
@@ -335,7 +339,7 @@ export default function MissionsScreen() {
             backgroundColor: '#F3F4F6',
             borderRadius: 25,
             padding: 4,
-            marginBottom: 24,
+            marginBottom: 32, // Increased spacing
           }}>
             {tabs.map((tab) => (
               <TouchableOpacity
@@ -395,20 +399,20 @@ export default function MissionsScreen() {
               </View>
 
               {/* Stats Row */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, minWidth: 80, justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 16 }}>⚡</Text>
-                  <Text style={{ marginLeft: 6, fontSize: 14, fontWeight: 'bold', color: '#374151' }}>{totalXP}</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 4, paddingVertical: 8, borderRadius: 12, justifyContent: 'center' }}>
+                  <Image source={require('@/assets/images/energy.png')} style={{ width: 20, height: 20 }} resizeMode="contain" />
+                  <Text style={{ marginLeft: 6, fontSize: 13, fontWeight: 'bold', color: '#374151', flexShrink: 1 }}>{totalXP}</Text>
                 </View>
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, minWidth: 80, justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 16 }}>💎</Text>
-                  <Text style={{ marginLeft: 6, fontSize: 14, fontWeight: 'bold', color: '#374151' }}>{totalGems}</Text>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 4, paddingVertical: 8, borderRadius: 12, justifyContent: 'center' }}>
+                  <Image source={require('@/assets/images/point.png')} style={{ width: 20, height: 20 }} resizeMode="contain" />
+                  <Text style={{ marginLeft: 6, fontSize: 13, fontWeight: 'bold', color: '#374151', flexShrink: 1 }}>{totalGems}</Text>
                 </View>
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, minWidth: 80, justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 16 }}>🔥</Text>
-                  <Text style={{ marginLeft: 6, fontSize: 14, fontWeight: 'bold', color: '#374151' }}>{streak}</Text>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 4, paddingVertical: 8, borderRadius: 12, justifyContent: 'center' }}>
+                  <Image source={require('@/assets/images/streak.png')} style={{ width: 20, height: 20 }} resizeMode="contain" />
+                  <Text style={{ marginLeft: 6, fontSize: 13, fontWeight: 'bold', color: '#374151', flexShrink: 1 }}>{streak}</Text>
                 </View>
               </View>
             </View>
@@ -439,7 +443,7 @@ export default function MissionsScreen() {
               <Ionicons name="alert-circle" size={40} color="#EF4444" />
               <Text style={{ marginTop: 12, color: '#EF4444', textAlign: 'center' }}>{error}</Text>
               <TouchableOpacity
-                onPress={refreshMissions}
+                onPress={() => refreshMissions()}
                 style={{
                   marginTop: 16,
                   backgroundColor: '#EF4444',
@@ -566,7 +570,7 @@ export default function MissionsScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <View style={{ flexDirection: 'row' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
-                    <Text style={{ fontSize: 14 }}>⚡</Text>
+                    <Image source={require('@/assets/images/energy.png')} style={{ width: 16, height: 16 }} resizeMode="contain" />
                     <Text style={{
                       marginLeft: 4,
                       fontSize: 12,
@@ -576,7 +580,7 @@ export default function MissionsScreen() {
                     </Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 14 }}>💎</Text>
+                    <Image source={require('@/assets/images/point.png')} style={{ width: 16, height: 16 }} resizeMode="contain" />
                     <Text style={{
                       marginLeft: 4,
                       fontSize: 12,

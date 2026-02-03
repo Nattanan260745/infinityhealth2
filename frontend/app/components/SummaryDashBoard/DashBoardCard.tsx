@@ -72,7 +72,7 @@ const DashBoardCard: React.FC<DashBoardCardProps> = (props) => {
                             ) : <View />}
 
                             {/* Edit Icon Button */}
-                            {props.onEdit && card.id !== 'BMI' && (
+                            {props.onEdit && card.id !== 'BMI' && card.id !== 'Steps' && (
                                 <TouchableOpacity
                                     onPress={() => props.onEdit && props.onEdit(card.id)}
                                     style={{

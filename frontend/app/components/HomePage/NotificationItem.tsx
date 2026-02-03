@@ -12,8 +12,9 @@ export interface NotificationItemProps {
     onDelete: () => void;
 }
 
-export const NotificationItem: React.FC<NotificationItemProps> = ({ id, title, subtitle, time, type, onDelete }) => {
+import { PanGestureHandler, PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
 
+export const NotificationItem: React.FC<NotificationItemProps> = ({ id, title, subtitle, time, type, onDelete }) => {
     // Config based on type
     const getConfig = () => {
         switch (type) {
@@ -31,51 +32,124 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ id, title, s
     };
 
     const config = getConfig();
+    const DELETE_WIDTH = 80;
+    const translateX = React.useRef(new Animated.Value(0)).current;
 
-    const renderRightActions = (progress: any, dragX: any) => {
-        const trans = dragX.interpolate({
-            inputRange: [-100, 0],
-            outputRange: [1, 0],
-            extrapolate: 'clamp',
-        });
+    const onGestureEvent = Animated.event<PanGestureHandlerGestureEvent>(
+        [{ nativeEvent: { translationX: translateX } }],
+        { useNativeDriver: true }
+    );
 
-        return (
-            <TouchableOpacity onPress={onDelete} style={styles.deleteButton}>
-                <Animated.View style={{ transform: [{ scale: trans }], alignItems: 'center' }}>
-                    <Ionicons name="trash-outline" size={24} color="#FFFFFF" />
-                    <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: 'bold', marginTop: 4 }}>Delete</Text>
-                </Animated.View>
-            </TouchableOpacity>
-        );
+    const onHandlerStateChange = (event: any) => {
+        if (event.nativeEvent.oldState === State.ACTIVE) {
+            const { translationX } = event.nativeEvent;
+            // Snapping logic
+            // If dragged left enough (e.g., -40), snap to open (-DELETE_WIDTH)
+            // Otherwise snap back to 0
+            let toValue = 0;
+            if (translationX < -40) {
+                toValue = -DELETE_WIDTH;
+            } else {
+                toValue = 0;
+            }
+
+            Animated.spring(translateX, {
+                toValue,
+                useNativeDriver: true,
+                friction: 5,
+                tension: 40
+            }).start();
+
+            // Hack: If we snap to open, lock the value so further drags start from there?
+            // Actually PanGesture resets translationX to 0 on new gesture.
+            // Complex handling needed for true 'stateful' drawer properly.
+            // Simplified: Just use offset.
+            translateX.setOffset(toValue);
+            translateX.setValue(0);
+        }
     };
 
+    // BUT simplify: PanGesture is tricky for persistent state without re-renders.
+    // Let's rely on interpolated Clamp for visual, but we need state to know if "Open".
+    // Actually, Re-implementing Swipeable logic custom is error prone.
+    // Let's use a simpler "Overlay" approach with standard Animated.
+
+    // RE-EVALUATION: The user wants "Delete Button Appears, Content Static".
+    // This is EXACTLY standard Swipeable IF we use the 'container' as background and 'children' as foreground?
+    // NO. Standard Swipeable moves the FOREGROUND.
+    // We want FOREGROUND (Card) to stay.
+    // That means Card is NOT the swipeable part?
+    // OR we translate Card by 0?
+
+    // Let's stick to the Custom PanGesture for exact control.
+    // Actually, simpler logic:
+    // Drag -> updates displacement.
+    // UI:
+    //  - Layer 1 (Bottom): Delete Button (Absolute Right).
+    //  - Layer 2 (Top): content Card.
+    // Animation: Move Layer 1 Left? OR Move Layer 2 Left?
+    // User said: "Mission stays still". Content = Layer 2. So Layer 2 Static.
+    // Then Layer 1 (Delete Button) must move LEFT *over* Layer 2?
+    // "Slide to make delete button appear"
+    // Visual: Delete button enters from Right Edge, covering content.
+
+    const deleteTranslateX = translateX.interpolate({
+        inputRange: [-DELETE_WIDTH, 0],
+        outputRange: [0, DELETE_WIDTH], // 0 = fully visible (at right edge), DELETE_WIDTH = hidden offscreen right
+        extrapolate: 'clamp',
+    });
+
     return (
-        <Swipeable renderRightActions={renderRightActions}>
-            <View style={styles.container}>
-                <View style={[styles.iconContainer, { backgroundColor: config.bgColor }]}>
-                    <Ionicons name={config.icon as any} size={24} color={config.color} />
-                </View>
-                <View style={styles.contentContainer}>
-                    <View style={styles.headerRow}>
-                        <Text style={styles.title}>{title}</Text>
+        <View style={styles.wrapper}>
+            <PanGestureHandler
+                onGestureEvent={onGestureEvent}
+                onHandlerStateChange={onHandlerStateChange}
+                activeOffsetX={[-10, 10]} // Only activate horizontal
+            >
+                <Animated.View style={styles.container}>
+                    {/* The Content Card (Static visually, but acts as gestures source) */}
+                    <View style={[styles.innerContainer]}>
+                        <View style={[styles.iconContainer, { backgroundColor: config.bgColor }]}>
+                            <Ionicons name={config.icon as any} size={24} color={config.color} />
+                        </View>
+                        <View style={styles.contentContainer}>
+                            <View style={styles.headerRow}>
+                                <Text style={styles.title}>{title}</Text>
+                            </View>
+                            <Text style={styles.subtitle}>{subtitle}</Text>
+                        </View>
                     </View>
-                    <Text style={styles.subtitle}>{subtitle}</Text>
-                    {/* <Text style={styles.time}>{time}</Text> */}
-                    {/* Time can be part of subtitle or separate, user design shows subtitle like '02.00 PM - Clean up' */}
-                </View>
-            </View>
-        </Swipeable>
+
+                    {/* The Delete Button Overlay */}
+                    <Animated.View style={[styles.deleteButtonContainer, { transform: [{ translateX: deleteTranslateX }] }]}>
+                        <TouchableOpacity onPress={onDelete} style={styles.deleteButton}>
+                            <Ionicons name="trash-outline" size={32} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    </Animated.View>
+
+                </Animated.View>
+            </PanGestureHandler>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    wrapper: {
+        marginBottom: 12,
+        borderRadius: 16,
+        overflow: 'hidden', // Clip the sliding button
+        backgroundColor: 'transparent', // Let inner container handle background
+    },
     container: {
+        width: '100%', // Ensure gesture surface fills width
+    },
+    innerContainer: {
         flexDirection: 'row',
         padding: 16,
-        backgroundColor: '#F3F4F6', // Light gray background like the image
+        backgroundColor: '#F3F4F6',
         borderRadius: 16,
-        marginBottom: 12,
         alignItems: 'center',
+        width: '100%', // Ensure content fills width
     },
     iconContainer: {
         width: 48,
@@ -87,36 +161,39 @@ const styles = StyleSheet.create({
     },
     contentContainer: {
         flex: 1,
+        paddingRight: 8,
     },
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginBottom: 4,
+        flexWrap: 'wrap',
     },
     title: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#4B5563', // Gray-600
+        color: '#4B5563',
+        flexShrink: 1,
     },
     subtitle: {
         fontSize: 14,
-        color: '#6B7280', // Gray-500
+        color: '#6B7280',
+        flexShrink: 1,
+        lineHeight: 20,
     },
-    time: {
-        fontSize: 12,
-        color: '#9CA3AF',
-        marginTop: 4,
+    deleteButtonContainer: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        right: 0,
+        width: 80,
     },
     deleteButton: {
         backgroundColor: '#EF4444',
         justifyContent: 'center',
         alignItems: 'center',
-        width: 90,
+        width: '100%',
         height: '100%',
-        borderRadius: 16, // Match container radius? Maybe problematic with swipe. 
-        // Usually swipe actions are behind. But Swipeable from Gesture Handler handles this.
-        // We might need a wrapper specifically for the swipe styling to match the card height/margins.
-        marginBottom: 12,
-        marginLeft: 8,
+        // Square edge requested
     }
 });

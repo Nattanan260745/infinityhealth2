@@ -18,10 +18,11 @@ import {
 } from '../interface/infinityhealth.interface';
 
 const API_BASE_URL = 'https://infinityhealth2.onrender.com'; // Production URL on Render
+// const API_BASE_URL = 'http://192.168.1.33:3000'; // Local Dev URL (Update with your IP if needed)
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -74,8 +75,8 @@ export const getUserProfile = async (userId: string): Promise<ApiResponse<UserPr
   return response.data;
 };
 
-export const updateUserProfile = async (data: UpdateProfileRequest): Promise<ApiResponse<UserProfile>> => {
-  const response = await api.put<ApiResponse<UserProfile>>('/user/profile', data);
+export const updateUserProfile = async (userId: string, data: UpdateProfileRequest): Promise<ApiResponse<UserProfile>> => {
+  const response = await api.put<ApiResponse<UserProfile>>(`/profile/${userId}`, data);
   return response.data;
 };
 
@@ -165,6 +166,11 @@ export const getAllLevels = async (): Promise<ApiResponse<Level[]>> => {
   return response.data;
 };
 
+export const getLevelById = async (id: number): Promise<ApiResponse<Level>> => {
+  const response = await api.get<ApiResponse<Level>>(`/level/${id}`);
+  return response.data;
+};
+
 export const getLevelByExp = async (exp: number): Promise<ApiResponse<Level>> => {
   const response = await api.get<ApiResponse<Level>>(`/level/exp/${exp}`);
   return response.data;
@@ -173,8 +179,9 @@ export const getLevelByExp = async (exp: number): Promise<ApiResponse<Level>> =>
 // ============================================
 // Health Track
 // ============================================
-export const getHealthTrackToday = async (userId: string): Promise<ApiResponse<HealthTrack>> => {
-  const response = await api.get<ApiResponse<HealthTrack>>(`/health-track/user/${userId}/today`);
+export const getHealthTrackToday = async (userId: string, date?: string): Promise<ApiResponse<HealthTrack>> => {
+  const query = date ? `?date=${date}` : '';
+  const response = await api.get<ApiResponse<HealthTrack>>(`/health-track/user/${userId}/today${query}`);
   return response.data;
 };
 
@@ -247,6 +254,19 @@ export const updateGoal = async (goalId: number, data: any): Promise<ApiResponse
 export const deleteGoal = async (goalId: number): Promise<ApiResponse<any>> => {
   const response = await api.delete<ApiResponse<any>>(`/daily-goal/${goalId}`);
   return response.data;
+};
+
+// Rank Up
+export const rankUpUser = async (userId: string) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/profile/rank-up/${userId}`);
+    return response.data;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message || 'Rank up failed',
+    };
+  }
 };
 
 export default api;

@@ -18,8 +18,11 @@ const getTodayRange = () => {
 // Get all missions (Admin?) or just list
 router.get('/', async (req, res) => {
   try {
+    const { includeInactive } = req.query;
+    const where = includeInactive === 'true' ? {} : { isActive: true };
+
     const missions = await prisma.mission.findMany({
-      where: { isActive: true },
+      where,
       orderBy: [
         { missionType: 'asc' },
         { id: 'desc' }
@@ -99,7 +102,7 @@ router.get('/:missionId', async (req, res) => {
 // Create mission (Admin)
 router.post('/', async (req, res) => {
   try {
-    const { title, type, reward_exp, reward_points, start_time, end_time, description, target_value, target_unit, required_level, duration_days } = req.body;
+    const { title, type, reward_exp, reward_points, start_time, end_time, description, target_value, target_unit, required_level, duration_days, presets } = req.body;
 
     const mission = await prisma.mission.create({
       data: {
@@ -114,7 +117,8 @@ router.post('/', async (req, res) => {
         targetUnit: target_unit || 'times',
         requiredLevel: required_level || 1,
         durationDays: duration_days,
-        isActive: true
+        isActive: true,
+        presets: presets
       }
     });
 
@@ -137,7 +141,7 @@ router.put('/:missionId', async (req, res) => {
   try {
     const { missionId } = req.params;
     const id = parseId(missionId);
-    const { title, type, reward_exp, reward_points, start_time, end_time, description, is_active } = req.body;
+    const { title, type, reward_exp, reward_points, start_time, end_time, description, is_active, presets } = req.body;
 
     const dataToUpdate = {};
     if (title !== undefined) dataToUpdate.missionName = title;
@@ -148,6 +152,7 @@ router.put('/:missionId', async (req, res) => {
     if (end_time !== undefined) dataToUpdate.endTime = end_time;
     if (description !== undefined) dataToUpdate.description = description;
     if (is_active !== undefined) dataToUpdate.isActive = is_active;
+    if (presets !== undefined) dataToUpdate.presets = presets;
 
     const mission = await prisma.mission.update({
       where: { id: id },
@@ -174,9 +179,15 @@ router.delete('/:missionId', async (req, res) => {
     const { missionId } = req.params;
     const id = parseId(missionId);
 
+    // Delete related UserMissions first to avoid P2003 Foreign Key constraint
+    await prisma.userMission.deleteMany({
+      where: { missionId: id }
+    });
+
     await prisma.mission.delete({
       where: { id: id }
     });
+
 
     res.json({
       success: true,
@@ -255,6 +266,8 @@ router.get('/user/:userId', async (req, res) => {
         // Hook: if (titleLower.includes...) and mission.type === 'challenge'
         // Prisma Enum is DAILY, CHALLENGE. Frontend hook checks `mission.type === 'challenge'` (lowercase).
         // I need to lowerCase it.
+
+        presets: mission.presets,
 
         user_status: userMission ? {
           mission_status: userMission.status ? 'completed' : 'in_progress',
@@ -427,12 +440,8 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
       const currentExp = userStats.currentExp + rewards.exp;
 
       // Level logic
-      const levelObj = await prisma.level.findFirst({
-        where: { minExp: { lte: currentExp } },
-        orderBy: { levelNumber: 'desc' }
-      });
-
-      const newLevel = levelObj ? levelObj.levelNumber : userStats.level;
+      const { calculateLevelWithCap } = require('../utils/levelUtils');
+      const newLevel = await calculateLevelWithCap(userStats.level, currentExp, uid);
 
       await prisma.userStats.update({
         where: { userId: uid },

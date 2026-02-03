@@ -77,6 +77,7 @@ export interface UserProfileData {
 export interface UpdateProfileRequest {
   fullName?: string;
   avatar?: string;
+  pushToken?: string;
 }
 
 //-----------------------------------------------
@@ -103,6 +104,7 @@ export interface Mission {
   target_value: number;     // เป้าหมายของภารกิจ
   target_unit: string;      // หน่วย (ml, steps, minutes, etc.)
   is_active: boolean;
+  presets?: any[];
   createdAt: string;
   updatedAt: string;
 }
@@ -134,6 +136,7 @@ export interface MissionDisplay {
   targetValue: number;
   targetUnit: string;
   isLocked: boolean;
+  presets?: any[];
 }
 
 export interface MissionRewards {
@@ -156,14 +159,14 @@ export interface CompleteMissionResponse {
 //-----------------------------------------------
 // Exercise
 export interface Exercise {
-  _id: string;
-  type: 'cardio' | 'weight';
-  difficulty: 'easy' | 'medium' | 'hard';
+  id: number;
+  type: string; // 'cardio' | 'weight' | 'weight_full_body' etc.
+  difficulty: 'beginner' | 'intermediate' | 'expert';
   title: string;
   description: string;
-  video_url?: string;
-  createdAt: string;
-  updatedAt: string;
+  videoUrl?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 //-----------------------------------------------

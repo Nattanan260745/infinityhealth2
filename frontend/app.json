@@ -38,6 +38,12 @@
           "photosPermission": "The app accesses your photos to let you set your profile picture.",
           "cameraPermission": "The app accesses your camera to let you take a profile picture."
         }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Allow Infinity Health to access your device motion to count your steps."
+        }
       ]
     ],
     "experiments": {

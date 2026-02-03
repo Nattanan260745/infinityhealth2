@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Modal, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
+import { View, Text, Modal, StyleSheet, TouchableOpacity, Animated, Easing, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export interface StatusModalProps {
@@ -20,19 +20,19 @@ export default function StatusModal({ visible, type, title, message, onClose }: 
                 Animated.timing(opacity, {
                     toValue: 1,
                     duration: 200,
-                    useNativeDriver: true,
+                    useNativeDriver: Platform.OS !== 'web',
                 }),
                 Animated.spring(scale, {
                     toValue: 1,
                     friction: 5,
-                    useNativeDriver: true,
+                    useNativeDriver: Platform.OS !== 'web',
                 })
             ]).start();
         } else {
             Animated.timing(opacity, {
                 toValue: 0,
                 duration: 150,
-                useNativeDriver: true,
+                useNativeDriver: Platform.OS !== 'web',
             }).start();
         }
     }, [visible]);

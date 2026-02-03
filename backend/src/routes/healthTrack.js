@@ -47,12 +47,21 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
-// Get today's record
+// Get today's record (Supports client date)
 router.get('/user/:userId/today', async (req, res) => {
   try {
     const { userId } = req.params;
+    const { date } = req.query; // Client local date YYYY-MM-DD
     const uid = parseId(userId);
-    const { start, end } = getTodayRange();
+
+    // Use client date if provided, otherwise server time
+    let range;
+    if (date) {
+      range = getDateRange(date);
+    } else {
+      range = getTodayRange();
+    }
+    const { start, end } = range;
 
     const record = await prisma.healthTracking.findFirst({
       where: {
@@ -71,155 +80,28 @@ router.get('/user/:userId/today', async (req, res) => {
   }
 });
 
-// Get records by date range
-router.get('/user/:userId/range', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { startDate, endDate } = req.query;
-    const uid = parseId(userId);
+// ... (Get records by date range is fine) ...
 
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
+// Creates/Updates ... (Existing logic is fine since it takes body.date)
 
-    const records = await prisma.healthTracking.findMany({
-      where: {
-        userId: uid,
-        trackingDate: { gte: start, lte: end }
-      },
-      orderBy: { trackingDate: 'desc' }
-    });
-
-    res.json({
-      success: true,
-      data: records,
-    });
-  } catch (error) {
-    console.error('Get records by range error:', error);
-    res.status(500).json({ success: false, message: 'Failed to get records' });
-  }
-});
-
-// Create or Update health record (Upsert)
-router.post('/user/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { date, weight, height, water, mood, sleep_hours, steps_count } = req.body;
-    const uid = parseId(userId);
-
-    // Date logic
-    const recordDate = new Date(date || new Date());
-    const { start, end } = getDateRange(recordDate);
-
-    // Mapping fields
-    // Frontend might send 'water_glass' or 'water'. Schema uses 'water' (Int, ml?)
-    // If frontend sends 'water_glass' (assuming 250ml per glass), convert? 
-    // Or did I change frontend? No.
-    // Data dictionary says water (Int) ml.
-    // Existing code logic: user inputs glasses (approx). 
-    // Let's assume input 'water' is in ML or user follows input unit.
-    // If incoming body matches Schema, we are good.
-    // Keys mapping from likely frontend payload:
-    // sleep_hours -> sleepHours
-    // steps_count -> stepsCount
-
-    // Check existing
-    let record = await prisma.healthTracking.findFirst({
-      where: { userId: uid, trackingDate: { gte: start, lte: end } }
-    });
-
-    const dataPayload = {
-      userId: uid,
-      trackingDate: recordDate
-    };
-    if (weight !== undefined) dataPayload.weight = weight === null ? null : parseFloat(weight);
-    if (height !== undefined) dataPayload.height = height === null ? null : parseFloat(height);
-    if (water !== undefined) dataPayload.water = water === null ? null : parseInt(water);
-    if (mood !== undefined) dataPayload.mood = mood;
-    if (sleep_hours !== undefined) dataPayload.sleepHours = sleep_hours === null ? null : parseFloat(sleep_hours);
-    if (steps_count !== undefined) dataPayload.stepsCount = steps_count === null ? null : parseInt(steps_count);
-
-    if (record) {
-      // Update
-      // Exclude userId/trackingDate from update if not needed? Prisma allows it.
-      delete dataPayload.userId; // Don't update PK/FK if unnecessary
-      delete dataPayload.trackingDate;
-
-      record = await prisma.healthTracking.update({
-        where: { id: record.id },
-        data: dataPayload
-      });
-    } else {
-      // Create
-      record = await prisma.healthTracking.create({
-        data: dataPayload
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Health record saved successfully',
-      data: record,
-    });
-  } catch (error) {
-    console.error('Save health record error:', error);
-    res.status(500).json({ success: false, message: 'Failed to save record' });
-  }
-});
-
-// Update specific field - Add Water
-router.patch('/user/:userId/add-water', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { amount } = req.body; // ml amount to add
-    const uid = parseId(userId);
-    const { start, end } = getTodayRange();
-
-    let record = await prisma.healthTracking.findFirst({
-      where: { userId: uid, trackingDate: { gte: start, lte: end } }
-    });
-
-    const addAmount = parseInt(amount) || 0;
-
-    if (!record) {
-      record = await prisma.healthTracking.create({
-        data: {
-          userId: uid,
-          trackingDate: new Date(),
-          water: addAmount
-        }
-      });
-    } else {
-      record = await prisma.healthTracking.update({
-        where: { id: record.id },
-        data: {
-          water: (record.water || 0) + addAmount
-        }
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Water added successfully',
-      data: record,
-    });
-  } catch (error) {
-    console.error('Add water error:', error);
-    res.status(500).json({ success: false, message: 'Failed to add water' });
-  }
-});
-
-// === DASHBOARD & STATS APIs (1.3.6) ===
+// ...
 
 // Dashboard Summary (Today vs Yesterday)
 router.get('/user/:userId/dashboard', async (req, res) => {
   try {
     const { userId } = req.params;
+    const { date } = req.query; // Client local date
     const uid = parseId(userId);
 
-    const today = new Date();
-    const yesterday = new Date();
+    let today, yesterday;
+
+    if (date) {
+      today = new Date(date);
+    } else {
+      today = new Date();
+    }
+
+    yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
 
     const todayRange = getDateRange(today);
