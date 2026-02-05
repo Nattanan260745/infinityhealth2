@@ -82,7 +82,83 @@ router.get('/user/:userId/today', async (req, res) => {
 
 // ... (Get records by date range is fine) ...
 
-// Creates/Updates ... (Existing logic is fine since it takes body.date)
+// Creates/Updates Health Record
+router.post('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { date, weight, height, water, sleep_hours, sleepHours, steps_count, stepsCount, id } = req.body;
+    const uid = parseId(userId);
+
+    // Normalize keys (frontend handles this, but good to be safe)
+    const sleepVal = sleep_hours !== undefined ? sleep_hours : sleepHours;
+    const stepsVal = steps_count !== undefined ? steps_count : stepsCount;
+
+    // Use specific date or today
+    let targetDate;
+    let range;
+    if (date) {
+      targetDate = new Date(date);
+      range = getDateRange(date);
+    } else {
+      targetDate = new Date();
+      range = getTodayRange();
+    }
+
+    // Upsert Logic:
+    // If ID provided, update that specific record.
+    // If NOT provided, try to find record for that DATE.
+    // If found, update. If not, create.
+
+    let recordId = id;
+
+    if (!recordId) {
+      const existing = await prisma.healthTracking.findFirst({
+        where: {
+          userId: uid,
+          trackingDate: { gte: range.start, lte: range.end }
+        }
+      });
+      if (existing) {
+        recordId = existing.id;
+      }
+    }
+
+    let result;
+
+    const dataPayload = {
+      userId: uid,
+      trackingDate: targetDate, // Will be overwritten by existing date if update, usually fine as range matches
+      ...(weight !== undefined && { weight: parseFloat(weight) }),
+      ...(height !== undefined && { height: parseFloat(height) }),
+      ...(water !== undefined && { water: parseInt(water) }),
+      ...(sleepVal !== undefined && { sleepHours: parseFloat(sleepVal) }),
+      ...(stepsVal !== undefined && { stepsCount: parseInt(stepsVal) }),
+    };
+
+    if (recordId) {
+      // Update
+      result = await prisma.healthTracking.update({
+        where: { id: recordId },
+        data: dataPayload
+      });
+    } else {
+      // Create
+      result = await prisma.healthTracking.create({
+        data: dataPayload
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result,
+      message: 'Health data saved successfully'
+    });
+
+  } catch (error) {
+    console.error('Save health data error:', error);
+    res.status(500).json({ success: false, message: 'Failed to save health data' });
+  }
+});
 
 // ...
 

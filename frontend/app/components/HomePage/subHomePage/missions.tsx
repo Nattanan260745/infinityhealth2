@@ -309,7 +309,7 @@ export default function MissionsScreen() {
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingBottom: Math.max(insets.bottom, 20) + 80, // Dynamic bottom padding
+          paddingBottom: Math.max(insets.bottom, 30) + 120, // Dynamic bottom padding
         }}
         refreshControl={
           <RefreshControl

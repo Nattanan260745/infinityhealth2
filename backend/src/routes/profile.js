@@ -6,6 +6,62 @@ const router = express.Router();
 // Helper: Get integer userId
 const parseId = (id) => parseInt(id, 10);
 
+// Get ALL users
+router.get('/', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      include: { userStats: true },
+      orderBy: { id: 'asc' }
+    });
+
+    const profiles = users.map(user => ({
+      _id: user.userStats?.id || 0,
+      user_id: user.id,
+      level_id: user.userStats?.level || 1,
+      exp: user.userStats?.currentExp || 0,
+      points: user.userStats?.totalPoints || 0,
+      profile_img: user.profileImg,
+      bio: user.bio,
+      user: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role // If role exists
+      }
+    }));
+
+    res.json({
+      success: true,
+      data: profiles,
+    });
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get users' });
+  }
+});
+
+// Delete user by ID
+router.delete('/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const uid = parseId(userId);
+
+    // Delete user (cascade should handle related data if configured, otherwise might need manual delete)
+    // Prisma usually handles cascade if defined in schema.
+    await prisma.user.delete({
+      where: { id: uid }
+    });
+
+    res.json({
+      success: true,
+      message: 'User deleted successfully',
+    });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete user' });
+  }
+});
+
 // Get profile by user ID
 router.get('/:userId', async (req, res) => {
   try {
@@ -81,11 +137,16 @@ router.put('/:userId', async (req, res) => {
       });
     }
 
-    // Update User (img/bio)
+    // Update User (img/bio/name/email)
     const userUpdate = {};
     if (profile_img !== undefined) userUpdate.profileImg = profile_img;
     if (bio !== undefined) userUpdate.bio = bio;
     if (pushToken !== undefined) userUpdate.pushToken = pushToken;
+    // Added fields for admin edit
+    const { firstName, lastName, email } = req.body;
+    if (firstName !== undefined) userUpdate.firstName = firstName;
+    if (lastName !== undefined) userUpdate.lastName = lastName;
+    if (email !== undefined) userUpdate.email = email;
 
     if (Object.keys(userUpdate).length > 0) {
       await prisma.user.update({

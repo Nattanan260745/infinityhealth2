@@ -10,6 +10,7 @@ import ExerciseList from './pages/exercises/ExerciseList';
 import ExerciseForm from './pages/exercises/ExerciseForm';
 import MissionList from './pages/missions/MissionList';
 import MissionForm from './pages/missions/MissionForm';
+import UserList from './pages/users/UserList';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
@@ -32,6 +33,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <Navigate to="/missions" replace />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <UserList />
+                </MainLayout>
               </ProtectedRoute>
             }
           />

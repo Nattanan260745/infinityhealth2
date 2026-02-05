@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform, Dimensions, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DashBoardCard from '../components/SummaryDashBoard/DashBoardCard';
 import { MetricType, StatCard } from '../interface/infinityhealth.interface';
@@ -32,15 +32,15 @@ export default function DashboardPage() {
         userId = await storage.getItem('userId');
       }
       if (!userId) {
-        console.error('User not found');
+        Alert.alert('Error', 'User ID not found. Please log in again.');
         return;
       }
 
       // Check for valid number
+      console.log('Validating value:', value);
       const numVal = parseFloat(value);
       if (isNaN(numVal)) {
-        // simple validation or alert could go here
-        setModalVisible(false);
+        Alert.alert('Invalid Input', 'Please enter a valid number.');
         return;
       }
 
@@ -92,37 +92,41 @@ export default function DashboardPage() {
         case 'Weight': basePayload.weight = numVal; break;
         case 'Height': basePayload.height = numVal; break;
         case 'Water':
-          const currentWater = getCardValue('Water') || 0;
-          const newWater = currentWater + numVal;
-          basePayload.water = newWater;
+          // Water is cumulative usually, but if user edits manually, maybe they mean total?
+          // Let's assume they are setting the TOTAL value they want to see, or we can treat as 'add'?
+          // Usually 'Edit' implies 'Set to'. If they want to add water, they use quick adds.
+          // But here, let's treat it as SET TO for Weight/Height/Sleep.
+          // For consistency, let's treat manual input as SET TO for all.
+          basePayload.water = numVal;
           break;
         case 'Sleep':
           basePayload.sleep_hours = numVal;
           basePayload.sleepHours = numVal;
           break;
         case 'Steps':
-          const currentSteps = getCardValue('Steps') || 0;
-          const newSteps = currentSteps + numVal;
-          basePayload.steps_count = newSteps;
-          basePayload.stepsCount = newSteps;
+          // Steps usually auto-tracked, but if manual override:
+          basePayload.steps_count = numVal;
+          basePayload.stepsCount = numVal;
           break;
         default: break;
       }
 
       console.log('[Dashboard] Saving FULL payload:', JSON.stringify(basePayload));
       const response = await saveHealthData(userId, basePayload);
+
       if (response && response.success) {
+        Alert.alert('Success', `${editingMetric} updated successfully!`);
         // Refresh data
         await fetchData();
+        setModalVisible(false);
+        setEditingMetric(null);
+      } else {
+        throw new Error(response?.message || 'Update failed');
       }
 
     } catch (error: any) {
       console.error('Failed to save health data:', error);
-      console.error('Error Response:', error.response?.data);
-      console.error('Error Status:', error.response?.status);
-    } finally {
-      setModalVisible(false);
-      setEditingMetric(null);
+      Alert.alert('Update Failed', error.message || 'Could not save data. Please try again.');
     }
   };
 
@@ -130,7 +134,8 @@ export default function DashboardPage() {
   const getCurrentValue = () => {
     if (!editingMetric) return '';
     const card = statCards.find(c => c.id === editingMetric);
-    return card ? card.value : '';
+    const val = card ? card.value : '';
+    return val === '-' ? '' : val;
   };
 
   const getCurrentUnit = () => {
@@ -157,7 +162,7 @@ export default function DashboardPage() {
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingBottom: 30,
+          paddingBottom: 100,
         }}
       >
         {/* Stats Grid */}

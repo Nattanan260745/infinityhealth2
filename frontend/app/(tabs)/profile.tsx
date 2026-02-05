@@ -7,6 +7,7 @@ import { getUserProfile, getMissionsByType, getUserMissions, syncClerkUser, getL
 import { useUser, useAuth } from '@clerk/clerk-expo';
 
 import LogoutModal from '../shared/LogoutModal';
+import UsernameModal from '../components/shared/UsernameModal';
 import ImagePickerModal from '../shared/ImagePickerModal';
 import ChallengeModal from '../shared/ChallengeModal';
 import CustomAlert from '../shared/CustomAlert';
@@ -23,6 +24,7 @@ export default function ProfileScreen() {
   const [userName, setUserName] = useState('User');
 
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [usernameModalVisible, setUsernameModalVisible] = useState(false);
   const [imagePickerModalVisible, setImagePickerModalVisible] = useState(false);
   const [challengeModalVisible, setChallengeModalVisible] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -259,6 +261,30 @@ export default function ProfileScreen() {
     uploadImage(result);
   };
 
+  const handleUpdateName = async (newName: string) => {
+    try {
+      // 1. Update Clerk
+      await user?.update({
+        firstName: newName,
+      });
+
+      // 2. Optimistic Update
+      setUserName(newName);
+
+      // 3. Sync with Backend
+      const email = user?.emailAddresses[0]?.emailAddress;
+      const avatar = user?.imageUrl;
+      if (email) {
+        await syncClerkUser(email, newName, user?.lastName || '', avatar);
+      }
+
+      Alert.alert("Success", "Name updated successfully!");
+    } catch (error) {
+      console.error("Failed to update name:", error);
+      Alert.alert("Error", "Could not update name. Please try again.");
+    }
+  };
+
   const handleRankUpPress = async () => {
     console.log('Rank Up Pressed! Level:', userData.level);
 
@@ -393,7 +419,7 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: Platform.OS === 'web' ? 40 : 60,
-          paddingBottom: 30,
+          paddingBottom: 100,
           paddingHorizontal: 20,
         }}
       >
@@ -462,14 +488,25 @@ export default function ProfileScreen() {
           </View>
 
           {/* Username */}
-          <Text style={{
-            fontSize: 22,
-            fontWeight: 'bold',
-            color: '#1F2937',
-            marginTop: 16,
-          }}>
-            {userName}
-          </Text>
+          <TouchableOpacity
+            onPress={() => setUsernameModalVisible(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginTop: 16,
+              marginLeft: 8
+            }}
+          >
+            <Text style={{
+              fontSize: 22,
+              fontWeight: 'bold',
+              color: '#1F2937',
+              marginRight: 8
+            }}>
+              {userName}
+            </Text>
+            <Ionicons name="pencil" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
         </View>
 
         {/* Level Card */}
@@ -646,6 +683,13 @@ export default function ProfileScreen() {
         onClose={() => setLogoutModalVisible(false)
         }
         onConfirm={confirmLogout}
+      />
+
+      <UsernameModal
+        visible={usernameModalVisible}
+        currentName={userName}
+        onClose={() => setUsernameModalVisible(false)}
+        onSave={handleUpdateName}
       />
 
       {/* Image Picker Modal */}

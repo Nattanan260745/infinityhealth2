@@ -175,12 +175,16 @@ export default function DashBoardEditModal({
                                 {/* Input */}
                                 <Text style={styles.label}>{getInputLabel()}</Text>
                                 <TextInput
+                                    ref={(input) => {
+                                        if (input && visible) {
+                                            setTimeout(() => input.focus(), 100);
+                                        }
+                                    }}
                                     value={value}
                                     onChangeText={handleNumericInput}
                                     keyboardType="decimal-pad" // Changed to decimal-pad to allow dots on iOS
                                     placeholder={unit ? `0 ${unit}` : '0'}
                                     style={[styles.input, error ? styles.inputError : null]}
-                                    autoFocus={true}
                                 />
                                 {error && (
                                     <Text style={styles.errorText}>{error}</Text>

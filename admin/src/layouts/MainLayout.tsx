@@ -17,6 +17,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     };
 
     const menuItems = [
+        { label: 'Users', path: '/users' },
         { label: 'Missions', path: '/missions' },
         { label: 'Exercises', path: '/exercises' },
     ];
