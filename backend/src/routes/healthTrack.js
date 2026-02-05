@@ -127,12 +127,12 @@ router.post('/user/:userId', async (req, res) => {
 
     const dataPayload = {
       userId: uid,
-      trackingDate: targetDate, // Will be overwritten by existing date if update, usually fine as range matches
-      ...(weight !== undefined && { weight: parseFloat(weight) }),
-      ...(height !== undefined && { height: parseFloat(height) }),
-      ...(water !== undefined && { water: parseInt(water) }),
-      ...(sleepVal !== undefined && { sleepHours: parseFloat(sleepVal) }),
-      ...(stepsVal !== undefined && { stepsCount: parseInt(stepsVal) }),
+      trackingDate: targetDate,
+      ...(weight !== undefined && !isNaN(parseFloat(weight)) && { weight: parseFloat(weight) }),
+      ...(height !== undefined && !isNaN(parseFloat(height)) && { height: parseFloat(height) }),
+      ...(water !== undefined && !isNaN(parseInt(water, 10)) && { water: parseInt(water, 10) }),
+      ...(sleepVal !== undefined && !isNaN(parseFloat(sleepVal)) && { sleepHours: parseFloat(sleepVal) }),
+      ...(stepsVal !== undefined && !isNaN(parseInt(stepsVal, 10)) && { stepsCount: parseInt(stepsVal, 10) }),
     };
 
     if (recordId) {
