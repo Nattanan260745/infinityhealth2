@@ -87,6 +87,8 @@ router.post('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const { date, weight, height, water, sleep_hours, sleepHours, steps_count, stepsCount, id } = req.body;
+    console.log('--- DEBUG SAVE HEALTH ---');
+    console.log('Body:', JSON.stringify(req.body));
     const uid = parseId(userId);
 
     // Normalize keys (frontend handles this, but good to be safe)
@@ -292,6 +294,7 @@ router.get('/user/:userId/range', async (req, res) => {
       select: {
         trackingDate: true,
         weight: true,
+        height: true,
         sleepHours: true,
         water: true,
         stepsCount: true

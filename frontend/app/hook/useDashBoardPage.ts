@@ -93,9 +93,13 @@ export const useDashBoardPage = () => {
 
             // Update Cards (Today's Data)
             if (displayData) {
+                console.log('[Dashboard Hook] Display Data:', JSON.stringify(displayData));
                 const data = displayData;
                 const weight = typeof data.weight === 'number' ? data.weight : NaN;
                 const height = typeof data.height === 'number' ? data.height : NaN;
+
+                console.log('[Dashboard Hook] Processed Height:', height, 'Raw:', data.height);
+
                 const bmi = (!isNaN(weight) && !isNaN(height) && height > 0)
                     ? (weight / ((height / 100) ** 2)).toFixed(2)
                     : '-';
@@ -108,6 +112,8 @@ export const useDashBoardPage = () => {
                     { id: 'Sleep', icon: 'moon', iconColor: '#FFEA00', value: (data.sleepHours || data.sleep_hours)?.toString() || '-', unit: 'hr', bgColor: '#FAF5DE' },
                     { id: 'Steps', icon: 'footsteps', iconColor: '#6004FF', value: (data.stepsCount || data.steps_count)?.toString() || '-', unit: 'steps', bgColor: '#EAE1F9' },
                 ]);
+            } else {
+                console.log('[Dashboard Hook] No display data found');
             }
 
             // Update Chart (Range Data)
