@@ -40,6 +40,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                     userName={useHomePageController.userName}
                     userAvatar={useHomePageController.userAvatar}
                     date={formattedDate}
+                    unreadCount={useHomePageController.unreadCount}
                 />
             </View>
 

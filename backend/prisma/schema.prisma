@@ -8,67 +8,69 @@ datasource db {
 }
 
 model User {
-  id          Int       @id @default(autoincrement()) @map("user_id")
-  email       String    @unique
+  id          Int      @id @default(autoincrement()) @map("user_id")
+  email       String   @unique
   password    String
-  firstName   String    @map("first_name")
-  lastName    String    @map("last_name")
-  dateOfBirth DateTime  @map("date_of_birth") @db.Date
+  firstName   String   @map("first_name")
+  lastName    String   @map("last_name")
+  dateOfBirth DateTime @map("date_of_birth") @db.Date
   gender      Gender
-  role        Role      @default(user)
-  profileImg  String?   @map("profile_img")
+  role        Role     @default(user)
+  profileImg  String?  @map("profile_img")
   bio         String?
-  pushToken   String?   @map("push_token")
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
+  pushToken   String?  @map("push_token")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
-  userStats     UserStats?
-  userMissions  UserMission[]
+  userStats      UserStats?
+  userMissions   UserMission[]
   healthTracking HealthTracking[]
-  dailyGoals    DailyGoal[]
-  routines      Routine[]
+  dailyGoals     DailyGoal[]
+  routines       Routine[]
+  notifications  Notification[]
+
+  pointHistory     PointHistory[]
+  levelProgression LevelProgression[]
 
   @@map("users")
 }
 
 model DailyGoal {
-    id          Int      @id @default(autoincrement()) @map("goal_id")
-    userId      Int      @map("user_id")
-    title       String
-    goalDate    DateTime @default(now()) @map("goal_date") @db.Date
-    completed   Boolean  @default(false)
-    createdAt   DateTime @default(now()) @map("created_at")
-    updatedAt   DateTime @updatedAt @map("updated_at")
+  id        Int      @id @default(autoincrement()) @map("goal_id")
+  userId    Int      @map("user_id")
+  title     String
+  goalDate  DateTime @default(now()) @map("goal_date") @db.Date
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-    user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
-    @@map("daily_goals")
+  @@map("daily_goals")
 }
 
 model Routine {
-    id            Int      @id @default(autoincrement()) @map("routine_id")
-    userId        Int      @map("user_id")
-    title         String
-    scheduledTime String   @map("scheduled_time")
-    scheduledDate DateTime @default(now()) @map("scheduled_date") @db.Date
-    completed     Boolean  @default(false)
-    createdAt     DateTime @default(now()) @map("created_at")
-    updatedAt     DateTime @updatedAt @map("updated_at")
+  id            Int      @id @default(autoincrement()) @map("routine_id")
+  userId        Int      @map("user_id")
+  title         String
+  scheduledTime String   @map("scheduled_time")
+  scheduledDate DateTime @default(now()) @map("scheduled_date") @db.Date
+  completed     Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-    user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
-    @@map("routines")
+  @@map("routines")
 }
 
-
-
 model UserStats {
-  id             Int      @id @default(autoincrement()) @map("stat_id")
-  userId         Int      @unique @map("user_id")
-  level          Int      @default(1)
-  currentExp     Int      @default(0) @map("current_exp")
-  totalPoints    Int      @default(0) @map("total_points")
-  currentStreak  Int      @default(0) @map("current_streak")
+  id               Int       @id @default(autoincrement()) @map("stat_id")
+  userId           Int       @unique @map("user_id")
+  level            Int       @default(1)
+  currentExp       Int       @default(0) @map("current_exp")
+  totalPoints      Int       @default(0) @map("total_points")
+  currentStreak    Int       @default(0) @map("current_streak")
   lastActivityDate DateTime? @map("last_activity_date") @db.Date
 
   user User @relation(fields: [userId], references: [id])
@@ -90,49 +92,71 @@ model Level {
 }
 
 model Mission {
-  id           Int          @id @default(autoincrement()) @map("mission_id")
-  missionName  String       @map("mission_name")
-  missionType  MissionType  @map("mission_type")
+  id            Int         @id @default(autoincrement()) @map("mission_id")
+  missionName   String      @map("mission_name")
+  missionType   MissionType @map("mission_type")
   requiredLevel Int         @map("required_level")
-  rewardExp    Int          @map("reward_exp")
-  rewardPoints Int          @map("reward_points")
-  targetValue  Int          @map("target_value")
-  targetUnit   String       @map("target_unit")
-  durationDays Int?         @map("duration_days")
-  description  String?
-  startTime    String?      @map("start_time")
-  endTime      String?      @map("end_time")
-  isActive     Boolean      @default(true) @map("is_active")
-  presets      Json?        @map("presets")
+  rewardExp     Int         @map("reward_exp")
+  rewardPoints  Int         @map("reward_points")
+  targetValue   Int         @map("target_value")
+  targetUnit    String      @map("target_unit")
+  durationDays  Int?        @map("duration_days")
+  description   String?
+  startTime     String?     @map("start_time")
+  endTime       String?     @map("end_time")
+  isActive      Boolean     @default(true) @map("is_active")
+  presets       Json?       @map("presets")
 
   userMissions UserMission[]
+  pointHistory PointHistory[]
 
   @@map("missions")
 }
 
-model Exercise {
-  id          Int     @id @default(autoincrement()) @map("exercise_id")
-  title       String
-  description String?
-  type        String
-  difficulty  String
-  videoUrl    String? @map("video_url")
+model ExerciseCategory {
+  id           Int      @id @default(autoincrement()) @map("category_id")
+  categoryName String   @map("category_name")
+  iconUrl      String?  @map("icon_url")
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  @@map("exercises")
+  exercises Exercise[]
+
+  @@map("exercise_categories")
+}
+
+model Exercise {
+  id          Int      @id @default(autoincrement()) @map("video_id")
+  categoryId  Int      @map("category_id")
+  title       String   @map("video_title")
+  videoUrl    String?  @map("video_url")
+  thumbnail   String?  @map("video_thumbnail")
+  difficulty  String   @map("difficulty_level")
+  bodyPart    String?  @map("body_part")
+  duration    Int?     @map("duration_minutes")
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  category ExerciseCategory @relation(fields: [categoryId], references: [id])
+
+  @@map("exercise_videos")
 }
 
 model UserMission {
-  id              Int     @id @default(autoincrement()) @map("user_mission_id")
-  userId          Int     @map("user_id")
-  missionId       Int     @map("mission_id")
-  currentProgress Int     @default(0) @map("current_progress")
-  status          Boolean @default(false)
-  isClaimed       Boolean @default(false) @map("is_claimed")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id              Int       @id @default(autoincrement()) @map("user_mission_id")
+  userId          Int       @map("user_id")
+  missionId       Int       @map("mission_id")
+  startDate       DateTime? @map("start_date") @db.Date
+  endDate         DateTime? @map("end_date") @db.Date
+  currentProgress Int       @default(0) @map("current_progress")
+  status          Boolean   @default(false)
+  completedAt     DateTime? @map("completed_at")
+  isClaimed       Boolean   @default(false) @map("is_claimed")
+  claimedAt       DateTime? @map("claimed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  user    User    @relation(fields: [userId], references: [id])
-  mission Mission @relation(fields: [missionId], references: [id])
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
 
   @@map("user_missions")
 }
@@ -146,7 +170,6 @@ model HealthTracking {
   water        Int?
   sleepHours   Float?   @map("sleep_hours")
   stepsCount   Int?     @map("steps_count")
-  mood         Mood?
 
   user User @relation(fields: [userId], references: [id])
 
@@ -169,10 +192,61 @@ enum MissionType {
   CHALLENGE
 }
 
-enum Mood {
-  Happy
-  Sad
-  Neutral
-  Excited
-  Tired
+model Notification {
+  id          Int              @id @default(autoincrement()) @map("notification_id")
+  userId      Int              @map("user_id")
+  type        NotificationType
+  title       String
+  message     String
+  isRead      Boolean          @default(false) @map("is_read")
+  referenceId Int?             @map("reference_id")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  SYSTEM
+  MISSION_COMPLETED
+  LEVEL_UP
+  ROUTINE_REMINDER
+  CHALLENGE_INVITE
+}
+
+model PointHistory {
+  id           Int       @id @default(autoincrement()) @map("history_id")
+  userId       Int       @map("user_id")
+  missionId    Int?      @map("mission_id")
+  pointsEarned Int       @map("points_earned")
+  pointType    PointType @map("point_type")
+  earnedAt     DateTime  @default(now()) @map("earned_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission Mission? @relation(fields: [missionId], references: [id])
+
+  @@map("point_history")
+}
+
+enum PointType {
+  MISSION
+  STREAK_BONUS
+  CHALLENGE
+  OTHER
+}
+
+
+model LevelProgression {
+  id          Int      @id @default(autoincrement()) @map("progression_id")
+  userId      Int      @map("user_id")
+  oldLevel    Int      @map("old_level")
+  newLevel    Int      @map("new_level")
+  pointsUsed  Int?     @map("points_used")
+  expUsed     Int?     @map("exp_used")
+  leveledUpAt DateTime @default(now()) @map("leveled_up_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("level_progression")
 }

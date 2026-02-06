@@ -5,108 +5,100 @@ import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFocusEffect } from 'expo-router';
 import storage from '../utils/storage';
-import { getUserRoutinesByDate, getUserGoalsByDate, getUserProfile } from '../service/InfinityhealthApi';
+import {
+    getUserNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    deleteNotification,
+    getUserRoutinesByDate
+} from '../service/InfinityhealthApi';
+import { Notification } from '../interface/infinityhealth.interface';
+
+import { usePushNotifications } from '../hook/usePushNotifications';
 
 export default function NotificationScreen() {
-    const [notifications, setNotifications] = useState<any[]>([]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const { notification } = usePushNotifications(); // Listen for incoming pushes
+
+    // Helper to get today YYYY-MM-DD in local time
+    const getTodayStr = () => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
 
     const fetchNotifications = async () => {
         setIsLoading(true);
         try {
             const userId = await storage.getItem('userId');
+            console.log('[NotificationScreen] Fetching for UserId:', userId);
+
             if (!userId) {
+                console.log('[NotificationScreen] No UserId found in storage');
                 setNotifications([]);
                 return;
             }
 
-            const today = new Date().toISOString().split('T')[0];
-            const [routineRes, goalRes, profileRes] = await Promise.all([
-                getUserRoutinesByDate(userId, today),
-                getUserGoalsByDate(userId, today),
-                getUserProfile(userId)
-            ]);
-
-            let newNotifications: any[] = [];
-
-            // 1. Rank Up Notification (Priority)
-            if (profileRes.success && profileRes.data) {
-                const userLevel = profileRes.data.level_id;
-                // Assuming Level 10 is the cap for Beginner
-                if (userLevel === 10) {
-                    newNotifications.push({
-                        id: 'rank-up-10',
-                        title: 'Rank Up Available! 🏆',
-                        subtitle: 'You reached Level 10. Tap to Rank Up!',
-                        time: 'Now',
-                        type: 'alert', // Use a distinct type or map to existing styles
-                        isLocal: false
-                    });
-                }
+            // 1. Fetch Backend Notifications
+            const notifRes = await getUserNotifications(userId);
+            let backendNotifs: Notification[] = [];
+            if (notifRes.success && notifRes.data) {
+                backendNotifs = notifRes.data;
             }
+
+            // 2. Fetch Today's Routines (Local Notifications)
+            const today = getTodayStr();
+            console.log('[NotificationScreen] Fetching routines for local display:', today);
+
+            // Note: getUserRoutinesByDate returns { success: boolean, data: Routine[] }
+            const routineRes = await getUserRoutinesByDate(userId, today);
+            let routineNotifs: Notification[] = [];
 
             if (routineRes.success && Array.isArray(routineRes.data)) {
-                // Current time in minutes
-                const now = new Date();
-                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                // Check local read status for routines
+                const readKey = `read_notifications_${today}`;
+                const readData = await storage.getItem(readKey);
+                const readIds: number[] = readData ? JSON.parse(readData) : [];
 
-                const routineNotifs = routineRes.data
-                    .filter((r: any) => {
-                        // 1. Filter out completed tasks
-                        if (r.completed) return false;
+                routineNotifs = routineRes.data.map((r: any) => {
+                    // Create a valid date object for sorting
+                    // r.scheduledTime is "HH:MM"
+                    let createdDate = new Date();
+                    if (r.scheduledTime) {
+                        const [h, m] = r.scheduledTime.split(':');
+                        createdDate.setHours(parseInt(h), parseInt(m), 0, 0);
+                    }
 
-                        // 2. Time Logic
-                        if (!r.scheduledTime) return true; // No time = All day, keep it
-
-                        const [h, m] = r.scheduledTime.split(':').map(Number);
-                        const routineMinutes = h * 60 + m;
-
-                        // Calculate difference
-                        // If routine is in the past (overdue) -> Keep it
-                        // If routine is in the future -> Keep ONLY if within 2 hours (120 mins)
-                        const diff = routineMinutes - currentMinutes;
-
-                        // diff < 0 means past
-                        // diff <= 120 means within 2 hours
-                        return diff <= 120; // Shows Overdue + Upcoming in 2 hours
-                    })
-                    .map((r: any) => ({
-                        id: `routine-${r.id}`,
-                        title: r.title,
-                        subtitle: r.scheduledTime ? `Scheduled at ${r.scheduledTime}` : 'Check your routine',
-                        time: r.scheduledTime ? r.scheduledTime : 'Today',
-                        type: 'planner',
-                        isLocal: false
-                    }));
-                newNotifications = [...routineNotifs, ...newNotifications];
+                    // Use Negative ID for Routines to avoid collision with DB IDs
+                    // r.id is likely number
+                    return {
+                        id: -Math.abs(r.id),
+                        userId: parseInt(userId),
+                        type: 'ROUTINE',
+                        title: 'Routine Reminder',
+                        message: `It's time for: ${r.title}`,
+                        isRead: readIds.includes(r.id), // Check against original ID
+                        referenceId: r.id, // Keep original ID here
+                        createdAt: createdDate.toISOString()
+                    };
+                });
             }
 
-            if (goalRes.success && Array.isArray(goalRes.data)) {
-                const goalNotifs = goalRes.data
-                    .filter((g: any) => !g.completed) // Filter out completed goals
-                    .map((g: any) => ({
-                        id: `goal-${g.id}`,
-                        title: 'Goal Reminder: ' + g.title,
-                        subtitle: 'Keep up the good work!',
-                        time: 'Today',
-                        type: 'success',
-                        isLocal: false
-                    }));
-                newNotifications = [...goalNotifs, ...newNotifications];
+            // 3. Merge & Sort
+            const allNotifs = [...backendNotifs, ...routineNotifs];
+            const sorted = allNotifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+            console.log(`[NotificationScreen] Merged: ${backendNotifs.length} Backend + ${routineNotifs.length} Routines`);
+            if (routineNotifs.length > 0) {
+                console.log('[NotificationScreen] Sample Routine Time:', routineNotifs[0].createdAt, 'Original Time:', routineRes.data[0].scheduledTime);
             }
-
-            // FILTER DISMISSED NOTIFICATIONS
-            const dismissedKey = `dismissed_notifications_${today}`;
-            const dismissedData = await storage.getItem(dismissedKey);
-            const dismissedIds = dismissedData ? JSON.parse(dismissedData) : [];
-
-            newNotifications = newNotifications.filter(n => !dismissedIds.includes(n.id));
-
-            setNotifications(newNotifications);
+            setNotifications(sorted);
 
         } catch (error) {
             console.error('Error fetching notifications:', error);
-            setNotifications([]);
         } finally {
             setIsLoading(false);
         }
@@ -118,40 +110,115 @@ export default function NotificationScreen() {
         }, [])
     );
 
-    const handleDeleteNotification = async (id: string) => {
-        // 1. Update UI immediately
+    // Refresh when a new notification arrives while looking at this screen
+    React.useEffect(() => {
+        if (notification) {
+            console.log('New notification received, refreshing list...');
+            fetchNotifications();
+        }
+    }, [notification]);
+
+    const handlePressNotification = async (notif: Notification) => {
+        if (notif.isRead) return;
+
+        // 1. Optimistic Update (Immediate UI feedback)
+        setNotifications(prev => prev.map(n =>
+            n.id === notif.id ? { ...n, isRead: true } : n
+        ));
+
+        // 2. Mark as Read
+        if (notif.type === 'ROUTINE') {
+            // Local Storage Logic
+            try {
+                const today = getTodayStr();
+                const readKey = `read_notifications_${today}`;
+                const readData = await storage.getItem(readKey);
+                const readIds: number[] = readData ? JSON.parse(readData) : [];
+
+                // Use referenceId because id is negative
+                const originalId = notif.referenceId || Math.abs(notif.id);
+
+                if (!readIds.includes(originalId)) {
+                    readIds.push(originalId);
+                    await storage.setItem(readKey, JSON.stringify(readIds));
+                }
+            } catch (e) {
+                console.error('Failed to mark routine locally:', e);
+            }
+        } else {
+            // API Logic
+            try {
+                await markNotificationAsRead(notif.id);
+                console.log(`Notification ${notif.id} marked as read`);
+            } catch (error) {
+                console.error('Failed to mark notification as read:', error);
+            }
+        }
+    };
+
+    const handleDeleteNotification = async (id: number) => {
+        // 1. Optimistic Update
         setNotifications(prev => prev.filter(n => n.id !== id));
 
-        // 2. Persist dismissal
-        const today = new Date().toISOString().split('T')[0];
-        const dismissedKey = `dismissed_notifications_${today}`;
-        try {
-            const dismissedData = await storage.getItem(dismissedKey);
-            const dismissedIds = dismissedData ? JSON.parse(dismissedData) : [];
-            if (!dismissedIds.includes(id)) {
-                dismissedIds.push(id);
-                await storage.setItem(dismissedKey, JSON.stringify(dismissedIds));
+        // 2. Call API (Only for backend notifications)
+        if (id > 0) {
+            try {
+                await deleteNotification(id);
+            } catch (error) {
+                console.error("Failed to delete notification", error);
             }
-        } catch (error) {
-            console.error("Failed to save dismissed notification", error);
         }
     };
 
     const handleClearAllNotifications = async () => {
-        const currentIds = notifications.map(n => n.id);
-        setNotifications([]); // Clear UI immediately
+        // Optimistic Clear
+        const oldNotifs = [...notifications];
+        setNotifications([]);
 
-        const today = new Date().toISOString().split('T')[0];
-        const dismissedKey = `dismissed_notifications_${today}`;
         try {
-            const dismissedData = await storage.getItem(dismissedKey);
-            let dismissedIds = dismissedData ? JSON.parse(dismissedData) : [];
-            // Merge new ids
-            const uniqueIds = Array.from(new Set([...dismissedIds, ...currentIds]));
-            await storage.setItem(dismissedKey, JSON.stringify(uniqueIds));
+            const userId = await storage.getItem('userId');
+            if (userId) {
+                // Clear Backend
+                await markAllNotificationsAsRead(userId);
+
+                // Clear Local (Mark all today's routines as read)
+                const today = getTodayStr();
+                const routineNotifs = oldNotifs.filter(n => n.type === 'ROUTINE');
+                const readKey = `read_notifications_${today}`;
+                const readData = await storage.getItem(readKey);
+                let readIds: number[] = readData ? JSON.parse(readData) : [];
+
+                routineNotifs.forEach(n => {
+                    const originalId = n.referenceId || Math.abs(n.id);
+                    if (!readIds.includes(originalId)) readIds.push(originalId);
+                });
+                await storage.setItem(readKey, JSON.stringify(readIds));
+            }
         } catch (error) {
-            console.error("Failed to save cleared notifications", error);
+            console.error("Failed to clear notifications", error);
+            setNotifications(oldNotifs); // Revert on error
         }
+    };
+
+    const getTimeAgo = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.round(diffMs / 60000);
+        const diffHours = Math.round(diffMins / 60);
+        const diffDays = Math.round(diffHours / 24);
+
+        if (diffMs < 0) {
+            // Future date: Show "Today at HH:MM"
+            const hours = date.getHours().toString().padStart(2, '0');
+            const mins = date.getMinutes().toString().padStart(2, '0');
+            return `Today at ${hours}:${mins}`;
+        }
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} min ago`;
+        if (diffHours < 24) return `${diffHours} hours ago`;
+        return `${diffDays} days ago`;
     };
 
     return (
@@ -160,12 +227,13 @@ export default function NotificationScreen() {
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Notification</Text>
-                    <TouchableOpacity
+                    {/* Clear All Button - Optional */}
+                    {/* <TouchableOpacity
                         onPress={handleClearAllNotifications}
                         style={styles.clearButton}
                     >
-                        <Text style={styles.clearButtonText}>Clear All</Text>
-                    </TouchableOpacity>
+                        <Text style={styles.clearButtonText}>Read All</Text>
+                    </TouchableOpacity> */}
                 </View>
 
                 {isLoading ? (
@@ -175,14 +243,16 @@ export default function NotificationScreen() {
                 ) : (
                     <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                         {notifications.length > 0 ? (
-                            notifications.map((notif: any) => (
+                            notifications.map((notif: Notification) => (
                                 <NotificationItem
                                     key={notif.id}
                                     id={notif.id}
                                     title={notif.title}
-                                    subtitle={notif.subtitle}
-                                    time={notif.time}
+                                    subtitle={notif.message}
+                                    time={getTimeAgo(notif.createdAt)}
                                     type={notif.type}
+                                    isRead={notif.isRead}
+                                    onPress={() => handlePressNotification(notif)}
                                     onDelete={() => handleDeleteNotification(notif.id)}
                                 />
                             ))

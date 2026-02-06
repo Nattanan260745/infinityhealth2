@@ -41,8 +41,7 @@ const seedData = async () => {
                     height: 175,
                     sleep_hours,
                     water_glass,
-                    steps,
-                    mood: randomInt(3, 5)
+                    steps
                 });
             }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { MetricType, StatCard, HealthTrack } from "../interface/infinityhealth.interface";
 import { getHealthTrackToday, getHealthTrackRange } from "../service/InfinityhealthApi";
 import storage from "../utils/storage";
@@ -25,12 +25,24 @@ export const useDashBoardPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
 
+    // Use Ref to avoid stale closures in fetchData
+    const stepCountRef = useRef(currentStepCount);
+    useEffect(() => {
+        stepCountRef.current = currentStepCount;
+    }, [currentStepCount]);
+
     // Update Steps card when Pedometer updates
     useEffect(() => {
-        if (isPedometerAvailable === 'true' && currentStepCount > 0) {
+        // Update if we have meaningful steps OR if pedometer is ready
+        // Allow cached steps to show even if sensor is still "checking"
+        if (currentStepCount > 0 || isPedometerAvailable === 'true') {
             setStatCards(prev => prev.map(card => {
                 if (card.id === 'Steps') {
-                    return { ...card, value: currentStepCount.toString() };
+                    // Use the greater of current or existing? Usually current is authority.
+                    const newVal = currentStepCount.toString();
+                    if (card.value !== newVal) {
+                        return { ...card, value: newVal };
+                    }
                 }
                 return card;
             }));
@@ -46,7 +58,6 @@ export const useDashBoardPage = () => {
                 userId = await storage.getItem('userId');
             }
             if (!userId) {
-                console.log('No user ID found');
                 return;
             }
 
@@ -62,22 +73,12 @@ export const useDashBoardPage = () => {
             const endDateStr = toLocalYMD(end);
             const startDateStr = toLocalYMD(start);
 
-            console.log('[Dashboard] Fetching for User:', userId);
-            console.log('[Dashboard] Date Range:', startDateStr, 'to', endDateStr);
-
             const todayLocal = toLocalYMD(new Date());
 
             const [todayRes, rangeRes] = await Promise.all([
                 getHealthTrackToday(userId, todayLocal),
                 getHealthTrackRange(userId, startDateStr, endDateStr)
             ]);
-
-            console.log('[Dashboard] Today Res Success:', todayRes.success, 'Data:', JSON.stringify(todayRes.data));
-            console.log('[Dashboard] Range Res Success:', rangeRes.success, 'Data Length:', rangeRes.data?.length);
-            if (rangeRes.data && rangeRes.data.length > 0) {
-                console.log('[Dashboard] Range Data Sample:', JSON.stringify(rangeRes.data[0]));
-                console.log('[Dashboard] Range Data Last:', JSON.stringify(rangeRes.data[rangeRes.data.length - 1]));
-            }
 
             // Determine data to show for Today
             let displayData = todayRes.success ? todayRes.data : null;
@@ -93,25 +94,57 @@ export const useDashBoardPage = () => {
 
             // Update Cards (Today's Data)
             if (displayData) {
-                console.log('[Dashboard Hook] Display Data:', JSON.stringify(displayData));
                 const data = displayData;
                 const weight = typeof data.weight === 'number' ? data.weight : NaN;
                 const height = typeof data.height === 'number' ? data.height : NaN;
-
-                console.log('[Dashboard Hook] Processed Height:', height, 'Raw:', data.height);
 
                 const bmi = (!isNaN(weight) && !isNaN(height) && height > 0)
                     ? (weight / ((height / 100) ** 2)).toFixed(2)
                     : '-';
 
-                setStatCards([
+                // Debugging Step Count Logic
+                const currentRefSteps = stepCountRef.current;
+                // Fix: Handle 0 correctly (0 || undefined -> undefined)
+                const apiSteps = (data.stepsCount !== undefined && data.stepsCount !== null)
+                    ? data.stepsCount
+                    : ((data.steps_count !== undefined && data.steps_count !== null) ? data.steps_count : 0);
+
+                // Determine final value
+                const finalSteps = currentRefSteps > 0 ? currentRefSteps : apiSteps;
+
+                const newCards: StatCard[] = [
                     { id: 'Weight', icon: 'bag-handle', iconColor: '#009E0B', value: data.weight?.toString() || '-', unit: 'kg', bgColor: '#DAEDDC' },
                     { id: 'Height', icon: 'swap-vertical', iconColor: '#009E0B', value: data.height?.toString() || '-', unit: 'cm', bgColor: '#D8F4DC' },
                     { id: 'BMI', icon: 'options', iconColor: '#FF5100', value: bmi, unit: '', bgColor: '#FFE2D7' },
                     { id: 'Water', icon: 'water', iconColor: '#00BFFF', value: data.water?.toString() || '-', unit: 'ml', bgColor: '#D8F4FF' },
                     { id: 'Sleep', icon: 'moon', iconColor: '#FFEA00', value: (data.sleepHours || data.sleep_hours)?.toString() || '-', unit: 'hr', bgColor: '#FAF5DE' },
-                    { id: 'Steps', icon: 'footsteps', iconColor: '#6004FF', value: (data.stepsCount || data.steps_count)?.toString() || '-', unit: 'steps', bgColor: '#EAE1F9' },
-                ]);
+                    {
+                        id: 'Steps',
+                        icon: 'footsteps',
+                        iconColor: '#6004FF',
+                        // Initial propose: Ref or API
+                        value: finalSteps.toString(),
+                        unit: 'steps',
+                        bgColor: '#EAE1F9'
+                    },
+                ];
+
+                setStatCards(prevCards => {
+                    return newCards.map(newCard => {
+                        if (newCard.id === 'Steps') {
+                            const prevCard = prevCards.find(c => c.id === 'Steps');
+                            const prevVal = parseInt(prevCard?.value || '0');
+                            const newVal = parseInt(newCard.value || '0');
+
+                            // If we have a higher value in UI already (from Pedometer event), keep it!
+                            // This prevents API (0) from overwriting Pedometer (46)
+                            if (!isNaN(prevVal) && prevVal > newVal) {
+                                return { ...newCard, value: prevCard!.value };
+                            }
+                        }
+                        return newCard;
+                    });
+                });
             } else {
                 console.log('[Dashboard Hook] No display data found');
             }
@@ -177,14 +210,31 @@ export const useDashBoardPage = () => {
                         ? (weight / ((height / 100) ** 2)).toFixed(2)
                         : '-';
 
-                    setStatCards([
-                        { id: 'Weight', icon: 'bag-handle', iconColor: '#009E0B', value: data.weight?.toString() || '-', unit: 'kg', bgColor: '#DAEDDC' },
-                        { id: 'Height', icon: 'swap-vertical', iconColor: '#009E0B', value: data.height?.toString() || '-', unit: 'cm', bgColor: '#D8F4DC' },
-                        { id: 'BMI', icon: 'options', iconColor: '#FF5100', value: bmi, unit: '', bgColor: '#FFE2D7' },
-                        { id: 'Water', icon: 'water', iconColor: '#00BFFF', value: data.water?.toString() || '-', unit: 'ml', bgColor: '#D8F4FF' },
-                        { id: 'Sleep', icon: 'moon', iconColor: '#FFEA00', value: (data.sleepHours || data.sleep_hours)?.toString() || '-', unit: 'hr', bgColor: '#FAF5DE' },
-                        { id: 'Steps', icon: 'footsteps', iconColor: '#6004FF', value: (data.stepsCount || data.steps_count)?.toString() || '-', unit: 'steps', bgColor: '#EAE1F9' },
-                    ]);
+                    // Logic again for Range block (if needed, but usually Today block covers it)
+                    // ... simpler setStatCards here if needed, but let's assume Today block is primary for Steps
+
+                    // Update Cards again but preserve Steps if logic requires
+                    setStatCards(prevCards => {
+                        // Re-construct cards based on NEW displayData
+                        return prevCards.map(card => {
+                            // Only update non-Steps or handle Steps carefully
+                            if (card.id === 'Weight') return { ...card, value: data.weight?.toString() || '-' };
+                            if (card.id === 'Height') return { ...card, value: data.height?.toString() || '-' };
+                            if (card.id === 'BMI') return { ...card, value: bmi };
+                            if (card.id === 'Water') return { ...card, value: data.water?.toString() || '-' };
+                            if (card.id === 'Sleep') return { ...card, value: (data.sleepHours || data.sleep_hours)?.toString() || '-' };
+
+                            // Steps: Don't overwrite if prev is higher?
+                            if (card.id === 'Steps') {
+                                const apiVal = data.stepsCount || data.steps_count || 0;
+                                const prevVal = parseInt(card.value || '0');
+
+                                if (!isNaN(prevVal) && prevVal > apiVal) return card;
+                                return { ...card, value: apiVal.toString() };
+                            }
+                            return card;
+                        });
+                    });
                 }
 
                 // Map data based on selectedTab

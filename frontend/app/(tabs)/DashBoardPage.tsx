@@ -7,6 +7,7 @@ import Filter from '../components/SummaryDashBoard/Filter';
 import ChartSection from '../components/SummaryDashBoard/ChartSection';
 import { useDashBoardPage } from '../hook/useDashBoardPage';
 import DashBoardEditModal from '../components/SummaryDashBoard/DashBoardEditModal';
+import SuccessModal from '../components/SummaryDashBoard/SuccessModal';
 import { saveHealthData, getHealthTrackRange } from '../service/InfinityhealthApi';
 import storage from '../utils/storage';
 
@@ -16,9 +17,14 @@ import { useRouter } from 'expo-router';
 export default function DashboardPage() {
   const router = useRouter();
   const { selectedTab, setSelectedTab, maxValue, chartData, statCards, filterTabs, trendValue, trendDirection, fetchData, handleDataPointClick, selectedPointIndex } = useDashBoardPage();
+
   /* Modal State */
   const [modalVisible, setModalVisible] = useState(false);
   const [editingMetric, setEditingMetric] = useState<MetricType | null>(null);
+
+  /* Success Modal State */
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleEdit = (metric: MetricType) => {
     setEditingMetric(metric);
@@ -115,10 +121,14 @@ export default function DashboardPage() {
       const response = await saveHealthData(userId, basePayload);
 
       if (response && response.success) {
-        Alert.alert('Success', `${editingMetric} updated successfully!`);
         // Refresh data
         await fetchData();
         setModalVisible(false);
+
+        // Show Success Modal
+        setSuccessMessage(`${editingMetric} updated successfully!`);
+        setSuccessModalVisible(true);
+
         setEditingMetric(null);
       } else {
         throw new Error(response?.message || 'Update failed');
@@ -208,6 +218,13 @@ export default function DashboardPage() {
         metricType={editingMetric}
         currentValue={getCurrentValue()}
         unit={getCurrentUnit()}
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={successModalVisible}
+        message={successMessage}
+        onClose={() => setSuccessModalVisible(false)}
       />
     </View>
   );

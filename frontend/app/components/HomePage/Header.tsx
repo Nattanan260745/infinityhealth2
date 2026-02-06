@@ -1,23 +1,25 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 interface HeaderProps {
   userName: string;
   userAvatar: string;
   date: string;
-  onNotificationPress?: () => void;
+  unreadCount?: number;
 }
 
-export function Header({ userName, userAvatar, date, onNotificationPress }: HeaderProps) {
+export function Header({ userName, userAvatar, date, unreadCount = 0 }: HeaderProps) {
+  const router = useRouter();
+
   return (
     <View style={{
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'space-between',
       paddingVertical: 16,
       backgroundColor: '#FFFFFF',
-      position: 'relative'
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <Image
@@ -31,6 +33,8 @@ export function Header({ userName, userAvatar, date, onNotificationPress }: Head
           <Text style={{ fontSize: 12, color: '#9CA3AF' }}>{date}</Text>
         </View>
       </View>
+
+      <View />
     </View>
   );
 }

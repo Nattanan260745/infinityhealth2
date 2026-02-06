@@ -208,8 +208,7 @@ router.get('/user/:userId/dashboard', async (req, res) => {
         weight: formatCard('weight', 'kg'),
         sleep: formatCard('sleepHours', 'hr'),
         water: formatCard('water', 'ml'),
-        steps: formatCard('stepsCount', 'steps'),
-        mood: todayRecord ? todayRecord.mood : null
+        steps: formatCard('stepsCount', 'steps')
       }
     });
   } catch (error) {

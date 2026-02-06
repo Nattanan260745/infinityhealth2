@@ -15,10 +15,12 @@ import {
   Exercise,
   Level,
   HealthTrack,
+  Notification,
 } from '../interface/infinityhealth.interface';
 
-const API_BASE_URL = 'https://infinityhealth2.onrender.com'; // Production URL on Render
-// const API_BASE_URL = 'http://192.168.1.33:3000'; // Local Dev URL (Update with your IP if needed)
+// const API_BASE_URL = 'https://infinityhealth2.onrender.com'; // Production URL on Render
+// const API_BASE_URL = 'http://localhost:3000'; // For Emulator
+const API_BASE_URL = 'http://192.168.1.33:3000'; // Local LAN IP (For Physical Device)
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -267,6 +269,29 @@ export const rankUpUser = async (userId: string) => {
       message: error.response?.data?.message || error.message || 'Rank up failed',
     };
   }
+};
+
+// ============================================
+// Notifications
+// ============================================
+export const getUserNotifications = async (userId: string): Promise<ApiResponse<Notification[]>> => {
+  const response = await api.get<ApiResponse<Notification[]>>(`/notification/user/${userId}`);
+  return response.data;
+};
+
+export const markNotificationAsRead = async (notificationId: number): Promise<ApiResponse<Notification>> => {
+  const response = await api.patch<ApiResponse<Notification>>(`/notification/${notificationId}/read`);
+  return response.data;
+};
+
+export const markAllNotificationsAsRead = async (userId: string): Promise<ApiResponse<any>> => {
+  const response = await api.patch<ApiResponse<any>>(`/notification/user/${userId}/read-all`);
+  return response.data;
+};
+
+export const deleteNotification = async (notificationId: number): Promise<ApiResponse<any>> => {
+  const response = await api.delete<ApiResponse<any>>(`/notification/${notificationId}`);
+  return response.data;
 };
 
 export default api;

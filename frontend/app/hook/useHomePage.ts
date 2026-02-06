@@ -4,7 +4,7 @@ import { StyleSheet, Platform, Alert } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import storage from "../utils/storage";
 import { HealthCheckResponse } from "../interface/infinityhealth.interface";
-import { getHealthCheck, getUserRoutinesByDate, syncClerkUser } from "../service/InfinityhealthApi";
+import { getHealthCheck, getUserRoutinesByDate, syncClerkUser, getUserNotifications } from "../service/InfinityhealthApi";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import * as Notifications from 'expo-notifications';
 
@@ -115,14 +115,49 @@ export const useHomePage = () => {
     const [userId, setUserId] = useState<string | null>(null);
     const [routines, setRoutines] = useState<Routine[]>([]);
 
-    // Notification State
-    const [notifications, setNotifications] = useState([
-        { id: 1, title: 'Planner Routine Await!', subtitle: '02.00 PM - Clean up', time: '10 min ago', type: 'planner' },
-        { id: 2, title: 'Mission is On', subtitle: "Don't forget to drink a water today", time: '30 min ago', type: 'mission' },
-        { id: 3, title: 'Mission Complete!', subtitle: 'Good job on - Avoid fried foods', time: '1 hour ago', type: 'success' },
-        { id: 4, title: 'Mission Complete!', subtitle: 'Good job on - Walk 5000 steps', time: '2 hours ago', type: 'success' },
-        { id: 5, title: 'Ready to go!', subtitle: 'You can now rank up!', time: '1 day ago', type: 'rankup' },
-    ]);
+    // Notification Logic (Simplified: Routines = Notifications)
+    const [notifications, setNotifications] = useState<any[]>([]);
+
+    const fetchNotifications = async () => {
+        if (!userId) return;
+        try {
+            const today = new Date().toISOString().split('T')[0];
+
+            // 1. Fetch Routines for Today
+            const res = await getUserRoutinesByDate(userId, today);
+            let notifs: any[] = [];
+
+            if (res.success && Array.isArray(res.data)) {
+                notifs = res.data.map((r: any) => ({
+                    id: r.id, // specific ID
+                    title: r.title,
+                    subtitle: r.scheduledTime ? `Scheduled: ${r.scheduledTime}` : 'Daily Routine',
+                    time: r.scheduledTime || 'Today',
+                    type: 'planner',
+                    isRead: false // default
+                }));
+            }
+
+            // 2. Check Local Storage for "Read" status
+            const readKey = `read_notifications_${today}`; // reset daily
+            const readData = await storage.getItem(readKey);
+            const readIds: number[] = readData ? JSON.parse(readData) : [];
+
+            // 3. Apply Read Status
+            const finalNotifs = notifs.map(n => ({
+                ...n,
+                isRead: readIds.includes(n.id)
+            }));
+
+            setNotifications(finalNotifs);
+
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+        }
+    };
+
+    // Calculate unread count
+    const unreadCount = notifications.filter(n => !n.isRead).length;
 
     const handleDeleteNotification = (id: number) => {
         setNotifications(prev => prev.filter(n => n.id !== id));
@@ -131,6 +166,12 @@ export const useHomePage = () => {
     const handleClearAllNotifications = () => {
         setNotifications([]);
     };
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchNotifications();
+        }, [userId])
+    );
 
     useEffect(() => {
         setWeekDays(getWeekDays());
@@ -352,6 +393,7 @@ export const useHomePage = () => {
         notifications,
         handleDeleteNotification,
         handleClearAllNotifications,
+        unreadCount,
     }
 }
 

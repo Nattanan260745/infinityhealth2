@@ -14,6 +14,8 @@ import {
   getUserGoals
 } from "../service/InfinityhealthApi";
 import { useFocusEffect } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+
 
 // Types
 export type TabType = 'routines' | 'goals';
@@ -247,14 +249,76 @@ export const useRoutinePage = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
-    if (!formTitle.trim() || !userId) return;
+    console.log('[Routine] handleSave called. Title:', formTitle, 'UserID:', userId, 'Time:', formTime);
+
+    if (!userId) {
+      console.error('[Routine] Error: No User ID found');
+      setError("User ID missing. Try relogin.");
+      return;
+    }
+
+    if (!formTitle.trim()) {
+      console.error('[Routine] Error: Title is empty');
+      setError("Please enter a title.");
+      return;
+    }
+
     setError(null);
 
     // Validate Time for Routines (Not Goals)
     if (!isGoalsTab && !formTime) {
+      console.error('[Routine] Error: No time selected for routine');
       setError("Please select a time for your routine.");
       return;
     }
+
+    // Helper to schedule notification
+    const scheduleNotification = async (id: number, title: string, time: string, date: string) => {
+      try {
+        if (!formNotifications) return; // Skip if disabled
+
+        // Check permissions (Should be handled in Layout, but safe to check)
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== 'granted') return;
+
+        const [hours, minutes] = time.split(':').map(Number);
+
+        // Construct Trigger Date
+        const triggerDate = new Date(date);
+        triggerDate.setHours(hours, minutes, 0, 0);
+
+        // Only schedule if future
+        if (triggerDate > new Date()) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Routine Reminder",
+              body: `Time for: ${title}`,
+              data: { routineId: id },
+              sound: true,
+            },
+            trigger: {
+              // Use Calendar trigger for specific date/time
+              type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+              year: triggerDate.getFullYear(),
+              month: triggerDate.getMonth() + 1, // Calendar trigger might use 1-idx month? No, usually follows Date semantics or specific API doc. 
+              // Actually Expo defaults: month (1-12) usually on some platforms, let's stick to safe 'date' if possible or simple Hour/Min if today.
+              // Let's use simple Date object trigger if supported, OR breakdown.
+              // Expo docs say: TriggerInput = Date | ...
+              // Let's use Date object directly if 'date' trigger type supported?
+              // Actually for 'CALENDAR', it expects components.
+              day: triggerDate.getDate(),
+              hour: hours,
+              minute: minutes,
+              repeats: false,
+            }
+          });
+          console.log('[Routine] Scheduled notification for:', title, 'at', time);
+        }
+      } catch (err) {
+        console.error("Schedule Notification Error:", err);
+      }
+    };
+
 
     try {
       if (isGoalsTab) {
@@ -272,6 +336,9 @@ export const useRoutinePage = () => {
           });
         }
       } else {
+        // Routine Logic
+        let targetId = editingRoutine?.id;
+
         if (editingRoutine) {
           await updateRoutine(editingRoutine.id, {
             title: formTitle,
@@ -280,14 +347,23 @@ export const useRoutinePage = () => {
             completed: editingRoutine.completed
           });
         } else {
-          await createRoutine({
+          const res = await createRoutine({
             user_id: userId,
             title: formTitle,
-            scheduled_time: formTime, // Ensure we use the selected time
+            scheduled_time: formTime,
             scheduled_date: new Date(formDate).toISOString()
           });
+          if (res && res.success && res.data) {
+            targetId = res.data.id;
+          }
+        }
+
+        // Schedule Notification if we have ID
+        if (targetId && !isGoalsTab) {
+          await scheduleNotification(targetId, formTitle, formTime, formDate);
         }
       }
+
       setShowAddModal(false);
       fetchData(); // Refresh
     } catch (error) {

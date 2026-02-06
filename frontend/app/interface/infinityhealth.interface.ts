@@ -203,3 +203,16 @@ export interface HealthTrack {
   createdAt: string;
   updatedAt: string;
 }
+
+//-----------------------------------------------
+// Notification
+export interface Notification {
+  id: number;
+  userId: number;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  referenceId?: number | null;
+  createdAt: string;
+}

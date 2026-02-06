@@ -441,7 +441,8 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
 
       // Level logic
       const { calculateLevelWithCap } = require('../utils/levelUtils');
-      const newLevel = await calculateLevelWithCap(userStats.level, currentExp, uid);
+      // Pass true to allow rank up if challenge is completed
+      const newLevel = await calculateLevelWithCap(userStats.level, currentExp, uid, true);
 
       await prisma.userStats.update({
         where: { userId: uid },
@@ -453,6 +454,32 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
           lastActivityDate: new Date() // Set to now
         }
       });
+
+      // --- CREATE NOTIFICATION ---
+      // 1. Mission Completed Notification
+      await prisma.notification.create({
+        data: {
+          userId: uid,
+          type: 'MISSION_COMPLETED',
+          title: 'Mission Completed! 🎉',
+          message: `You completed: ${mission.missionName}. Earned ${rewards.exp} XP & ${rewards.points} Points.`,
+          referenceId: mid
+        }
+      });
+
+      // 2. Level Up Notification
+      if (newLevel > userStats.level) {
+        await prisma.notification.create({
+          data: {
+            userId: uid,
+            type: 'LEVEL_UP',
+            title: 'Level Up! 🌟',
+            message: `Congratulations! You reached Level ${newLevel}.`,
+            referenceId: newLevel
+          }
+        });
+      }
+      // ----------------------------
     }
 
     res.json({

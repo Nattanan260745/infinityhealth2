@@ -347,7 +347,7 @@ export default function RoutineScreen() {
           <View style={{
             flexDirection: 'row',
             padding: 20,
-            paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+            paddingBottom: Platform.OS === 'ios' ? 34 : Math.max(insets.bottom, 20) + 40, // Increased padding for Modal buttons
             backgroundColor: colors.background,
             borderTopWidth: 1,
             borderTopColor: colors.borderLight,
@@ -647,7 +647,7 @@ export default function RoutineScreen() {
         left: 0,
         right: 0,
         padding: 20,
-        paddingBottom: Platform.OS === 'ios' ? 34 : Math.max(insets.bottom, 20) + 20, // Dynamic safe area
+        paddingBottom: Platform.OS === 'ios' ? 34 : Math.max(insets.bottom, 20) + 80, // Moved up significantly
         backgroundColor: colors.background,
       }}>
         <TouchableOpacity

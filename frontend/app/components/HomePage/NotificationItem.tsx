@@ -1,31 +1,40 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Swipeable } from 'react-native-gesture-handler';
+import { PanGestureHandler, PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
 
 export interface NotificationItemProps {
     id: string | number;
     title: string;
     subtitle: string;
     time: string;
-    type: 'planner' | 'mission' | 'success' | 'rankup'; // To determine icon
+    type: string;
+    isRead: boolean;
+    onPress: () => void;
     onDelete: () => void;
 }
 
-import { PanGestureHandler, PanGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
-
-export const NotificationItem: React.FC<NotificationItemProps> = ({ id, title, subtitle, time, type, onDelete }) => {
+export const NotificationItem: React.FC<NotificationItemProps> = ({ id, title, subtitle, time, type, isRead, onPress, onDelete }) => {
     // Config based on type
     const getConfig = () => {
+        // If READ, use Gray/Dimmed colors
+        if (isRead) {
+            return { icon: 'mail-open-outline', color: '#9CA3AF', bgColor: '#F3F4F6', iconColor: '#9CA3AF' };
+        }
+
         switch (type) {
+            case 'ROUTINE_REMINDER':
             case 'planner':
-                return { icon: 'calendar', color: '#EF4444', bgColor: '#FEE2E2', iconColor: '#B91C1C' }; // Red-ish for Planner
+                return { icon: 'calendar', color: '#EF4444', bgColor: '#FEE2E2', iconColor: '#B91C1C' }; // Red-ish
+            case 'MISSION_COMPLETED':
             case 'mission':
-                return { icon: 'clipboard', color: '#F59E0B', bgColor: '#FEF3C7', iconColor: '#B45309' }; // Yellow/Orange for Mission
+                return { icon: 'clipboard', color: '#F59E0B', bgColor: '#FEF3C7', iconColor: '#B45309' }; // Yellow/Orange
+            case 'SYSTEM':
             case 'success':
-                return { icon: 'star', color: '#10B981', bgColor: '#D1FAE5', iconColor: '#047857' }; // Green for Success
+                return { icon: 'information-circle', color: '#10B981', bgColor: '#D1FAE5', iconColor: '#047857' }; // Green
+            case 'LEVEL_UP':
             case 'rankup':
-                return { icon: 'trending-up', color: '#3B82F6', bgColor: '#DBEAFE', iconColor: '#1D4ED8' }; // Blue for Rank Up
+                return { icon: 'trending-up', color: '#3B82F6', bgColor: '#DBEAFE', iconColor: '#1D4ED8' }; // Blue
             default:
                 return { icon: 'notifications', color: '#6B7280', bgColor: '#F3F4F6', iconColor: '#374151' };
         }
@@ -43,9 +52,6 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ id, title, s
     const onHandlerStateChange = (event: any) => {
         if (event.nativeEvent.oldState === State.ACTIVE) {
             const { translationX } = event.nativeEvent;
-            // Snapping logic
-            // If dragged left enough (e.g., -40), snap to open (-DELETE_WIDTH)
-            // Otherwise snap back to 0
             let toValue = 0;
             if (translationX < -40) {
                 toValue = -DELETE_WIDTH;
@@ -59,43 +65,14 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ id, title, s
                 friction: 5,
                 tension: 40
             }).start();
-
-            // Hack: If we snap to open, lock the value so further drags start from there?
-            // Actually PanGesture resets translationX to 0 on new gesture.
-            // Complex handling needed for true 'stateful' drawer properly.
-            // Simplified: Just use offset.
             translateX.setOffset(toValue);
             translateX.setValue(0);
         }
     };
 
-    // BUT simplify: PanGesture is tricky for persistent state without re-renders.
-    // Let's rely on interpolated Clamp for visual, but we need state to know if "Open".
-    // Actually, Re-implementing Swipeable logic custom is error prone.
-    // Let's use a simpler "Overlay" approach with standard Animated.
-
-    // RE-EVALUATION: The user wants "Delete Button Appears, Content Static".
-    // This is EXACTLY standard Swipeable IF we use the 'container' as background and 'children' as foreground?
-    // NO. Standard Swipeable moves the FOREGROUND.
-    // We want FOREGROUND (Card) to stay.
-    // That means Card is NOT the swipeable part?
-    // OR we translate Card by 0?
-
-    // Let's stick to the Custom PanGesture for exact control.
-    // Actually, simpler logic:
-    // Drag -> updates displacement.
-    // UI:
-    //  - Layer 1 (Bottom): Delete Button (Absolute Right).
-    //  - Layer 2 (Top): content Card.
-    // Animation: Move Layer 1 Left? OR Move Layer 2 Left?
-    // User said: "Mission stays still". Content = Layer 2. So Layer 2 Static.
-    // Then Layer 1 (Delete Button) must move LEFT *over* Layer 2?
-    // "Slide to make delete button appear"
-    // Visual: Delete button enters from Right Edge, covering content.
-
     const deleteTranslateX = translateX.interpolate({
         inputRange: [-DELETE_WIDTH, 0],
-        outputRange: [0, DELETE_WIDTH], // 0 = fully visible (at right edge), DELETE_WIDTH = hidden offscreen right
+        outputRange: [0, DELETE_WIDTH],
         extrapolate: 'clamp',
     });
 
@@ -104,21 +81,25 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ id, title, s
             <PanGestureHandler
                 onGestureEvent={onGestureEvent}
                 onHandlerStateChange={onHandlerStateChange}
-                activeOffsetX={[-10, 10]} // Only activate horizontal
+                activeOffsetX={[-10, 10]}
             >
                 <Animated.View style={styles.container}>
-                    {/* The Content Card (Static visually, but acts as gestures source) */}
-                    <View style={[styles.innerContainer]}>
+                    {/* The Content Card */}
+                    <Pressable onPress={onPress} style={[styles.innerContainer, isRead && styles.readContainer]}>
                         <View style={[styles.iconContainer, { backgroundColor: config.bgColor }]}>
                             <Ionicons name={config.icon as any} size={24} color={config.color} />
+                            {!isRead && (
+                                <View style={styles.unreadDot} />
+                            )}
                         </View>
                         <View style={styles.contentContainer}>
                             <View style={styles.headerRow}>
-                                <Text style={styles.title}>{title}</Text>
+                                <Text style={[styles.title, isRead && styles.readText]}>{title}</Text>
+                                <Text style={styles.time}>{time}</Text>
                             </View>
-                            <Text style={styles.subtitle}>{subtitle}</Text>
+                            <Text style={[styles.subtitle, isRead && styles.readText]} numberOfLines={2}>{subtitle}</Text>
                         </View>
-                    </View>
+                    </Pressable>
 
                     {/* The Delete Button Overlay */}
                     <Animated.View style={[styles.deleteButtonContainer, { transform: [{ translateX: deleteTranslateX }] }]}>
@@ -137,19 +118,25 @@ const styles = StyleSheet.create({
     wrapper: {
         marginBottom: 12,
         borderRadius: 16,
-        overflow: 'hidden', // Clip the sliding button
-        backgroundColor: 'transparent', // Let inner container handle background
+        overflow: 'hidden',
+        backgroundColor: '#FFFFFF',
     },
     container: {
-        width: '100%', // Ensure gesture surface fills width
+        width: '100%',
     },
     innerContainer: {
         flexDirection: 'row',
         padding: 16,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
         alignItems: 'center',
-        width: '100%', // Ensure content fills width
+        width: '100%',
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+    },
+    readContainer: {
+        backgroundColor: '#FAFAFA',
+        borderColor: 'transparent',
     },
     iconContainer: {
         width: 48,
@@ -158,6 +145,18 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
+        position: 'relative',
+    },
+    unreadDot: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#F74C06',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
     },
     contentContainer: {
         flex: 1,
@@ -166,19 +165,27 @@ const styles = StyleSheet.create({
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: 4,
-        flexWrap: 'wrap',
     },
     title: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#4B5563',
-        flexShrink: 1,
+        color: '#1F2937',
+        flex: 1,
+    },
+    readText: {
+        color: '#9CA3AF',
+        fontWeight: 'normal',
+    },
+    time: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        marginLeft: 8,
     },
     subtitle: {
         fontSize: 14,
         color: '#6B7280',
-        flexShrink: 1,
         lineHeight: 20,
     },
     deleteButtonContainer: {
@@ -194,6 +201,5 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: '100%',
         height: '100%',
-        // Square edge requested
     }
 });

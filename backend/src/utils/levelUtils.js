@@ -19,8 +19,8 @@ const calculateLevelWithCap = async (currentLevel, newExp, userId, isManualRankU
 
     const potentialLevel = levelObj.levelNumber;
 
-    // 2. If potential level is same or lower, just return it (no upgrade)
-    if (potentialLevel <= currentLevel) return potentialLevel;
+    // 2. If potential level is same or lower, return currentLevel (Avoid de-leveling from Admin overrides)
+    if (potentialLevel <= currentLevel) return currentLevel;
 
     // 3. Define the Barrier (Multiple of 10)
     // If Level 9, Barrier is 10.

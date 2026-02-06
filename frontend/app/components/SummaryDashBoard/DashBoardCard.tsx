@@ -30,6 +30,7 @@ const DashBoardCard: React.FC<DashBoardCardProps> = (props) => {
     return (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 20, }}>
             {props.statCards.map((card) => {
+                if (card.id === 'Steps') console.log(`[DashBoardCard Render] Steps Value: ${card.value}`);
                 const isSelected = props.selectedId === card.id;
                 return (
                     <TouchableOpacity

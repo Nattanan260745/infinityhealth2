@@ -83,8 +83,6 @@ async function main() {
       const sleep = 6 + Math.random() * 3; // 6-9 hours
       const water = Math.floor(1500 + Math.random() * 1000); // 1500-2500 ml
       const steps = Math.floor(3000 + Math.random() * 7000); // 3000-10000 steps
-      const moodEnum = ['Happy', 'Sad', 'Neutral', 'Excited', 'Tired'];
-      const mood = moodEnum[Math.floor(Math.random() * moodEnum.length)];
 
       // Check existing
       const existing = await prisma.healthTracking.findFirst({
@@ -106,8 +104,7 @@ async function main() {
             height: 175,
             water: water,
             sleepHours: parseFloat(sleep.toFixed(1)),
-            stepsCount: steps,
-            mood: mood
+            stepsCount: steps
           }
         });
       }
@@ -121,6 +118,8 @@ async function main() {
     { name: 'Walk 10k', type: 'DAILY', target: 10000, unit: 'steps', exp: 100, points: 20 },
     { name: 'Sleep 8 Hours', type: 'DAILY', target: 8, unit: 'hours', exp: 80, points: 15 },
     { name: 'Marathon Challenge', type: 'CHALLENGE', target: 42, unit: 'km', exp: 500, points: 100, level: 5 },
+    { name: 'Ironman Challenge', type: 'CHALLENGE', target: 100, unit: 'km', exp: 1000, points: 200, level: 10 },
+    { name: 'Titan Challenge', type: 'CHALLENGE', target: 500, unit: 'km', exp: 5000, points: 500, level: 20 },
   ];
 
   for (const m of missions) {

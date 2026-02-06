@@ -19,9 +19,6 @@ const healthTrackSchema = new mongoose.Schema({
   water_glass: {
     type: Number,  // ปริมาณน้ำที่ดื่ม (แก้ว)
   },
-  mood: {
-    type: Number,  // ระดับอารมณ์ 1-5 (น้อยไปมาก)
-  },
   sleep_hours: {
     type: Number,  // ชั่วโมงการนอน
   },
