@@ -3,7 +3,8 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Platform } from 'react-native';
 import storage from '../utils/storage';
-import { getUserProfile } from '../service/InfinityhealthApi';
+import { getUserNotifications, getUserRoutinesByDate, getUserProfile } from '../service/InfinityhealthApi';
+import { Notification } from '../interface/infinityhealth.interface';
 
 export default function TabLayout() {
   const [hasUnread, setHasUnread] = useState(false);
@@ -12,26 +13,55 @@ export default function TabLayout() {
     const checkNotifications = async () => {
       try {
         const userId = await storage.getItem('userId');
-        if (userId) {
-          const profileRes = await getUserProfile(userId);
-          if (profileRes.success && profileRes.data) {
-            // Check for Rank Up availability (Level 10 cap)
-            if (profileRes.data.level_id === 10) {
-              setHasUnread(true);
-            }
-          }
+        if (!userId) return;
+
+        // 1. Fetch Backend Notifications
+        const notifRes = await getUserNotifications(userId);
+        let backendNotifs: Notification[] = [];
+        if (notifRes.success && notifRes.data) {
+          backendNotifs = notifRes.data;
         }
+
+        // 2. Fetch Today's Routines (Local)
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const today = `${year}-${month}-${day}`;
+
+        const routineRes = await getUserRoutinesByDate(userId, today);
+        let routineNotifs: any[] = [];
+        if (routineRes.success && Array.isArray(routineRes.data)) {
+          routineNotifs = routineRes.data;
+        }
+
+        // 3. Check Local Read Status
+        const readKey = `read_notifications_${today}`;
+        const readData = await storage.getItem(readKey);
+        const readIds: number[] = readData ? JSON.parse(readData) : [];
+
+        // 4. Calculate Unread Count
+        // Backend: isRead is false
+        const unreadBackend = backendNotifs.filter(n => !n.isRead).length;
+
+        // Routines: ID not in readIds
+        const unreadRoutines = routineNotifs.filter(r => !readIds.includes(r.id)).length;
+
+        const totalUnread = unreadBackend + unreadRoutines;
+
+        // Also keep Level 10 Check? User seemed confused by it. 
+        // Let's REMOVE it to strictly follow "Red dot = Unread Message" paradigm.
+        // If we want to alert for Rank Up, we should use a different UI element or send a notification.
+
+        setHasUnread(totalUnread > 0);
+
       } catch (e) {
         console.error("Badge check failed", e);
       }
     };
 
-    // Check immediately and maybe interval? 
-    // For now, just on mount is enough as Profile update usually reloads app or navigates.
     checkNotifications();
-
-    // Add an interval to check periodically (e.g., every 10 seconds) to ensure sync
-    const interval = setInterval(checkNotifications, 10000);
+    const interval = setInterval(checkNotifications, 5000); // Check every 5s
     return () => clearInterval(interval);
   }, []);
 

@@ -9,26 +9,82 @@ async function main() {
   // 1. Create Levels
   console.log('Creating Levels...');
   const levels = [];
-  for (let i = 1; i <= 20; i++) {
+
+  // Define Color Hex Codes
+  const getLevelColor = (lvl) => {
+    if (lvl <= 10) return '#CD7F32'; // Bronze
+    if (lvl <= 20) return '#C0C0C0'; // Silver
+    if (lvl <= 30) return '#FFD700'; // Gold
+    if (lvl <= 40) return '#E5E4E2'; // Platinum
+    if (lvl <= 50) return '#50C878'; // Emerald
+    if (lvl <= 60) return '#0F52BA'; // Sapphire
+    if (lvl <= 70) return '#E0115F'; // Ruby
+    if (lvl <= 80) return '#9966CC'; // Amethyst
+    if (lvl <= 90) return '#00CED1'; // Diamond
+    if (lvl <= 99) return '#1C1C1C'; // Obsidian
+    if (lvl === 100) return '#FF00FF'; // Infinity
+    return '#FFFFFF';
+  };
+
+  // Define Color Names (Text)
+  const getLevelColorName = (lvl) => {
+    if (lvl <= 10) return 'Bronze';
+    if (lvl <= 20) return 'Silver';
+    if (lvl <= 30) return 'Gold';
+    if (lvl <= 40) return 'Platinum';
+    if (lvl <= 50) return 'Emerald';
+    if (lvl <= 60) return 'Sapphire';
+    if (lvl <= 70) return 'Ruby';
+    if (lvl <= 80) return 'Amethyst';
+    if (lvl <= 90) return 'Diamond';
+    if (lvl <= 99) return 'Obsidian';
+    if (lvl === 100) return 'Infinity';
+    return 'Unknown';
+  };
+
+  const getLevelName = (lvl) => {
+    if (lvl <= 10) return `Beginner ${lvl}`;
+    if (lvl <= 20) return `Rookie ${lvl}`;
+    if (lvl <= 30) return `Regular ${lvl}`;
+    if (lvl <= 40) return `Advanced ${lvl}`;
+    if (lvl <= 50) return `Veteran ${lvl}`;
+    if (lvl <= 60) return `Elite ${lvl}`;
+    if (lvl <= 70) return `Master ${lvl}`;
+    if (lvl <= 80) return `Grandmaster ${lvl}`;
+    if (lvl <= 90) return `Legend ${lvl}`;
+    if (lvl <= 99) return `Titan ${lvl}`;
+    if (lvl === 100) return `Infinity God`;
+    return `Level ${lvl}`;
+  };
+
+  for (let i = 1; i <= 100; i++) {
     levels.push({
       levelNumber: i,
-      levelName: `Level ${i}`,
+      levelName: getLevelName(i),
       minExp: (i - 1) * 1000,
       maxExp: i * 1000 - 1,
+      colorHex: getLevelColor(i),
+      colorName: getLevelColorName(i)
     });
   }
 
   for (const lvl of levels) {
     await prisma.level.upsert({
-      where: { id: lvl.levelNumber }, // Assuming id maps to levelNumber roughly, or findFirst
-      update: {}, // Don't update if exists
+      where: { id: lvl.levelNumber },
+      update: {
+        levelName: lvl.levelName,
+        hexCode: lvl.colorHex,
+        color: lvl.colorName, // Update text name
+        titleTh: `เลเวล ${lvl.levelNumber}`
+      },
       create: {
         levelNumber: lvl.levelNumber,
         levelName: lvl.levelName,
         minExp: lvl.minExp,
         maxExp: lvl.maxExp,
         titleTh: `เลเวล ${lvl.levelNumber}`,
-        hexCode: '#FFD700'
+        hexCode: lvl.colorHex,
+        color: lvl.colorName // Create with text name
       }
     });
   }
@@ -48,8 +104,6 @@ async function main() {
         password: hashedPassword,
         firstName: 'Test',
         lastName: 'User',
-        dateOfBirth: new Date('1995-01-01'),
-        gender: 'male',
         role: 'user',
         userStats: {
           create: {
@@ -135,6 +189,54 @@ async function main() {
         isActive: true
       }
     });
+  }
+
+  // 5. Create Exercise Categories & Videos
+  console.log('Creating Exercises...');
+  const categories = [
+    { name: 'Cardio', icon: 'https://cdn-icons-png.flaticon.com/512/2548/2548536.png' },
+    { name: 'Strength', icon: 'https://cdn-icons-png.flaticon.com/512/2548/2548455.png' },
+    { name: 'Yoga', icon: 'https://cdn-icons-png.flaticon.com/512/2548/2548515.png' }
+  ];
+
+  for (const cat of categories) {
+    const createdCat = await prisma.exerciseCategory.create({
+      data: { categoryName: cat.name, iconUrl: cat.icon }
+    });
+
+    // Create Sample Videos for each category
+    const videos = [];
+    if (cat.name === 'Cardio') {
+      videos.push(
+        { title: 'HIIT Workout', url: 'https://www.youtube.com/watch?v=BdqQhC_8E5g', thumb: 'https://img.youtube.com/vi/BdqQhC_8E5g/hqdefault.jpg', difficulty: 'Hard', duration: 20, bodyPart: 'cardio' },
+        { title: 'Running Basics', url: 'https://www.youtube.com/watch?v=_kGESn8ArrU', thumb: 'https://img.youtube.com/vi/_kGESn8ArrU/hqdefault.jpg', difficulty: 'Easy', duration: 15, bodyPart: 'cardio' }
+      );
+    } else if (cat.name === 'Strength') {
+      videos.push(
+        { title: 'Full Body Workout', url: 'https://www.youtube.com/watch?v=UItWltVZZmE', thumb: 'https://img.youtube.com/vi/UItWltVZZmE/hqdefault.jpg', difficulty: 'Medium', duration: 30, bodyPart: 'weight_full_body' },
+        { title: 'Push Up Guide', url: 'https://www.youtube.com/watch?v=IODxDxX7oi4', thumb: 'https://img.youtube.com/vi/IODxDxX7oi4/hqdefault.jpg', difficulty: 'Medium', duration: 10, bodyPart: 'weight_upper_body' }
+      );
+    } else {
+      videos.push(
+        { title: 'Morning Yoga', url: 'https://www.youtube.com/watch?v=sTANio_2E0Q', thumb: 'https://img.youtube.com/vi/sTANio_2E0Q/hqdefault.jpg', difficulty: 'Easy', duration: 15, bodyPart: 'weight_core' },
+        { title: 'Stretching for Beginners', url: 'https://www.youtube.com/watch?v=g_tea8ZNk5A', thumb: 'https://img.youtube.com/vi/g_tea8ZNk5A/hqdefault.jpg', difficulty: 'Easy', duration: 10, bodyPart: 'weight_full_body' }
+      );
+    }
+
+    for (const v of videos) {
+      await prisma.exercise.create({
+        data: {
+          categoryId: createdCat.id,
+          title: v.title,
+          videoUrl: v.url,
+          thumbnail: v.thumb,
+          difficulty: v.difficulty,
+          bodyPart: v.bodyPart,
+          duration: v.duration,
+          description: `A great ${v.difficulty} ${cat.name} workout.`
+        }
+      });
+    }
   }
 
   console.log('✅ Seeding completed!');

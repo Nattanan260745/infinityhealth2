@@ -23,8 +23,6 @@ async function main() {
             password: hashedPassword,
             firstName: 'Admin',
             lastName: 'User',
-            dateOfBirth: new Date(),
-            gender: 'other',
             role: 'admin',
             userStats: {
                 create: {

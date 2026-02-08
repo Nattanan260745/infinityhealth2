@@ -55,23 +55,26 @@ const calculateLevelWithCap = async (currentLevel, newExp, userId, isManualRankU
             }
 
             // Challenge Completed.
-
-            // KEY CHANGE: Even if challenge is completed, do NOT auto-upgrade if at the cap.
-            // We wait for Manual Rank Up action.
-            // Exception: If we are simply MOVING TO the cap (9->10), we allow it.
-            // But crossing (10->11) requires manual action OR passing the flag.
-
             if (currentLevel === barrier) {
+                // If we are sitting exactly at the barrier
                 if (isManualRankUp) {
                     return potentialLevel; // Allow upgrade
                 } else {
                     return barrier; // Hold at cap until manual press
                 }
+            } else {
+                // If we are jumping from below (e.g. 1 -> 11) and passed items, allow through
+                return potentialLevel;
             }
+        } else {
+            // Challenge DOES NOT EXIST (Admin hasn't created it yet)
+            // Strict Rule: If crossing barrier, you MUST have a challenge. 
+            // If missing, you get stuck at Barrier.
+            return barrier;
         }
     }
 
-    // If not crossing barrier, or if no challenge exists, return potential
+    // If not crossing barrier, return potential
     return potentialLevel;
 };
 

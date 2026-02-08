@@ -121,9 +121,12 @@ export const useHomePage = () => {
     const fetchNotifications = async () => {
         if (!userId) return;
         try {
-            const today = new Date().toISOString().split('T')[0];
-
             // 1. Fetch Routines for Today
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const today = `${year}-${month}-${day}`;
             const res = await getUserRoutinesByDate(userId, today);
             let notifs: any[] = [];
 

@@ -14,9 +14,14 @@ router.get('/', async (req, res) => {
       // Schema doesn't have createdAt for Exercise, so we sort by ID desc.
     });
 
+    const formattedExercises = exercises.map(ex => ({
+      ...ex,
+      type: ex.bodyPart
+    }));
+
     res.json({
       success: true,
-      data: exercises,
+      data: formattedExercises,
     });
   } catch (error) {
     console.error('Get exercises error:', error);
@@ -33,13 +38,18 @@ router.get('/type/:type', async (req, res) => {
     const { type } = req.params;
 
     const exercises = await prisma.exercise.findMany({
-      where: { type: type },
+      where: { bodyPart: type },
       orderBy: { id: 'desc' }
     });
 
+    const formattedExercises = exercises.map(ex => ({
+      ...ex,
+      type: ex.bodyPart
+    }));
+
     res.json({
       success: true,
-      data: exercises,
+      data: formattedExercises,
     });
   } catch (error) {
     console.error('Get exercises by type error:', error);
@@ -60,9 +70,14 @@ router.get('/difficulty/:difficulty', async (req, res) => {
       orderBy: { id: 'desc' }
     });
 
+    const formattedExercises = exercises.map(ex => ({
+      ...ex,
+      type: ex.bodyPart
+    }));
+
     res.json({
       success: true,
-      data: exercises,
+      data: formattedExercises,
     });
   } catch (error) {
     console.error('Get exercises by difficulty error:', error);
@@ -79,7 +94,7 @@ router.get('/filter', async (req, res) => {
     const { type, difficulty } = req.query;
 
     const filter = {};
-    if (type) filter.type = type;
+    if (type) filter.bodyPart = type;
     if (difficulty) filter.difficulty = difficulty;
 
     const exercises = await prisma.exercise.findMany({
@@ -87,9 +102,14 @@ router.get('/filter', async (req, res) => {
       orderBy: { id: 'desc' }
     });
 
+    const formattedExercises = exercises.map(ex => ({
+      ...ex,
+      type: ex.bodyPart
+    }));
+
     res.json({
       success: true,
-      data: exercises,
+      data: formattedExercises,
     });
   } catch (error) {
     console.error('Get filtered exercises error:', error);
@@ -119,7 +139,10 @@ router.get('/:exerciseId', async (req, res) => {
 
     res.json({
       success: true,
-      data: exercise,
+      data: {
+        ...exercise,
+        type: exercise.bodyPart
+      },
     });
   } catch (error) {
     console.error('Get exercise error:', error);
@@ -135,13 +158,26 @@ router.post('/', async (req, res) => {
   try {
     const { type, difficulty, title, description, video_url } = req.body;
 
+    // Map type to Category
+    let categoryName = 'Cardio';
+    if (type && type.startsWith('weight')) categoryName = 'Strength';
+
+    const category = await prisma.exerciseCategory.findFirst({
+      where: { categoryName: categoryName }
+    });
+
+    if (!category) {
+      return res.status(400).json({ success: false, message: 'Exercise Category not found' });
+    }
+
     const exercise = await prisma.exercise.create({
       data: {
-        type,
+        bodyPart: type,
         difficulty,
         title,
         description,
-        videoUrl: video_url, // Map camelCase frontend/body to Prisma field
+        videoUrl: video_url,
+        categoryId: category.id
       }
     });
 
@@ -167,7 +203,7 @@ router.put('/:exerciseId', async (req, res) => {
     const { type, difficulty, title, description, video_url } = req.body;
 
     const dataToUpdate = {};
-    if (type !== undefined) dataToUpdate.type = type;
+    if (type !== undefined) dataToUpdate.bodyPart = type;
     if (difficulty !== undefined) dataToUpdate.difficulty = difficulty;
     if (title !== undefined) dataToUpdate.title = title;
     if (description !== undefined) dataToUpdate.description = description;

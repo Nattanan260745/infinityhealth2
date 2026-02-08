@@ -10,7 +10,7 @@ router.post('/register', async (req, res) => {
   try {
     console.log('DEBUG: Register Hit', req.body);
     console.log('DEBUG: JWT_SECRET exists?', !!process.env.JWT_SECRET);
-    const { fullName, email, password, dateOfBirth, gender } = req.body;
+    const { fullName, email, password } = req.body;
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
@@ -33,9 +33,6 @@ router.post('/register', async (req, res) => {
       if (parts.length > 1) lastName = parts.slice(1).join(' ');
     }
 
-    // Default values for backward compatibility
-    const dob = dateOfBirth ? new Date(dateOfBirth) : new Date();
-    const userGender = gender || 'other';
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
@@ -48,8 +45,6 @@ router.post('/register', async (req, res) => {
         password: hashedPassword,
         firstName,
         lastName,
-        dateOfBirth: dob,
-        gender: userGender,
         role: 'user',
         profileImg: '',
         userStats: {
@@ -194,7 +189,6 @@ router.post('/clerk-sync', async (req, res) => {
       // Hash a dummy password (they use Clerk to login anyway)
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash('clerk_auth_user_' + Date.now(), salt);
-      const dob = new Date(); // Default
 
       user = await prisma.user.create({
         data: {
@@ -202,8 +196,6 @@ router.post('/clerk-sync', async (req, res) => {
           password: hashedPassword,
           firstName: firstName || 'User',
           lastName: lastName || '',
-          dateOfBirth: dob,
-          gender: 'other',
           role: 'user',
           profileImg: image || '',
           userStats: {

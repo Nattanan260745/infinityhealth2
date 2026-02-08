@@ -13,8 +13,6 @@ model User {
   password    String
   firstName   String   @map("first_name")
   lastName    String   @map("last_name")
-  dateOfBirth DateTime @map("date_of_birth") @db.Date
-  gender      Gender
   role        Role     @default(user)
   profileImg  String?  @map("profile_img")
   bio         String?
@@ -30,7 +28,6 @@ model User {
   notifications  Notification[]
 
   pointHistory     PointHistory[]
-  levelProgression LevelProgression[]
 
   @@map("users")
 }
@@ -176,12 +173,6 @@ model HealthTracking {
   @@map("health_tracking")
 }
 
-enum Gender {
-  male
-  female
-  other
-}
-
 enum Role {
   user
   admin
@@ -211,8 +202,6 @@ enum NotificationType {
   SYSTEM
   MISSION_COMPLETED
   LEVEL_UP
-  ROUTINE_REMINDER
-  CHALLENGE_INVITE
 }
 
 model PointHistory {
@@ -231,22 +220,5 @@ model PointHistory {
 
 enum PointType {
   MISSION
-  STREAK_BONUS
-  CHALLENGE
   OTHER
-}
-
-
-model LevelProgression {
-  id          Int      @id @default(autoincrement()) @map("progression_id")
-  userId      Int      @map("user_id")
-  oldLevel    Int      @map("old_level")
-  newLevel    Int      @map("new_level")
-  pointsUsed  Int?     @map("points_used")
-  expUsed     Int?     @map("exp_used")
-  leveledUpAt DateTime @default(now()) @map("leveled_up_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("level_progression")
 }

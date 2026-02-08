@@ -26,7 +26,8 @@
       "package": "com.ohm_zxc2545.infinityhealth",
       "permissions": [
         "android.permission.ACTIVITY_RECOGNITION"
-      ]
+      ],
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro",

@@ -32,22 +32,22 @@ export default function ExerciseForm() {
             const response = await api.get(`/exercise/${id}`);
             const ex = response.data.data;
 
-            // Parse existing type
+            // Parse existing type/bodyPart
             let maj = 'cardio';
             let sub = 'full_body';
+            const exType = ex.type || ex.bodyPart || '';
 
-            if (ex.type === 'cardio') {
+            if (exType === 'cardio') {
                 maj = 'cardio';
-            } else if (ex.type.startsWith('weight')) {
+            } else if (exType.startsWith('weight')) {
                 maj = 'weight';
                 // Extract suffix if present, e.g. weight_upper_body -> upper_body
-                const parts = ex.type.split('weight_');
+                const parts = exType.split('weight_');
                 if (parts.length > 1 && parts[1]) {
                     sub = parts[1];
                 }
             } else {
-                // Fallback for legacy 'weight' (no suffix)
-                if (ex.type === 'weight') maj = 'weight';
+                if (exType === 'weight') maj = 'weight';
             }
 
             setFormData({
@@ -56,7 +56,7 @@ export default function ExerciseForm() {
                 majorType: maj,
                 subType: sub,
                 difficulty: ex.difficulty,
-                video_url: ex.videoUrl || ''
+                video_url: ex.videoUrl || ex.video_url || ''
             });
         } catch (err) {
             console.error(err);

@@ -12,8 +12,6 @@ async function main() {
                 password: 'password123',
                 firstName: 'Test',
                 lastName: 'User',
-                dateOfBirth: new Date('2000-01-01'),
-                gender: 'other',
                 role: 'user',
                 userStats: {
                     create: {
