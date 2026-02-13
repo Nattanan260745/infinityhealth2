@@ -109,7 +109,7 @@ const grantRewards = async (userId, mission) => {
         const { calculateLevelWithCap } = require('./levelUtils'); // Assuming this exists or we use simple logic
         // We will try to use the existing utility if possible, otherwise simple logic
         try {
-            level = await calculateLevelWithCap(level, newExp, userId, true);
+            level = await calculateLevelWithCap(level, newExp, userId, false);
         } catch (e) {
             // Fallback if util not available or fails
             console.warn("Level util failed, using simple increment if needed");

@@ -669,17 +669,23 @@ export default function ProfileScreen() {
               {/* Requirements Text */}
               <Text style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20 }}>
                 {isReadyToRankUp
-                  ? `Cost: ${pointsCost} Points`
-                  : `Complete all requirements to Rank Up`}
+                  ? `Ready to Rank Up! (Cost: ${pointsCost} Points)`
+                  : `Requirements: Max EXP, Challenge, and ${pointsCost} Points`}
               </Text>
 
               {/* Status Indicators */}
               <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name={isExpReady ? "checkmark-circle" : "ellipse-outline"} size={16} color={isExpReady ? "#10B981" : "#9CA3AF"} />
-                  <Text style={{ marginLeft: 4, fontSize: 12, color: '#4B5563' }}>Max EXP</Text>
+                  <Ionicons name={isExpReady ? "checkmark-circle" : "ellipse-outline"} size={16} color={isExpReady ? "#10B981" : "#EF4444"} />
+                  <Text style={{ marginLeft: 4, fontSize: 12, color: isExpReady ? '#4B5563' : '#EF4444' }}>Max EXP</Text>
                 </View>
-                {/* Points indicator removed */}
+
+                {/* Points Indicator */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name={isPointsReady ? "checkmark-circle" : "ellipse-outline"} size={16} color={isPointsReady ? "#10B981" : "#EF4444"} />
+                  <Text style={{ marginLeft: 4, fontSize: 12, color: isPointsReady ? '#4B5563' : '#EF4444' }}>{pointsCost} Pts</Text>
+                </View>
+
                 {/* Challenge Indicator */}
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Ionicons name={isChallengeReady ? "checkmark-circle" : "ellipse-outline"} size={16} color={isChallengeReady ? "#10B981" : "#EF4444"} />
