@@ -224,7 +224,16 @@ export const useMissionPage = () => {
     const currentProgress = parseInt(progressParts[0]) || 0;
     const totalProgress = parseInt(progressParts[1]) || mission.target_value || 100;
     const minLevel = mission.min_level || 1;
-    const isLocked = mission.type === 'challenge' && userLevel < minLevel;
+
+    // Lock Logic:
+    // 1. Challenge visible ONLY for current level (Handled in filter).
+    // 2. Locked if User XP is not full.
+    // XP Cap for level L is L * 1000.
+    // So if userLevel == X, they need X * 1000 XP to unlock the challenge.
+    const xpRequired = userLevel * 1000;
+
+    // Only apply lock logic to Challenge missions
+    const isLocked = mission.type === 'challenge' && userXP < xpRequired;
 
     return {
       id: mission._id,
@@ -248,7 +257,18 @@ export const useMissionPage = () => {
 
   // Filter missions by selected tab
   const filteredMissions = missions
-    .filter(m => m.type === selectedTab)
+    .filter(m => {
+      // 1. Basic Type Filter
+      if (m.type !== selectedTab) return false;
+
+      // 2. Challenge specific filter: Show ONLY current level's challenge
+      if (selectedTab === 'challenge') {
+        const minLevel = m.min_level || 1;
+        return minLevel === userLevel;
+      }
+
+      return true;
+    })
     .map(convertToDisplayMission)
     .sort((a, b) => {
       // Sort challenge missions by minLevel (unlocked first)

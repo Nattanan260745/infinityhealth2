@@ -35,23 +35,38 @@ export default function TabLayout() {
           routineNotifs = routineRes.data;
         }
 
-        // 3. Check Local Read Status
+        // 3. Check Local Read Status & Deleted Status
         const readKey = `read_notifications_${today}`;
         const readData = await storage.getItem(readKey);
         const readIds: number[] = readData ? JSON.parse(readData) : [];
+
+        const deleteKey = `deleted_notifications_${today}`;
+        const deleteData = await storage.getItem(deleteKey);
+        const deletedIds: number[] = deleteData ? JSON.parse(deleteData) : [];
 
         // 4. Calculate Unread Count
         // Backend: isRead is false
         const unreadBackend = backendNotifs.filter(n => !n.isRead).length;
 
-        // Routines: ID not in readIds
-        const unreadRoutines = routineNotifs.filter(r => !readIds.includes(r.id)).length;
+        // Routines: ID not in readIds AND not in deletedIds AND Time has passed
+        const now = new Date();
+        const currentHours = now.getHours();
+        const currentMinutes = now.getMinutes();
+
+        const unreadRoutines = routineNotifs.filter(r => {
+          if (readIds.includes(r.id)) return false;
+          if (deletedIds.includes(r.id)) return false; // Fix: Check deleted status
+
+          // Check Time (Only count if time has passed)
+          if (r.scheduledTime) {
+            const [h, m] = r.scheduledTime.split(':').map(Number);
+            if (h > currentHours) return false;
+            if (h === currentHours && m > currentMinutes) return false;
+          }
+          return true;
+        }).length;
 
         const totalUnread = unreadBackend + unreadRoutines;
-
-        // Also keep Level 10 Check? User seemed confused by it. 
-        // Let's REMOVE it to strictly follow "Red dot = Unread Message" paradigm.
-        // If we want to alert for Rank Up, we should use a different UI element or send a notification.
 
         setHasUnread(totalUnread > 0);
 
@@ -97,16 +112,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="DashBoardPage"
-        options={{
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name={focused ? 'grid' : 'grid-outline'} size={24} color={color} />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="calendar"
         options={{
           tabBarIcon: ({ color, focused }) => (
@@ -115,6 +120,17 @@ export default function TabLayout() {
             </View>
           ),
         }}
+      />
+      <Tabs.Screen
+        name="DashBoardPage"
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={focused ? 'grid' : 'grid-outline'} size={24} color={color} />
+            </View>
+          ),
+        }}
+
       />
 
       <Tabs.Screen

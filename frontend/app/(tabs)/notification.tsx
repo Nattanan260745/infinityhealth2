@@ -63,28 +63,50 @@ export default function NotificationScreen() {
                 const readData = await storage.getItem(readKey);
                 const readIds: number[] = readData ? JSON.parse(readData) : [];
 
-                routineNotifs = routineRes.data.map((r: any) => {
-                    // Create a valid date object for sorting
-                    // r.scheduledTime is "HH:MM"
-                    let createdDate = new Date();
-                    if (r.scheduledTime) {
-                        const [h, m] = r.scheduledTime.split(':');
-                        createdDate.setHours(parseInt(h), parseInt(m), 0, 0);
-                    }
+                // Check local deleted status
+                const deleteKey = `deleted_notifications_${today}`;
+                const deleteData = await storage.getItem(deleteKey);
+                const deletedIds: number[] = deleteData ? JSON.parse(deleteData) : [];
 
-                    // Use Negative ID for Routines to avoid collision with DB IDs
-                    // r.id is likely number
-                    return {
-                        id: -Math.abs(r.id),
-                        userId: parseInt(userId),
-                        type: 'ROUTINE',
-                        title: 'Routine Reminder',
-                        message: `It's time for: ${r.title}`,
-                        isRead: readIds.includes(r.id), // Check against original ID
-                        referenceId: r.id, // Keep original ID here
-                        createdAt: createdDate.toISOString()
-                    };
-                });
+                const now = new Date();
+                const currentHours = now.getHours();
+                const currentMinutes = now.getMinutes();
+
+                routineNotifs = routineRes.data
+                    .filter((r: any) => {
+                        // 1. Check Deletion
+                        if (deletedIds.includes(r.id)) return false;
+
+                        // 2. Check Time (Only show if time has passed)
+                        if (r.scheduledTime) {
+                            const [h, m] = r.scheduledTime.split(':').map(Number);
+                            if (h > currentHours) return false;
+                            if (h === currentHours && m > currentMinutes) return false;
+                        }
+                        return true;
+                    })
+                    .map((r: any) => {
+                        // Create a valid date object for sorting
+                        // r.scheduledTime is "HH:MM"
+                        let createdDate = new Date();
+                        if (r.scheduledTime) {
+                            const [h, m] = r.scheduledTime.split(':');
+                            createdDate.setHours(parseInt(h), parseInt(m), 0, 0);
+                        }
+
+                        // Use Negative ID for Routines to avoid collision with DB IDs
+                        // r.id is likely number
+                        return {
+                            id: -Math.abs(r.id),
+                            userId: parseInt(userId),
+                            type: 'ROUTINE',
+                            title: 'Routine Reminder',
+                            message: `It's time for: ${r.title}`,
+                            isRead: readIds.includes(r.id), // Check against original ID
+                            referenceId: r.id, // Keep original ID here
+                            createdAt: createdDate.toISOString()
+                        };
+                    });
             }
 
             // 3. Merge & Sort
@@ -92,9 +114,6 @@ export default function NotificationScreen() {
             const sorted = allNotifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
             console.log(`[NotificationScreen] Merged: ${backendNotifs.length} Backend + ${routineNotifs.length} Routines`);
-            if (routineNotifs.length > 0) {
-                console.log('[NotificationScreen] Sample Routine Time:', routineNotifs[0].createdAt, 'Original Time:', routineRes.data[0].scheduledTime);
-            }
             setNotifications(sorted);
 
         } catch (error) {
@@ -157,11 +176,31 @@ export default function NotificationScreen() {
     };
 
     const handleDeleteNotification = async (id: number) => {
-        // 1. Optimistic Update
+        // 1. Find notification to get referenceId if needed
+        const target = notifications.find(n => n.id === id);
+
+        // 2. Optimistic Update
         setNotifications(prev => prev.filter(n => n.id !== id));
 
-        // 2. Call API (Only for backend notifications)
-        if (id > 0) {
+        // 3. Handle Deletion Logic
+        if (id < 0 && target) { // Routine Notification (Local)
+            try {
+                const today = getTodayStr();
+                const deleteKey = `deleted_notifications_${today}`;
+                const deleteData = await storage.getItem(deleteKey);
+                const deletedIds: number[] = deleteData ? JSON.parse(deleteData) : [];
+
+                const originalId = target.referenceId || Math.abs(id);
+
+                if (!deletedIds.includes(originalId)) {
+                    deletedIds.push(originalId);
+                    await storage.setItem(deleteKey, JSON.stringify(deletedIds));
+                    console.log(`[NotificationScreen] Persisted deletion for routine ${originalId}`);
+                }
+            } catch (e) {
+                console.error('Failed to delete routine locally:', e);
+            }
+        } else if (id > 0) { // Backend Notification
             try {
                 await deleteNotification(id);
             } catch (error) {

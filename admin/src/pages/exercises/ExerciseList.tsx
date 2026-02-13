@@ -66,7 +66,7 @@ export default function ExerciseList() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead style={{ backgroundColor: '#f9fafb' }}>
                         <tr>
-                            <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#6b7280' }}>ID</th>
+
                             <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#6b7280' }}>Title</th>
                             <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#6b7280' }}>Type</th>
                             <th style={{ padding: '0.75rem 1.5rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#6b7280' }}>Difficulty</th>
@@ -76,7 +76,7 @@ export default function ExerciseList() {
                     <tbody style={{}}>
                         {exercises.map((exercise) => (
                             <tr key={exercise.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                                <td style={{ padding: '1rem 1.5rem', whiteSpace: 'nowrap', color: '#6b7280' }}>{exercise.id}</td>
+
                                 <td style={{ padding: '1rem 1.5rem', whiteSpace: 'nowrap', fontWeight: '500', color: '#111827' }}>{exercise.title}</td>
                                 <td style={{ padding: '1rem 1.5rem', whiteSpace: 'nowrap', color: '#6b7280', textTransform: 'capitalize' }}>{exercise.type}</td>
                                 <td style={{ padding: '1rem 1.5rem', whiteSpace: 'nowrap' }}>
@@ -108,7 +108,7 @@ export default function ExerciseList() {
                         ))}
                         {exercises.length === 0 && (
                             <tr>
-                                <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                                <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                                     No exercises found. Add one to get started!
                                 </td>
                             </tr>

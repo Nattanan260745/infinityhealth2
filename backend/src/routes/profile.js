@@ -184,7 +184,7 @@ router.put('/:userId', async (req, res) => {
   }
 });
 
-// Add experience points
+// Add experience points (No auto-level up)
 router.post('/:userId/add-exp', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -199,24 +199,11 @@ router.post('/:userId/add-exp', async (req, res) => {
 
     const newExp = stats.currentExp + (amount || 0);
 
-    // Level up logic (Simple: every 1000 exp = 1 level, OR use Level table)
-    // Legacy code used: floor(exp / 1000) + 1
-    // New logic: Use DB table `Level` (preferred) or keep legacy simple math?
-    // Let's stick to legacy math for this specific endpoint unless I want to query `Level` table.
-    // The previous prompt said "Level logic" in Mission used the table. Consistency suggests using the table.
-    // However, for speed/compatibility with this specific route (which might be used by debug tools), I'll match mission.js logic if possible.
-    // But `mission.js` queries `prisma.level`.
-
-    // Let's use `prisma.level` for consistency.
-    // Level logic using centralized utility
-    const { calculateLevelWithCap } = require('../utils/levelUtils');
-    const newLevel = await calculateLevelWithCap(stats.level, newExp, uid);
-
     const updatedStats = await prisma.userStats.update({
       where: { userId: uid },
       data: {
-        currentExp: newExp,
-        level: newLevel
+        currentExp: newExp
+        // Level remains same until manual rank up
       }
     });
 
@@ -275,29 +262,94 @@ router.post('/rank-up/:userId', async (req, res) => {
     const stats = await prisma.userStats.findUnique({ where: { userId: uid } });
     if (!stats) return res.status(404).json({ success: false, message: 'User stats not found' });
 
-    // Try to calculate new level with Manual Flag = TRUE
-    const { calculateLevelWithCap } = require('../utils/levelUtils');
-    const newLevel = await calculateLevelWithCap(stats.level, stats.currentExp, uid, true);
+    const currentLevel = stats.level;
+    const currentExp = stats.currentExp;
+    const currentPoints = stats.totalPoints;
 
-    if (newLevel > stats.level) {
-      // Success! Level Up
-      await prisma.userStats.update({
-        where: { userId: uid },
-        data: { level: newLevel }
-      });
-
-      return res.json({
-        success: true,
-        message: 'Rank Up Successful!',
-        data: { level: newLevel }
-      });
-    } else {
-      // Conditions not met (e.g. Challenge not done)
+    // 1. XP Requirement: Must have full XP for current level (Level * 1000)
+    // E.g. Level 1 needs 1000 XP to qualify for Level 2.
+    const xpRequired = currentLevel * 1000;
+    if (currentExp < xpRequired) {
       return res.status(400).json({
         success: false,
-        message: 'Rank up conditions not met. Complete the challenge first.'
+        message: `XP not full. Need ${xpRequired} XP to rank up.`,
+        details: { needed: xpRequired, current: currentExp }
       });
     }
+
+    // 2. Points Cost: 100 usually, 1000 every 10th level (10, 20, 30...)
+    // "Every 10 levels uses 1000 points" -> Level 10 -> 11 cost = 1000? Or 9->10?
+    // User: "all levels use 100... except every 10 levels use 1000"
+    // Usually means the barrier AT level 10 costs 1000.
+    const isBossLevel = (currentLevel % 10 === 0);
+    const pointsCost = isBossLevel ? 1000 : 100;
+
+    if (currentPoints < pointsCost) {
+      return res.status(400).json({
+        success: false,
+        message: `Not enough points. Need ${pointsCost} points.`,
+        details: { needed: pointsCost, current: currentPoints }
+      });
+    }
+
+    // 3. Challenge Requirement: Must complete Challenge Mission for CURRENT level
+    const challengeMission = await prisma.mission.findFirst({
+      where: {
+        missionType: 'CHALLENGE',
+        requiredLevel: currentLevel,
+        isActive: true
+      }
+    });
+
+    if (challengeMission) {
+      const isCompleted = await prisma.userMission.findFirst({
+        where: {
+          userId: uid,
+          missionId: challengeMission.id,
+          status: true // Completed
+        }
+      });
+
+      if (!isCompleted) {
+        return res.status(400).json({
+          success: false,
+          message: `Challenge not completed. Please finish 'Level ${currentLevel} Challenge' first.`
+        });
+      }
+    }
+
+    // All conditions met: Level Up!
+    const newLevel = currentLevel + 1;
+    const newPoints = currentPoints - pointsCost;
+
+    await prisma.userStats.update({
+      where: { userId: uid },
+      data: {
+        level: newLevel,
+        totalPoints: newPoints
+      }
+    });
+
+    // Optional: Create Level Up Notification
+    await prisma.notification.create({
+      data: {
+        userId: uid,
+        type: 'LEVEL_UP',
+        title: 'Rank Up Successful! 🎉',
+        message: `Congratulations! You are now Level ${newLevel}. Points used: ${pointsCost}.`,
+        referenceId: newLevel
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: 'Rank Up Successful!',
+      data: {
+        level: newLevel,
+        points: newPoints
+      }
+    });
+
   } catch (error) {
     console.error('Rank up error:', error);
     res.status(500).json({ success: false, message: 'Failed to rank up' });

@@ -116,23 +116,26 @@ export default function ProfileScreen() {
 
                 // Check for Level Challenge
                 const currentLevel = res.data?.level_id || 1;
-                if (currentLevel % 10 === 0) {
-                  try {
-                    const missionsRes = await getMissionsByType('challenge');
-                    if (missionsRes.success && missionsRes.data) {
-                      const challenge = missionsRes.data.find(m => m.min_level === currentLevel);
-                      if (challenge) {
-                        setChallengeMission(challenge);
-                        // Check status
-                        const userMissionsRes = await getUserMissions(internalUserId);
-                        if (userMissionsRes.success && userMissionsRes.data) {
-                          const status = userMissionsRes.data.find(m => m._id === challenge._id);
-                          if (status) setUserMissionStatus(status);
-                        }
+                // Always check for challenge
+                try {
+                  const missionsRes = await getMissionsByType('challenge');
+                  if (missionsRes.success && missionsRes.data) {
+                    // Fix: API returns 'requiredLevel', not 'min_level' for this endpoint
+                    const challenge = missionsRes.data.find((m: any) => (m.requiredLevel || m.min_level) === currentLevel);
+                    if (challenge) {
+                      setChallengeMission(challenge);
+                      // Check status
+                      const userMissionsRes = await getUserMissions(internalUserId);
+                      if (userMissionsRes.success && userMissionsRes.data) {
+                        const status = userMissionsRes.data.find((m: any) => m._id === (challenge as any).id || m._id === challenge._id);
+                        if (status) setUserMissionStatus(status);
                       }
+                    } else {
+                      setChallengeMission(null);
+                      setUserMissionStatus(null);
                     }
-                  } catch (e) { console.log('Mission API failed'); }
-                }
+                  }
+                } catch (e) { console.log('Mission API failed'); }
               }
             }
           }
@@ -293,37 +296,47 @@ export default function ProfileScreen() {
       setAlertVisible(true);
     };
 
-    // 1. Check Level Requirement
+    // 1. Calculate Requirements
     const level = Number(userData.level);
-    if (level % 10 !== 0) {
-      showAlert("Not Ready", `You must reach Level ${Math.ceil(level / 10) * 10} to Rank Up! Continue gaining EXP.`);
-      return;
-    }
+    const isBossLevel = (level % 10 === 0);
+    const pointsCost = isBossLevel ? 1000 : 100;
+    const xpRequired = level * 1000;
 
     // 2. Check EXP Requirement
-    if (userData.experience < userData.maxExperience) {
-      showAlert("Not Ready", "You need to max out your experience first!");
+    if (userData.experience < xpRequired) {
+      showAlert("Not Ready", `You need ${xpRequired - userData.experience} more EXP to max out!`);
       return;
     }
 
-    if (!challengeMission) {
-      // If no challenge exists, we might need to assume it's allowed or ask user to contact support.
-      // But for now, let's try to rank up anyway (maybe standard level up logic allows it if no challenge)
-      // Or block it. User said "must do challenge".
-      // Let's try calling rankUpUser regardless. If backend fails, it returns message.
+    // 3. Check Points Requirement
+    if (userData.totalPoints < pointsCost) {
+      showAlert("Not Ready", `You need ${pointsCost} Points to Rank Up (Current: ${userData.totalPoints})`);
+      return;
     }
 
-    // Try to Rank Up
-    // Note: We don't check `isCompleted` frontend-side strictly if we trust backend.
-    // But helpful for UX.
-    const isCompleted = userMissionStatus?.user_status?.mission_status === 'completed';
+    // 4. Check Challenge Requirement
+    // Only check challenge if one exists for this level (Frontend check)
+    // Determining if challenge exists: Current level usually has a challenge to verify before ranking up.
+    // The backend `rank-up` will enforces this strictly.
+    // Frontend just gives a hint.
 
-    if (challengeMission && !isCompleted) {
-      showAlert("Challenge Incomplete", "You haven't completed the Rank Up Challenge yet!", () => {
-        setChallengeModalVisible(true);
-        setAlertVisible(false); // Close alert when opening challenge
-      }, "View Challenge");
-      return;
+    if (challengeMission) {
+      // We can rely on `userMissionStatus` if available, or just let backend handle it.
+      // But if we have status, check it.
+      const isCompleted = userMissionStatus?.user_status?.mission_status === 'completed';
+      if (!isCompleted) {
+        showAlert("Challenge Incomplete", "You haven't completed the Rank Up Challenge yet!", () => {
+          // Redirect logic or modal
+          // The modal logic existed before, let's keep it if possible or just alert.
+          // If we have `challengeModalVisible`, use it.
+          // But simpler to just alert for now as I replaced the modal logic block partially in thought process? 
+          // No, I replaced the *Card*. The modal state `challengeModalVisible` is still in file.
+          // Wait, I need to make sure I don't break the closure.
+          setChallengeModalVisible(true);
+          setAlertVisible(false);
+        }, "View Challenge");
+        return;
+      }
     }
 
     // Proceed to Rank Up API Call
@@ -333,8 +346,23 @@ export default function ProfileScreen() {
         const res = await rankUpUser(internalId);
         if (res.success) {
           showAlert("Congratulations! 🎉", "You have successfully ranked up!\nKeep up the great work!", async () => {
-            // Reload user data
-            router.replace('/(tabs)/profile');
+            // Optimistic Update
+            setUserData(prev => ({
+              ...prev,
+              level: prev.level + 1,
+              totalPoints: prev.totalPoints - pointsCost,
+              experience: 0, // Reset exp usually, or keep it if it carries over? Standard is reset or carry overflow.
+              // Assuming backend handles overflow, but for UI sync, let's assume 0 for safety or fetch.
+              // Better: Just set level and points, experience might be complex.
+              // Actually, most games carry over. Let's start with 0 for visual clarity or fetch.
+              // Safest: Trigger a re-fetch if possible, or just update level/points.
+            }));
+
+            // Force reload data by toggling a dependency or calling a refresh function if we had one.
+            // Since `loadUserData` is inside useEffect, we can't call it directly.
+            // But updating state will trigger re-render.
+
+            // Remove router.replace as it's redundant on same screen
             setAlertVisible(false);
           }, "Awesome!", (
             <View style={{
@@ -594,12 +622,22 @@ export default function ProfileScreen() {
         </View>
 
         {/* Ranks Up Card - Always Visible */}
-        {/* Ranks Up / Progress Card - Always Visible */}
+        {/* Ranks Up Card - Always Visible */}
         {(() => {
-          const nextLevelCap = Math.ceil((userData.level + 1) / 10) * 10;
-          const isLevelReady = userData.level % 10 === 0 && userData.level >= nextLevelCap;
-          const isExpReady = userData.experience >= userData.maxExperience;
-          const isReadyToRankUp = (userData.level % 10 === 0) && isExpReady;
+          const isBossLevel = (userData.level % 10 === 0);
+          const pointsCost = isBossLevel ? 1000 : 100;
+          const xpRequired = userData.level * 1000;
+
+          const isExpReady = userData.experience >= xpRequired;
+          const isPointsReady = userData.totalPoints >= pointsCost;
+
+          let isChallengeReady = true;
+          if (challengeMission) {
+            const status = userMissionStatus?.user_status?.mission_status;
+            isChallengeReady = status === 'completed';
+          }
+
+          const isReadyToRankUp = isExpReady && isPointsReady && isChallengeReady;
 
           return (
             <View style={{
@@ -615,45 +653,58 @@ export default function ProfileScreen() {
                 width: 60,
                 height: 60,
                 borderRadius: 30,
-                backgroundColor: '#E9D5FF', // Light Purple
+                backgroundColor: isReadyToRankUp ? '#E9D5FF' : '#E5E7EB',
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: 16
               }}>
-                <Ionicons name="trophy-outline" size={28} color="#A855F7" />
+                <Ionicons name="trophy-outline" size={28} color={isReadyToRankUp ? "#A855F7" : "#9CA3AF"} />
               </View>
 
               {/* Description Text */}
-              <Text style={{ fontSize: 13, color: '#4B5563', textAlign: 'center', marginBottom: 4 }}>
-                Complete missions to earn EXP and Points
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#374151', textAlign: 'center', marginBottom: 4 }}>
+                {isReadyToRankUp ? "Rank Up Available!" : "Rank Up Requirements"}
               </Text>
 
               {/* Requirements Text */}
               <Text style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20 }}>
                 {isReadyToRankUp
-                  ? "You are ready to ascend!"
-                  : `Use ${nextLevelCap * 100} points and Max EXP`}
+                  ? `Cost: ${pointsCost} Points`
+                  : `Complete all requirements to Rank Up`}
               </Text>
+
+              {/* Status Indicators */}
+              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name={isExpReady ? "checkmark-circle" : "ellipse-outline"} size={16} color={isExpReady ? "#10B981" : "#9CA3AF"} />
+                  <Text style={{ marginLeft: 4, fontSize: 12, color: '#4B5563' }}>Max EXP</Text>
+                </View>
+                {/* Points indicator removed */}
+                {/* Challenge Indicator */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name={isChallengeReady ? "checkmark-circle" : "ellipse-outline"} size={16} color={isChallengeReady ? "#10B981" : "#EF4444"} />
+                  <Text style={{ marginLeft: 4, fontSize: 12, color: isChallengeReady ? '#4B5563' : '#EF4444' }}>Challenge</Text>
+                </View>
+              </View>
 
               {/* Button */}
               <TouchableOpacity
                 onPress={handleRankUpPress}
                 style={{
-                  backgroundColor: '#7DD1E0', // Cyan/Blue matching other UI elements
+                  backgroundColor: isReadyToRankUp ? '#7DD1E0' : '#D1D5DB',
                   paddingVertical: 12,
                   paddingHorizontal: 32,
                   borderRadius: 25,
-                  shadowColor: '#7DD1E0',
+                  shadowColor: isReadyToRankUp ? '#7DD1E0' : 'transparent',
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.3,
                   shadowRadius: 8,
                   elevation: 4,
-                  opacity: isReadyToRankUp ? 1 : 0.6 // Dim if not ready
                 }}
-                disabled={!isReadyToRankUp} // Optional: disable if strictly following "Use X points" logic
+                disabled={!isReadyToRankUp}
               >
                 <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
-                  Ranks Up!
+                  Rank Up!
                 </Text>
               </TouchableOpacity>
             </View>

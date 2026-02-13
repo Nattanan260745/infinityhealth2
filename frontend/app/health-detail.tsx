@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Modal, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart, BarChart } from "react-native-chart-kit";
@@ -55,11 +55,15 @@ export default function HealthDetail() {
                 setHistory(rawData); // Store full raw data for list
 
                 // Map for Chart
+                // Backend sends date in "YYYY-MM-DD" which handles string sort correctly
                 const mapped = rawData.map(item => {
-                    const d = new Date(item.date || (item as any).trackingDate);
-                    const dateStr = !isNaN(d.getTime())
+                    const dateStr = item.date || (item as any).trackingDate || '';
+
+                    // Format for Display (MM/DD)
+                    const d = new Date(dateStr);
+                    const displayDate = !isNaN(d.getTime())
                         ? d.toLocaleDateString('en-US', { day: 'numeric', month: 'numeric' })
-                        : '';
+                        : dateStr;
 
                     let val = 0;
                     switch (metric) {
@@ -77,13 +81,16 @@ export default function HealthDetail() {
                             }
                             break;
                     }
-                    return { date: dateStr, value: val };
+                    return { date: displayDate, value: val, rawDate: dateStr };
                 });
 
-                // Sort for chart (Ascending)
-                mapped.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                // Sort by Raw Date String (Ascending: Oldest -> Newest)
+                mapped.sort((a, b) => a.rawDate.localeCompare(b.rawDate));
 
-                setChartData(mapped);
+                // Remove timestamp field to match state type
+                const cleanData = mapped.map(({ date, value }) => ({ date, value }));
+
+                setChartData(cleanData);
 
                 // Stats
                 const values = mapped.map(v => v.value).filter(v => v > 0);
@@ -209,7 +216,12 @@ export default function HealthDetail() {
                             chartConfig={chartConfig}
                             bezier
                             style={{ borderRadius: 16 }}
-                            withDots={false}
+                            verticalLabelRotation={30}
+                            onDataPointClick={({ value, index }) => {
+                                if (chartData[index]) {
+                                    Alert.alert(`${metric}`, `${chartData[index].date}: ${value}`);
+                                }
+                            }}
                         />
                     ) : (
                         <View style={{ height: 220, justifyContent: 'center', alignItems: 'center' }}>

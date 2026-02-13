@@ -214,21 +214,13 @@ router.get('/user/:userId', async (req, res) => {
     const { start, end } = getTodayRange();
 
     // Get all active missions
-    const missions = await prisma.mission.findMany({
-      where: { isActive: true },
-      orderBy: { id: 'asc' }
-    });
+    // Get user level for filtering
+    let userStats = await prisma.userStats.findUnique({ where: { userId: uid } });
+    const userLevel = userStats ? userStats.level : 1;
 
-    // Get user's missions for TODAY ONLY (for Daily type)
-    // For Challenge, typically they are NOT reset daily if they have duration > 1 day.
-    // However, the original logic didn't seem to differentiate much in the MongoDB query (it queried all UserMissions).
-    // The Mongo query was: userMissions.find({ createdAt: { $gte: startOfDay, $lte: endOfDay } });
-    // This implies ALL missions were treated as "Daily" in terms of status checking?
-    // If so, I will replicate that: ONLY showing status for UserMissions created today.
-
-    // NOTE: Challenge missions usually span multiple days. If we filter by today, do we lose progress of yesterday?
-    // If the original code did `createdAt: { $gte: startOfDay }`, then yes, it resets everything daily.
-    // I will stick to the original logic: Filter by today.
+    // Filter Logic:
+    // 1. Daily: Show all active daily missions
+    // 2. Challenge: Show ONLY active challenge for CURRENT level (requiredLevel === userLevel)
 
     const userMissions = await prisma.userMission.findMany({
       where: {
@@ -238,6 +230,21 @@ router.get('/user/:userId', async (req, res) => {
           lte: end
         }
       }
+    });
+
+    // Filter Missions
+    const missions = await prisma.mission.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { missionType: 'DAILY' },
+          {
+            missionType: 'CHALLENGE',
+            requiredLevel: userLevel
+          }
+        ]
+      },
+      orderBy: { id: 'asc' }
     });
 
     // Combine data
@@ -441,8 +448,8 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
 
       // Level logic
       const { calculateLevelWithCap } = require('../utils/levelUtils');
-      // Pass true to allow rank up if challenge is completed
-      const newLevel = await calculateLevelWithCap(userStats.level, currentExp, uid, true);
+      // Pass false to DISABLE manual rank up permission here (Mission completion != Rank Up action)
+      const newLevel = await calculateLevelWithCap(userStats.level, currentExp, uid, false);
 
       await prisma.userStats.update({
         where: { userId: uid },

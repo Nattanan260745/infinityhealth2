@@ -70,11 +70,11 @@ export default function LoginPage() {
       } else {
         // See https://clerk.com/docs/custom-flows/error-handling
         // for more info on error handling
-        console.error(JSON.stringify(signInAttempt, null, 2))
+        // console.error(JSON.stringify(signInAttempt, null, 2))
         alert('Login incomplete. Please check your verification status.')
       }
     } catch (err: any) {
-      console.error(JSON.stringify(err, null, 2))
+      // console.error(JSON.stringify(err, null, 2))
       if (err.errors?.[0]?.code === 'session_already_exists') {
         router.replace('/(tabs)')
         return

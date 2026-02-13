@@ -13,7 +13,7 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({ title = 'Calenda
             color: '#1F2937',
             textAlign: 'center',
             marginBottom: 24,
-            fontStyle: 'italic',
+            fontStyle: 'normal',
         }}>
             {title}
         </Text>

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "620017037858",
+    "project_id": "infinityhealth-fce8e",
+    "storage_bucket": "infinityhealth-fce8e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:620017037858:android:a74b7f7651c8cae13bd07b",
+        "android_client_info": {
+          "package_name": "com.ohm_zxc2545.infinityhealth"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBzyN6-pVitN3_vX8OfM4u9Kr-MA1kybqA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

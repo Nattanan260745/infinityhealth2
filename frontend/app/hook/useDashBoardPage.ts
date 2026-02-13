@@ -281,10 +281,18 @@ export const useDashBoardPage = () => {
                             break;
                         default: val = 0;
                     }
-                    return { date: dateStr, value: val };
+                    return { date: dateStr, value: val, rawDate: item.date || (item as any).trackingDate || '' };
                 });
-                // Sort by date just in case
-                setChartData(mappedData.reverse());
+
+                // Sort by rawDate Ascending (Oldest -> Newest)
+                mappedData.sort((a, b) => {
+                    const dateA = new Date(a.rawDate).getTime();
+                    const dateB = new Date(b.rawDate).getTime();
+                    return dateA - dateB;
+                });
+
+                // Remove rawDate before setting state
+                setChartData(mappedData.map(d => ({ date: d.date, value: d.value })));
             }
 
         } catch (error) {
@@ -302,6 +310,7 @@ export const useDashBoardPage = () => {
 
     const handleDataPointClick = (data: any) => {
         if (data.index === undefined) return;
+
         if (selectedPointIndex === data.index) {
             setSelectedPointIndex(null);
         } else {

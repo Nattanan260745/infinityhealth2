@@ -601,7 +601,7 @@ export default function MissionsScreen() {
                     paddingVertical: 6,
                   }}>
                     <Text style={{ fontSize: 12, color: '#9CA3AF', fontWeight: '600' }}>
-                      Unlock at Lv.{mission.minLevel}
+                      Reach XP Cap
                     </Text>
                   </View>
                 ) : mission.completed ? (

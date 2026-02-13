@@ -1,5 +1,6 @@
 const express = require('express');
 const prisma = require('../prisma');
+const { checkAndCompleteMission } = require('../utils/missionUtils');
 
 const router = express.Router();
 
@@ -111,6 +112,11 @@ router.post('/', async (req, res) => {
         completed: false
       }
     });
+
+    // Check Mission: Record Routine or Goal
+    await checkAndCompleteMission(uid, 'บันทึกกิจวัตรหรือเป้าหมายประจำวัน', 1);
+
+
 
     res.status(201).json({
       success: true,
