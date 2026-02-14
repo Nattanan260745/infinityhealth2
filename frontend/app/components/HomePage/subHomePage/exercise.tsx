@@ -10,9 +10,9 @@ import { useFocusEffect } from '@react-navigation/native';
 // Helper to extract YouTube Video ID
 const getYoutubeId = (url: string) => {
   if (!url) return null;
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
   const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
+  return (match && match[1]) ? match[1] : null;
 };
 
 type TabType = 'cardio' | 'weight';
@@ -281,14 +281,27 @@ export default function ExerciseScreen() {
                       marginRight: 16,
                       overflow: 'hidden',
                     }}>
-                      {workout.videoUrl && getYoutubeId(workout.videoUrl) ? (
+                      {workout.thumbnail ? (
+                        <Image
+                          source={{ uri: workout.thumbnail }}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="cover"
+                          onError={(e) => console.log('Error loading thumbnail from DB:', e.nativeEvent.error)}
+                        />
+                      ) : workout.videoUrl && getYoutubeId(workout.videoUrl) ? (
                         <Image
                           source={{ uri: `https://img.youtube.com/vi/${getYoutubeId(workout.videoUrl)}/hqdefault.jpg` }}
                           style={{ width: '100%', height: '100%' }}
                           resizeMode="cover"
+                          onError={(e) => console.log('Error loading thumbnail from YouTube:', e.nativeEvent.error)}
+                          defaultSource={require('@/assets/images/exercise.png')} // Fallback
                         />
                       ) : (
-                        <Text style={{ fontSize: 32 }}>💪</Text>
+                        <Image
+                          source={require('@/assets/images/exercise.png')}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="contain"
+                        />
                       )}
                     </View>
                     <View style={{ flex: 1 }}>

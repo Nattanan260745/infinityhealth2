@@ -127,15 +127,19 @@ const grantRewards = async (userId, mission) => {
         });
 
         // Notification
-        await prisma.notification.create({
-            data: {
-                userId,
-                type: 'MISSION_COMPLETED',
-                title: 'Mission Completed! 🎉',
-                message: `You completed: ${mission.missionName}. Earned ${mission.rewardExp} XP & ${mission.rewardPoints} Points.`,
-                referenceId: mission.id
-            }
-        });
+        // OLD: Always create notification
+        // NEW: Skip notification for ALL missions (User request: Only Routines)
+        // if (mission.missionType !== 'DAILY') {
+        //     await prisma.notification.create({
+        //         data: {
+        //             userId,
+        //             type: 'MISSION_COMPLETED',
+        //             title: 'Mission Completed! 🎉',
+        //             message: `You completed: ${mission.missionName}. Earned ${mission.rewardExp} XP & ${mission.rewardPoints} Points.`,
+        //             referenceId: mission.id
+        //         }
+        //     });
+        // }
 
     } catch (error) {
         console.error('Error granting rewards:', error);

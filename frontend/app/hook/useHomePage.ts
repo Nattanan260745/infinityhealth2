@@ -380,6 +380,24 @@ export const useHomePage = () => {
     }, [user]);
 
 
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        // Refresh all data
+        try {
+            await Promise.all([
+                fetchRoutines(),
+                fetchNotifications(),
+                loadUserData()
+            ]);
+        } catch (error) {
+            console.error("Error refreshing data:", error);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [fetchRoutines, loadUserData]); // fetchNotifications is defined inside but depends on userId which is stable or handled
+
     return {
         styles,
         weekDays,
@@ -397,6 +415,8 @@ export const useHomePage = () => {
         handleDeleteNotification,
         handleClearAllNotifications,
         unreadCount,
+        refreshing,
+        onRefresh
     }
 }
 

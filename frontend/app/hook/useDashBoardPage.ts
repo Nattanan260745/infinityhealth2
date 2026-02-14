@@ -157,11 +157,16 @@ export const useDashBoardPage = () => {
 
                 rangeRes.data.forEach((item: HealthTrack) => {
                     let dateKey = '';
-                    if (item.date) {
-                        // Parse YYYY-MM-DD
-                        dateKey = item.date.split('T')[0];
-                    } else if ((item as any)['trackingDate']) {
-                        dateKey = new Date((item as any).trackingDate).toISOString().split('T')[0];
+                    if (item.date || (item as any)['trackingDate']) {
+                        const rawDate = item.date || (item as any)['trackingDate'];
+                        // Standardize on LOCAL DATE grouping to match user expectation
+                        const d = new Date(rawDate);
+                        if (!isNaN(d.getTime())) {
+                            dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        } else if (typeof rawDate === 'string' && rawDate.includes('T')) {
+                            // Fallback for simple string split if Date parse fails (unlikely)
+                            dateKey = rawDate.split('T')[0];
+                        }
                     }
 
                     if (!dateKey) return;

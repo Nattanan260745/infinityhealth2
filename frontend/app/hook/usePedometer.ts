@@ -12,6 +12,7 @@ export function usePedometer() {
     const initialSensorValRef = useRef<number | null>(null); // First value from sensor in this session
     const currentSessionStepsRef = useRef(0); // Steps taken in this active session
     const todayStrRef = useRef<string>('');
+    const userIdRef = useRef<string>('guest');
 
     const getTodayStr = () => {
         const now = new Date();
@@ -26,14 +27,18 @@ export function usePedometer() {
 
         const initPedometer = async () => {
             try {
-                // 1. Load saved steps for TODAY
+                // 1. Load saved steps for TODAY - SCOPED TO USER
                 const today = getTodayStr();
                 todayStrRef.current = today;
 
-                const savedKey = `pedometer_steps_${today}`;
+                // Get User ID for namespacing
+                const userId = await storage.getItem('internalUserId') || await storage.getItem('userId') || 'guest';
+                userIdRef.current = userId;
+                const savedKey = `pedometer_steps_${userId}_${today}`;
+
                 console.log('[Pedometer] Loading saved steps from:', savedKey);
                 const savedVal = await storage.getItem(savedKey);
-                console.log('[Pedometer] Saved value:', savedVal);
+                // console.log('[Pedometer] Saved value:', savedVal);
 
                 if (savedVal) {
                     baseStepsRef.current = parseInt(savedVal, 10) || 0;
@@ -101,7 +106,9 @@ export function usePedometer() {
                         setCurrentStepCount(total);
 
                         // Auto-Save constantly (debouncing is better but this is fine for local KV)
-                        storage.setItem(`pedometer_steps_${todayStrRef.current}`, total);
+                        // Auto-Save constantly
+                        const keyToSave = `pedometer_steps_${userIdRef.current}_${todayStrRef.current}`;
+                        storage.setItem(keyToSave, total.toString());
                     });
                 }
 

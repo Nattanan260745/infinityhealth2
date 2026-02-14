@@ -165,6 +165,7 @@ export interface Exercise {
   title: string;
   description: string;
   videoUrl?: string;
+  thumbnail?: string;
   createdAt?: string;
   updatedAt?: string;
 }

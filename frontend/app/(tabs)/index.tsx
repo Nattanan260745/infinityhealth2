@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl } from 'react-native';
 import { Header } from '../components/HomePage/Header';
 import { MissionCard } from '../components/HomePage/MissionCard';
 import { CalendarWeek } from '../components/HomePage/CalendarWeek';
@@ -52,6 +52,13 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                     // paddingTop: Platform.OS === 'web' ? 20 : 50,
                     paddingBottom: 20
                 }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={useHomePageController.refreshing}
+                        onRefresh={useHomePageController.onRefresh}
+                        tintColor="#7DD1E0"
+                    />
+                }
             >
 
 
