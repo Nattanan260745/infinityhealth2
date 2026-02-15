@@ -24,10 +24,14 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.ohm_zxc2545.infinityhealth",
-      "versionCode": 8,
+      "versionCode": 21,
       "googleServicesFile": "./google-services.json",
       "permissions": [
-        "android.permission.ACTIVITY_RECOGNITION"
+        "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
       ],
       "usesCleartextTraffic": true
     },

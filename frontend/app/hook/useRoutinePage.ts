@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { Platform, Alert } from "react-native";
 import storage from "../utils/storage";
 import {
   getUserRoutinesByDate,
@@ -92,7 +93,12 @@ export const useRoutinePage = () => {
 
   // Form states
   const [formTitle, setFormTitle] = useState('');
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]); // Default to today YYYY-MM-DD
+  // Fix: Use local date string instead of UTC (toISOString)
+  // This prevents issues where users in +07:00 see 'yesterday' date during early morning hours (00:00-07:00)
+  const today = new Date();
+  const localDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  const [formDate, setFormDate] = useState(localDateString);
   const [formTime, setFormTime] = useState('');
   const [formNotifications, setFormNotifications] = useState(true);
 
@@ -275,7 +281,21 @@ export const useRoutinePage = () => {
     // Helper to schedule notification
     const scheduleNotification = async (id: number, title: string, time: string, date: string) => {
       try {
-        if (!formNotifications) return; // Skip if disabled
+        // Ensure channel exists (Safety Fallback)
+        if (Platform.OS === 'android') {
+          await Notifications.setNotificationChannelAsync('infinity_channel', {
+            name: 'Infinity Health Notifications',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF231F7C',
+          });
+        }
+
+        // Check if enabled
+        if (!formNotifications) {
+          alert("Please enable 'Enable Notifications' toggle first.");
+          return;
+        }
 
         // Check permissions (Should be handled in Layout, but safe to check)
         const { status } = await Notifications.getPermissionsAsync();
@@ -295,27 +315,22 @@ export const useRoutinePage = () => {
               body: `Time for: ${title}`,
               data: { routineId: id },
               sound: true,
-            },
-            trigger: {
-              // Use Calendar trigger for specific date/time
-              type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-              year: triggerDate.getFullYear(),
-              month: triggerDate.getMonth() + 1, // Calendar trigger might use 1-idx month? No, usually follows Date semantics or specific API doc. 
-              // Actually Expo defaults: month (1-12) usually on some platforms, let's stick to safe 'date' if possible or simple Hour/Min if today.
-              // Let's use simple Date object trigger if supported, OR breakdown.
-              // Expo docs say: TriggerInput = Date | ...
-              // Let's use Date object directly if 'date' trigger type supported?
-              // Actually for 'CALENDAR', it expects components.
-              day: triggerDate.getDate(),
-              hour: hours,
-              minute: minutes,
-              repeats: false,
-            }
+              channelId: 'infinity_channel',
+            } as any,
+            trigger: triggerDate as unknown as Notifications.NotificationTriggerInput,
           });
           console.log('[Routine] Scheduled notification for:', title, 'at', time);
+          alert(`Reminder set for ${time}`); // Feedback to user
+        } else {
+          console.warn('[Routine] Time is in the past, skipping notification');
+          // Optional: Alert user if they expected a notification
+          if (formNotifications) {
+            alert('Time is in the past. Notification not scheduled.');
+          }
         }
       } catch (err) {
         console.error("Schedule Notification Error:", err);
+        alert(`Failed to schedule: ${err}`);
       }
     };
 

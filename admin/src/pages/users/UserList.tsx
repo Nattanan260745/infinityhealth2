@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 // import { useNavigate } from 'react-router-dom'; // Unused
 import api from '../../services/api';
 import UserEditModal from './UserEditModal';

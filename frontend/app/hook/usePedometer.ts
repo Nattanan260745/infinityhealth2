@@ -7,122 +7,114 @@ export function usePedometer() {
     const [currentStepCount, setCurrentStepCount] = useState(0);
     const [isPedometerAvailable, setIsPedometerAvailable] = useState<string>('checking');
 
-    // Refs to track values without re-renders
-    const baseStepsRef = useRef(0); // Loaded from storage
-    const initialSensorValRef = useRef<number | null>(null); // First value from sensor in this session
-    const currentSessionStepsRef = useRef(0); // Steps taken in this active session
-    const todayStrRef = useRef<string>('');
-    const userIdRef = useRef<string>('guest');
+    const appState = useRef(AppState.currentState);
+    const isFetching = useRef(false);
 
-    const getTodayStr = () => {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const getTodayRange = () => {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        return { start, end };
     };
 
-    const loadRef = useRef(false);
+    const getStorageKey = async () => {
+        const userId = await storage.getItem('internalUserId') || await storage.getItem('userId') || 'guest';
+        const { start } = getTodayRange();
+        const todayStr = start.toISOString().split('T')[0];
+        return `pedometer_steps_${userId}_${todayStr}`;
+    };
+
+    // Core function: Get Truth from System
+    const fetchTotalSteps = async () => {
+        if (isFetching.current) return;
+        isFetching.current = true;
+
+        try {
+            const isAvailable = await Pedometer.isAvailableAsync();
+            if (isAvailable) {
+                const { start, end } = getTodayRange();
+
+                // 1. Get History (The Truth)
+                let systemSteps = 0;
+                try {
+                    const result = await Pedometer.getStepCountAsync(start, end);
+                    if (result) systemSteps = result.steps;
+                } catch (e) {
+                    console.log('[Pedometer] History fetch failed:', e);
+                }
+
+                // 2. Get Local (The Backup)
+                const key = await getStorageKey();
+                const savedVal = await storage.getItem(key);
+                const localSteps = savedVal ? parseInt(savedVal, 10) : 0;
+
+                // 3. Ratchet: Never go down.
+                // If System says 0 (bug), use Local.
+                // If System says 500 (walked), update Local.
+                // Note: We do NOT use "current internal state" here. Source of truth is external.
+                // Actually, to be safe, let's also check current state? 
+                // No, state might be stale. Trust usage of Local Storage + System.
+
+                const finalSteps = Math.max(systemSteps, localSteps);
+
+                console.log(`[Pedometer] Sync: System=${systemSteps}, Local=${localSteps} -> Final=${finalSteps}`);
+
+                setCurrentStepCount(finalSteps);
+
+                if (finalSteps > localSteps) {
+                    storage.setItem(key, finalSteps.toString());
+                }
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            isFetching.current = false;
+        }
+    };
 
     useEffect(() => {
         let subscription: Pedometer.Subscription | null = null;
-        let isMounted = true;
 
-        const initPedometer = async () => {
-            try {
-                // 1. Load saved steps for TODAY - SCOPED TO USER
-                const today = getTodayStr();
-                todayStrRef.current = today;
+        const init = async () => {
+            const perm = await Pedometer.requestPermissionsAsync();
+            if (!perm.granted) {
+                setIsPedometerAvailable('denied');
+                return;
+            }
 
-                // Get User ID for namespacing
-                const userId = await storage.getItem('internalUserId') || await storage.getItem('userId') || 'guest';
-                userIdRef.current = userId;
-                const savedKey = `pedometer_steps_${userId}_${today}`;
+            const available = await Pedometer.isAvailableAsync();
+            setIsPedometerAvailable(String(available));
 
-                console.log('[Pedometer] Loading saved steps from:', savedKey);
-                const savedVal = await storage.getItem(savedKey);
-                // console.log('[Pedometer] Saved value:', savedVal);
+            if (available) {
+                // 1. Initial Sync
+                await fetchTotalSteps();
 
-                if (savedVal) {
-                    baseStepsRef.current = parseInt(savedVal, 10) || 0;
-                } else {
-                    baseStepsRef.current = 0;
-                }
-
-                if (isMounted) {
-                    console.log('[Pedometer] Setting initial step count:', baseStepsRef.current);
-                    setCurrentStepCount(baseStepsRef.current);
-                }
-
-                // 2. Request Permissions
-                const perm = await Pedometer.requestPermissionsAsync();
-                if (!isMounted) return;
-                if (!perm.granted) {
-                    setIsPedometerAvailable('denied');
-                    return;
-                }
-
-                const isAvailable = await Pedometer.isAvailableAsync();
-                if (!isMounted) return;
-                setIsPedometerAvailable(String(isAvailable));
-
-                // 3. Start Watching
-                if (isAvailable) {
-                    subscription = Pedometer.watchStepCount(result => {
-                        if (!isMounted) return;
-
-                        // Check if day changed while running
-                        const currentToday = getTodayStr();
-                        if (currentToday !== todayStrRef.current) {
-                            // Reset for new day
-                            todayStrRef.current = currentToday;
-                            baseStepsRef.current = 0;
-                            initialSensorValRef.current = null; // Reset sensor baseline
-                            currentSessionStepsRef.current = 0;
-                        }
-
-                        // Handle Android Sensor Logic
-                        // Sensor value might be:
-                        // A) Cumulative from boot (e.g. 15000, 15002...)
-                        // B) Session based starting at 0 (e.g. 0, 2, 5...)
-                        // We normalize both by capturing the FIRST value as baseline.
-
-                        if (initialSensorValRef.current === null) {
-                            initialSensorValRef.current = result.steps;
-                        }
-
-                        // Calculate steps taken SINCE subscribing
-                        const sessionDelta = result.steps - initialSensorValRef.current;
-
-                        // Sanity check: Ensure delta is positive (in case of weird reset)
-                        // If delta is huge negative, maybe reboot happened? -> Just ignore or reset baseline
-                        if (sessionDelta < 0) {
-                            initialSensorValRef.current = result.steps; // Reset baseline
-                            return;
-                        }
-
-                        currentSessionStepsRef.current = sessionDelta;
-
-                        // Total = Saved(Base) + Session
-                        const total = baseStepsRef.current + currentSessionStepsRef.current;
-
-                        setCurrentStepCount(total);
-
-                        // Auto-Save constantly (debouncing is better but this is fine for local KV)
-                        // Auto-Save constantly
-                        const keyToSave = `pedometer_steps_${userIdRef.current}_${todayStrRef.current}`;
-                        storage.setItem(keyToSave, total.toString());
-                    });
-                }
-
-            } catch (error) {
-                if (isMounted) setIsPedometerAvailable('error');
-                console.error('[Pedometer] Error:', error);
+                // 2. Watcher: Just a Trigger!
+                // We don't care about the 'result' object values (which can be confusing).
+                // We just know "User moved" -> "Go check the updated total".
+                subscription = Pedometer.watchStepCount(() => {
+                    fetchTotalSteps();
+                });
             }
         };
 
-        initPedometer();
+        init();
+
+        // 3. App State Background -> Foreground
+        const subscriptionAppState = AppState.addEventListener('change', nextAppState => {
+            if (
+                appState.current.match(/inactive|background/) &&
+                nextAppState === 'active'
+            ) {
+                console.log('[Pedometer] Resumed. Fetching...');
+                fetchTotalSteps();
+            }
+            appState.current = nextAppState;
+        });
 
         return () => {
-            isMounted = false;
             subscription && subscription.remove();
+            subscriptionAppState.remove();
         };
     }, []);
 

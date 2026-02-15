@@ -324,12 +324,14 @@ export default function RoutineScreen() {
                   )}
 
                   {/* Enable Notifications - Only for Routines */}
-                  <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: 32,
-                  }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: 32,
+                    }}
+                  >
                     <Text style={{ fontSize: 14, color: colors.textSecondary }}>Enable Notifications</Text>
                     <Switch
                       value={formNotifications}

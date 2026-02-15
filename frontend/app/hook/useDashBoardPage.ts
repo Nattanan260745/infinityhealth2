@@ -153,57 +153,53 @@ export const useDashBoardPage = () => {
             if (rangeRes.success && rangeRes.data) {
 
                 // DEDUPLICATION LOGIC: Group by Date and Merge
-                const uniqueDataMap = new Map<string, HealthTrack>();
+
+                // กลุ่มข้อมูลตามวันและเลือกเฉพาะข้อมูลล่าสุดของแต่ละวัน (timestamp ล่าสุด)
+                const latestPerDayMap = new Map<string, HealthTrack>();
 
                 rangeRes.data.forEach((item: HealthTrack) => {
                     let dateKey = '';
-                    if (item.date || (item as any)['trackingDate']) {
-                        const rawDate = item.date || (item as any)['trackingDate'];
-                        // Standardize on LOCAL DATE grouping to match user expectation
-                        const d = new Date(rawDate);
-                        if (!isNaN(d.getTime())) {
-                            dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                        } else if (typeof rawDate === 'string' && rawDate.includes('T')) {
-                            // Fallback for simple string split if Date parse fails (unlikely)
-                            dateKey = rawDate.split('T')[0];
-                        }
+                    let itemDate: Date;
+
+                    if (item.date) {
+                        itemDate = new Date(item.date);
+                        dateKey = itemDate.toISOString().split('T')[0];
+                    } else if ((item as any)['trackingDate']) {
+                        itemDate = new Date((item as any)['trackingDate']);
+                        dateKey = itemDate.toISOString().split('T')[0];
+                    } else {
+                        return;
                     }
 
-                    if (!dateKey) return;
-
-                    if (!uniqueDataMap.has(dateKey)) {
-                        uniqueDataMap.set(dateKey, item);
+                    if (!latestPerDayMap.has(dateKey)) {
+                        latestPerDayMap.set(dateKey, item);
                     } else {
-                        // Merge Strategy: Prefer non-zero/non-null values
-                        const existing = uniqueDataMap.get(dateKey)!;
-                        uniqueDataMap.set(dateKey, {
-                            ...existing,
-                            weight: (item.weight && item.weight > 0) ? item.weight : existing.weight,
-                            height: (item.height && item.height > 0) ? item.height : existing.height,
-                            water: (item.water && item.water > 0) ? item.water : existing.water,
-                            sleepHours: (item.sleepHours && item.sleepHours > 0) ? item.sleepHours : existing.sleepHours,
-                            sleep_hours: (item.sleep_hours && item.sleep_hours > 0) ? item.sleep_hours : existing.sleep_hours,
-                            stepsCount: (item.stepsCount && item.stepsCount > 0) ? item.stepsCount : existing.stepsCount,
-                            steps_count: (item.steps_count && item.steps_count > 0) ? item.steps_count : existing.steps_count,
-                        });
+                        const existing = latestPerDayMap.get(dateKey)!;
+                        const existingDate = new Date(existing.date || (existing as any)['trackingDate']);
+
+                        // เอา record ที่ timestamp ใหม่กว่า
+                        if (itemDate > existingDate) {
+                            latestPerDayMap.set(dateKey, item);
+                        }
                     }
                 });
 
-                // Convert Map back to Array
-                const dedupedData = Array.from(uniqueDataMap.values());
+
+                // Convert Map back to Array (เฉพาะข้อมูลล่าสุดของแต่ละวัน)
+                const dedupedData = Array.from(latestPerDayMap.values());
 
                 // RE-EVALUATE TODAY'S DATA from deduped list if needed
                 // If todayRes was empty or zero, check if we have a better merged version in dedupedData
                 if (displayData) {
                     const todayStr = toLocalYMD(new Date());
-                    const betterToday = uniqueDataMap.get(todayStr);
+                    const betterToday = latestPerDayMap.get(todayStr);
                     if (betterToday) {
                         displayData = betterToday;
                     }
                 } else {
                     // Try to find today in unique map
                     const todayStr = toLocalYMD(new Date());
-                    displayData = uniqueDataMap.get(todayStr) || null;
+                    displayData = latestPerDayMap.get(todayStr) || null;
                 }
 
                 // Update Cards again with potentially better DisplayData
@@ -286,18 +282,10 @@ export const useDashBoardPage = () => {
                             break;
                         default: val = 0;
                     }
-                    return { date: dateStr, value: val, rawDate: item.date || (item as any).trackingDate || '' };
+                    return { date: dateStr, value: val };
                 });
-
-                // Sort by rawDate Ascending (Oldest -> Newest)
-                mappedData.sort((a, b) => {
-                    const dateA = new Date(a.rawDate).getTime();
-                    const dateB = new Date(b.rawDate).getTime();
-                    return dateA - dateB;
-                });
-
-                // Remove rawDate before setting state
-                setChartData(mappedData.map(d => ({ date: d.date, value: d.value })));
+                // Sort by date just in case
+                setChartData(mappedData.reverse());
             }
 
         } catch (error) {
@@ -315,7 +303,6 @@ export const useDashBoardPage = () => {
 
     const handleDataPointClick = (data: any) => {
         if (data.index === undefined) return;
-
         if (selectedPointIndex === data.index) {
             setSelectedPointIndex(null);
         } else {
