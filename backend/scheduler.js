@@ -14,13 +14,13 @@ const client = new OneSignal.Client(ONESIGNAL_APP_ID, ONESIGNAL_API_KEY);
 console.log('[Scheduler] InfinityHealth Notification Service Started... 🚀');
 
 // --- HELPER: Get Current Time (HH:MM) ---
+// --- HELPER: Get Current Time (Thailand) ---
 function getCurrentTime() {
     const now = new Date();
-    // Adjust for Thailand Time (UTC+7) if server is UTC
-    // Note: If server is already in Thai time, remove the offset logic.
-    // Ideally, store times in UTC in DB, but assuming simple HH:MM match for now.
+    // Force UTC+7 (Thailand)
+    // Server is likely UTC. 
+    now.setHours(now.getHours() + 7);
 
-    // Simple Local Time check (server time)
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
