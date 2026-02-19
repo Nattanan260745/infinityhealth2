@@ -87,6 +87,26 @@ router.get('/:userId', async (req, res) => {
       user.userStats = newStats;
     }
 
+    // Calculate Daily Stats (Reset at midnight)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dailyMissions = await prisma.userMission.findMany({
+      where: {
+        userId: uid,
+        status: true, // Completed
+        completedAt: {
+          gte: today // Completed today
+        }
+      },
+      include: {
+        mission: true // To get reward points/exp
+      }
+    });
+
+    const dailyExp = dailyMissions.reduce((sum, um) => sum + (um.mission ? um.mission.rewardExp : 0), 0);
+    const dailyPoints = dailyMissions.reduce((sum, um) => sum + (um.mission ? um.mission.rewardPoints : 0), 0);
+
     // Map to legacy format if needed by frontend
     const profileData = {
       _id: user.userStats.id, // Fake Mongo ID
@@ -94,6 +114,8 @@ router.get('/:userId', async (req, res) => {
       level_id: user.userStats.level,
       exp: user.userStats.currentExp,
       points: user.userStats.totalPoints,
+      dailyExp: dailyExp,      // Added
+      dailyPoints: dailyPoints, // Added
       profile_img: user.profileImg,
       bio: user.bio,
       user: { // Extra info

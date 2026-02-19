@@ -386,7 +386,9 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
           userId: uid,
           missionId: mid,
           currentProgress: targetValue,
-          status: true // Completed
+          currentProgress: targetValue,
+          status: true, // Completed
+          completedAt: new Date() // Fix: Set completion time
         }
       });
     } else {
@@ -397,7 +399,8 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
         where: { id: userMission.id },
         data: {
           status: true,
-          currentProgress: targetValue
+          currentProgress: targetValue,
+          completedAt: new Date() // Fix: Set completion time
         }
       });
     }
