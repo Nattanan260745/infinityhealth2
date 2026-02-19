@@ -73,7 +73,8 @@ cron.schedule('* * * * *', async () => {
                         title: 'ได้เวลาแล้ว!',
                         message: `ถึงเวลา ${routine.title} แล้วนะครับ`,
                         isRead: false,
-                        isSent: false // Frontend will mark this true after showing local notification
+                        isSent: false,
+                        notiAt: new Date() // Set current time as notification time
                     }
                 });
                 console.log(`      Created DB Notification ID: ${newNotification.id}`);
