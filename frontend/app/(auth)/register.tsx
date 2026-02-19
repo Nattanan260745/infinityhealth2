@@ -11,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
+import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSignUp, useOAuth } from '@clerk/clerk-expo';
@@ -156,15 +157,23 @@ export default function RegisterPage() {
 
   const onGoogleSignUpPress = React.useCallback(async () => {
     try {
-      const { createdSessionId, setActive } = await startOAuthFlow();
+      const redirectUrl = Linking.createURL('oauth_callback');
+      console.log("Starting OAuth (SignUp) flow with redirect:", redirectUrl);
+
+      const { createdSessionId, setActive, signUp, signIn } = await startOAuthFlow({
+        redirectUrl
+      });
 
       if (createdSessionId) {
+        console.log("OAuth success, creating session:", createdSessionId);
         setActive!({ session: createdSessionId });
       } else {
         // Use signIn or signUp for next steps such as MFA
+        console.log("OAuth flow incomplete, next steps required.");
       }
-    } catch (err) {
-      console.error("OAuth error", err);
+    } catch (err: any) {
+      console.error("OAuth error", JSON.stringify(err, null, 2));
+      alert(`Google Login Failed: ${err.message || JSON.stringify(err)}`);
     }
   }, []);
 

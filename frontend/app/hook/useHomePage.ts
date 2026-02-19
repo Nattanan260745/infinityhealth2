@@ -209,31 +209,32 @@ export const useHomePage = () => {
             if (cachedInternalId) {
                 setUserId(cachedInternalId);
                 console.log('[HomePage] Loaded cached Internal ID:', cachedInternalId);
+            } else {
+                if (user.primaryEmailAddress) {
+                    const email = user.primaryEmailAddress.emailAddress;
+                    await storage.setItem('userEmail', email);
+
+                    // SYNC W/ BACKEND TO GET INTERNAL ID Only if not cached
+                    try {
+                        const syncRes = await syncClerkUser(email, user.firstName || 'User', user.lastName || '', user.imageUrl || '');
+                        if (syncRes && syncRes.success && (syncRes as any).user) {
+                            const internalId = String(((syncRes as any).user).id);
+                            setUserId(internalId);
+                            await storage.setItem('userId', internalId);
+                            await storage.setItem('internalUserId', internalId);
+                            console.log('[HomePage] User Synced. Internal ID:', internalId);
+                        } else {
+                            // Fallback? If sync fails, we can't really do much API wise if backend requires Int ID.
+                            console.warn('[HomePage] Sync failed or no user returned');
+                        }
+                    } catch (e) {
+                        console.error('[HomePage] Failed to sync user:', e);
+                    }
+                }
             }
 
             if (user.imageUrl) {
                 setUserAvatar(user.imageUrl);
-            }
-            if (user.primaryEmailAddress) {
-                const email = user.primaryEmailAddress.emailAddress;
-                await storage.setItem('userEmail', email);
-
-                // SYNC W/ BACKEND TO GET INTERNAL ID
-                try {
-                    const syncRes = await syncClerkUser(email, user.firstName || 'User', user.lastName || '', user.imageUrl || '');
-                    if (syncRes && syncRes.success && (syncRes as any).user) {
-                        const internalId = String(((syncRes as any).user).id);
-                        setUserId(internalId);
-                        await storage.setItem('userId', internalId);
-                        await storage.setItem('internalUserId', internalId);
-                        console.log('[HomePage] User Synced. Internal ID:', internalId);
-                    } else {
-                        // Fallback? If sync fails, we can't really do much API wise if backend requires Int ID.
-                        console.warn('[HomePage] Sync failed or no user returned');
-                    }
-                } catch (e) {
-                    console.error('[HomePage] Failed to sync user:', e);
-                }
             }
         }
     };

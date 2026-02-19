@@ -65,12 +65,15 @@ export default function LoginPage() {
       });
 
       if (createdSessionId) {
+        console.log("OAuth success, creating session:", createdSessionId);
         setActive!({ session: createdSessionId });
       } else {
         // Use signIn or signUp for next steps such as MFA
+        console.log("OAuth flow incomplete, next steps required.");
       }
-    } catch (err) {
-      console.error("OAuth error", err);
+    } catch (err: any) {
+      console.error("OAuth error", JSON.stringify(err, null, 2));
+      alert(`Google Login Failed: ${err.message || JSON.stringify(err)}`);
     }
   }, []);
 

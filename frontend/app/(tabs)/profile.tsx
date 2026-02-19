@@ -79,8 +79,8 @@ export default function ProfileScreen() {
                 const syncData = syncRes as any; // Cast to avoid TS error
                 if (syncData.success && syncData.user) {
                   internalUserId = syncData.user.id.toString();
-                  await storage.setItem('internalUserId', internalUserId);
-                  await storage.setItem('userId', internalUserId);
+                  await storage.setItem('internalUserId', internalUserId!);
+                  await storage.setItem('userId', internalUserId!);
                   console.log('Synced! Internal ID:', internalUserId);
                 }
               } catch (e) {
