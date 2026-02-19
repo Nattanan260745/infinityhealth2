@@ -25,8 +25,8 @@ export const usePollingNotifications = () => {
                 const userId = await storage.getItem('internalUserId');
                 if (!userId) return;
 
-                // Fetch unsent notifications
-                const response = await InfinityhealthApi.get(`/notifications/user/${userId}/unsent`);
+                // Fetch unsent notifications (Corrected URL: /notification (singular))
+                const response = await InfinityhealthApi.get(`/notification/user/${userId}/unsent`);
                 const notifications = response.data?.data || [];
 
                 if (notifications.length > 0) {
@@ -44,7 +44,7 @@ export const usePollingNotifications = () => {
                         });
 
                         // 2. Mark as Sent in Backend
-                        await InfinityhealthApi.patch(`/notifications/${notif.id}/sent`);
+                        await InfinityhealthApi.patch(`/notification/${notif.id}/sent`);
                         console.log(`Marked notification ${notif.id} as sent.`);
                     }
                 }
