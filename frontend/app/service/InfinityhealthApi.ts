@@ -294,4 +294,9 @@ export const deleteNotification = async (notificationId: number): Promise<ApiRes
   return response.data;
 };
 
+export const deleteAllNotifications = async (userId: string): Promise<ApiResponse<any>> => {
+  const response = await api.delete<ApiResponse<any>>(`/notification/user/${userId}/all`);
+  return response.data;
+};
+
 export default api;

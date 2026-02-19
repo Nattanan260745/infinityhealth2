@@ -65,6 +65,8 @@ export interface UserProfileData {
   level_id: number;
   exp: number;
   points: number;
+  dailyExp?: number;    // Added
+  dailyPoints?: number; // Added
   profile_img: string | null;
   bio: string | null;
   user?: {

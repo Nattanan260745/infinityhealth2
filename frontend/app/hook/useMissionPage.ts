@@ -64,6 +64,9 @@ export const useMissionPage = () => {
   const [userLevel, setUserLevel] = useState<number>(1);
   const [userXP, setUserXP] = useState<number>(0);
   const [userGems, setUserGems] = useState<number>(0);
+
+  const [userDailyXP, setUserDailyXP] = useState<number>(0); // Added
+  const [userDailyGems, setUserDailyGems] = useState<number>(0); // Added
   const [streak, setStreak] = useState<number>(0);
 
   // Modal state
@@ -205,6 +208,8 @@ export const useMissionPage = () => {
         if (profileRes.success && profileRes.data) {
           setUserXP(profileRes.data.exp || 0);
           setUserGems(profileRes.data.points || 0);
+          setUserDailyXP(profileRes.data.dailyExp || 0); // Added
+          setUserDailyGems(profileRes.data.dailyPoints || 0); // Added
           // Also update level if changed
           if (profileRes.data.level_id) setUserLevel(profileRes.data.level_id);
         }
@@ -281,9 +286,9 @@ export const useMissionPage = () => {
 
   // Stats
   const completedCount = filteredMissions.filter(m => m.completed).length;
-  // Use actual user stats instead of potential rewards
-  const totalXP = userXP;
-  const totalGems = userGems;
+  // Stats (Using Daily Stats for Display based on user request)
+  const totalXP = userDailyXP;
+  const totalGems = userDailyGems;
 
   // Handle update press
   const handleUpdatePress = (mission: DisplayMission) => {

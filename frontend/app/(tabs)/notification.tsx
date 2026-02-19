@@ -10,6 +10,7 @@ import {
     markNotificationAsRead,
     markAllNotificationsAsRead,
     deleteNotification,
+    deleteAllNotifications,
     getUserRoutinesByDate
 } from '../service/InfinityhealthApi';
 import { Notification } from '../interface/infinityhealth.interface';
@@ -217,21 +218,22 @@ export default function NotificationScreen() {
         try {
             const userId = await storage.getItem('userId');
             if (userId) {
-                // Clear Backend
-                await markAllNotificationsAsRead(userId);
+                // 1. Delete All Backend Notifications
+                await deleteAllNotifications(userId);
 
-                // Clear Local (Mark all today's routines as read)
+                // 2. Clear Local (Add all today's routines to deleted list)
                 const today = getTodayStr();
                 const routineNotifs = oldNotifs.filter(n => n.type === 'ROUTINE');
-                const readKey = `read_notifications_${today}`;
-                const readData = await storage.getItem(readKey);
-                let readIds: number[] = readData ? JSON.parse(readData) : [];
+                const deleteKey = `deleted_notifications_${today}`;
+                const deleteData = await storage.getItem(deleteKey);
+                let deletedIds: number[] = deleteData ? JSON.parse(deleteData) : [];
 
                 routineNotifs.forEach(n => {
                     const originalId = n.referenceId || Math.abs(n.id);
-                    if (!readIds.includes(originalId)) readIds.push(originalId);
+                    if (!deletedIds.includes(originalId)) deletedIds.push(originalId);
                 });
-                await storage.setItem(readKey, JSON.stringify(readIds));
+                await storage.setItem(deleteKey, JSON.stringify(deletedIds));
+                console.log(`[NotificationScreen] Clear All: Deleted ${routineNotifs.length} local routines`);
             }
         } catch (error) {
             console.error("Failed to clear notifications", error);
