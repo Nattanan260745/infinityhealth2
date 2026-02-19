@@ -5,7 +5,7 @@ const OneSignal = require('onesignal-node');
 
 // --- CONFIGURATION ---
 const ONESIGNAL_APP_ID = '62a8a981-4a2b-4a4f-8b7b-e67c65ff0017';
-const ONESIGNAL_API_KEY = '7ap6ysbveuk4fj6ku5w33gsb6ssmv5eaclao7mjp6eye2dyxpxnwrlzjh77fabuy7dephts7xlxjy'; // REST API Key
+const ONESIGNAL_API_KEY = '7ap6ysbveuk4fj6ku5w33gsb6'; // REST API Key (Corrected)
 
 // --- INITIALIZATION ---
 const prisma = new PrismaClient();
