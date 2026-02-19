@@ -5,7 +5,7 @@ const OneSignal = require('onesignal-node');
 
 // --- CONFIGURATION ---
 const ONESIGNAL_APP_ID = '62a8a981-4a2b-4a4f-8b7b-e67c65ff0017';
-const ONESIGNAL_API_KEY = 'os_v2_app_mkuktakkfnfe7c334z6gl7yac5wcwvgrphhu3rurwr2yqacdgazud4bhikkudqerp56qnq6fmrsj37yu2gkwkhtgunaitni7h4wludi';
+const ONESIGNAL_API_KEY = 'os_v2_app_mkuktakkfnfe7c334z6gl7yac5nng24zwq4ujmuvkkb5elazbom7feqa4aucoeiwidpocsfmr7hyvkh2yteoid3fz52bywxfj4x4dsq';
 
 // --- INITIALIZATION ---
 const prisma = new PrismaClient();

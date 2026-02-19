@@ -1,7 +1,7 @@
 
 const ONESIGNAL_APP_ID = '62a8a981-4a2b-4a4f-8b7b-e67c65ff0017';
 // ใส่ Key ที่คุณต้องการเทสตรงนี้ (หรือเอาจากข้างบน)
-const ONESIGNAL_API_KEY = 'os_v2_app_mkuktakkfnfe7c334z6gl7yac5wcwvgrphhu3rurwr2yqacdgazud4bhikkudqerp56qnq6fmrsj37yu2gkwkhtgunaitni7h4wludi';
+const ONESIGNAL_API_KEY = 'os_v2_app_mkuktakkfnfe7c334z6gl7yac5nng24zwq4ujmuvkkb5elazbom7feqa4aucoeiwidpocsfmr7hyvkh2yteoid3fz52bywxfj4x4dsq';
 
 // Use standard HTTPS request (no library) to test Raw API Key
 const https = require('https');
