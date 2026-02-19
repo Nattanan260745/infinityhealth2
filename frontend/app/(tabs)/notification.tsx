@@ -266,13 +266,13 @@ export default function NotificationScreen() {
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Notification</Text>
-                    {/* Clear All Button - Optional */}
-                    {/* <TouchableOpacity
+                    {/* Clear All Button */}
+                    <TouchableOpacity
                         onPress={handleClearAllNotifications}
                         style={styles.clearButton}
                     >
-                        <Text style={styles.clearButtonText}>Read All</Text>
-                    </TouchableOpacity> */}
+                        <Text style={styles.clearButtonText}>Clear All</Text>
+                    </TouchableOpacity>
                 </View>
 
                 {isLoading ? (
@@ -318,9 +318,9 @@ const styles = StyleSheet.create({
         paddingBottom: 16,
         paddingHorizontal: 20,
         backgroundColor: '#FFFFFF',
-        flexDirection: 'row',
+        flexDirection: 'column', // Stack vertically
+        alignItems: 'center', // Center title
         justifyContent: 'center',
-        alignItems: 'center',
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
     },
@@ -328,12 +328,14 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: 'bold',
         color: '#1F2937',
+        marginBottom: 10, // Spacing from button
     },
     clearButton: {
         backgroundColor: '#7DD1E0',
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
+        alignSelf: 'flex-end', // Align button to the right
     },
     clearButtonText: {
         color: '#005F73',

@@ -1,117 +1,75 @@
-import { useState, useEffect, useRef } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Platform } from 'react-native';
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
+import { LogLevel, OneSignal } from 'react-native-onesignal';
 import Constants from 'expo-constants';
 import storage from '../utils/storage';
-import { updateUserProfile } from '../service/InfinityhealthApi';
 
-// 1. Setup notification handler (How it behaves when app is in foreground)
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-    }),
-});
+const ONESIGNAL_APP_ID = '62a8a981-4a2b-4a4f-8b7b-e67c65ff0017';
 
-// 2. The Hook
 export const usePushNotifications = () => {
-    const [expoPushToken, setExpoPushToken] = useState<string | undefined>(undefined);
-    const [notification, setNotification] = useState<Notifications.Notification | undefined>(undefined);
-    const notificationListener = useRef<Notifications.Subscription | undefined>(undefined);
-    const responseListener = useRef<Notifications.Subscription | undefined>(undefined);
-
-    async function registerForPushNotificationsAsync() {
-        let token;
-
-        if (Platform.OS === 'android') {
-            await Notifications.setNotificationChannelAsync('infinity_channel', {
-                name: 'Infinity Health Notifications',
-                importance: Notifications.AndroidImportance.MAX,
-                vibrationPattern: [0, 250, 250, 250],
-                lightColor: '#FF231F7C',
-            });
-        }
-
-        if (Device.isDevice) {
-            const { status: existingStatus } = await Notifications.getPermissionsAsync();
-            let finalStatus = existingStatus;
-
-            if (existingStatus !== 'granted') {
-                const { status } = await Notifications.requestPermissionsAsync();
-                finalStatus = status;
-            }
-
-            if (finalStatus !== 'granted') {
-                alert('Failed to get push token for push notification!');
-                return;
-            }
-
-            // Get the token
-            // Project ID is sometimes needed for newer Expo versions, but usually auto-detected
-            try {
-                const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-                token = (await Notifications.getExpoPushTokenAsync({
-                    projectId,
-                })).data;
-                console.log('Expo Push Token:', token);
-            } catch (e) {
-                console.error('Error getting push token:', e);
-            }
-        } else {
-            // alert('Must use physical device for Push Notifications'); 
-            console.log('Must use physical device for Push Notifications');
-        }
-
-        return token;
-    }
+    const [pushToken, setPushToken] = useState<string | undefined>(undefined);
+    const [notification, setNotification] = useState<any | undefined>(undefined); // Keep for compatibility
 
     useEffect(() => {
-        // A. Register
-        registerForPushNotificationsAsync().then(async token => {
-            setExpoPushToken(token);
-            if (token) {
-                // Store locally
-                storage.setItem('pushToken', token);
+        // 1. OneSignal Init
+        OneSignal.Debug.setLogLevel(LogLevel.Verbose);
+        OneSignal.initialize(ONESIGNAL_APP_ID);
 
-                // Sync to Backend
-                const userId = await storage.getItem('internalUserId');
-                if (userId) {
-                    try {
-                        console.log('Sending Push Token to Backend:', token);
-                        await updateUserProfile(userId, { pushToken: token });
-                    } catch (e) {
-                        console.error('Failed to sync push token:', e);
-                    }
-                }
+        // 2. Request Permission
+        OneSignal.Notifications.requestPermission(true);
+
+        // 3. Login User (Associate with our Internal ID)
+        const identifyUser = async () => {
+            const userId = await storage.getItem('internalUserId');
+            if (userId) {
+                console.log('Logging in to OneSignal with External ID:', userId);
+                OneSignal.login(userId);
             }
-        });
-
-        // B. Listener: Received Notification (Foreground)
-        notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-            setNotification(notification);
-            console.log('Notification Received (Foreground):', notification);
-        });
-
-        // C. Listener: User Tapped Notification (Response)
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-            console.log('Notification Tapped:', response);
-            // Here you can handle navigation based on data
-            // const data = response.notification.request.content.data;
-            // if (data.url) router.push(data.url);
-        });
-
-        return () => {
-            notificationListener.current && notificationListener.current.remove();
-            responseListener.current && responseListener.current.remove();
         };
+        identifyUser();
+
+        // 4. Listener
+        // Note: For 'click', the event is of type NotificationClickEvent
+        // For 'foregroundWillDisplay', it's NotificationWillDisplayEvent
+        OneSignal.Notifications.addEventListener('click', (event: any) => {
+            console.log('OneSignal Notification Clicked:', event);
+            setNotification(event.notification);
+        });
+
+        OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event: any) => {
+            console.log('OneSignal Notification Received (Foreground):', event);
+            setNotification(event.getNotification());
+        });
+
     }, []);
 
     return {
-        expoPushToken,
+        pushToken,
         notification
     };
 };
+
+// Remote Push Logic:
+// The backend will send the notification. We don't need to 'schedule' locally anymore.
+// However, if we still want local fallback, we can use OneSignal.Notifications.simplePush or keep expo-notifications.
+// For now, we rely on the Backend to trigger the "Alarm".
+
+export async function scheduleRoutineNotification(
+    title: string,
+    hour: number,
+    minute: number
+) {
+    // This function is now a placeholder.
+    // In a full Remote Push system, the "Schedule" happens on the Backend Database.
+    // When user saves a routine -> We save to DB -> Backend Cron Job picks it up.
+    // So usually we don't need to do anything here client-side for scheduling.
+
+    console.log('Skipping local schedule. Routine saved to backend will be picked up by Cron Job.');
+    return 'backend-managed';
+}
+
+export async function cancelRoutineNotification(notificationId: string) {
+    // Managed by Backend
+    console.log('Skipping local cancel. Backend manages the schedule.');
+}

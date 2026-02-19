@@ -1,7 +1,20 @@
 import { useSignIn, useOAuth, useAuth } from '@clerk/clerk-expo'
 import { Link, useRouter } from 'expo-router'
 import { Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native'
+import * as Linking from 'expo-linking'
+import * as WebBrowser from 'expo-web-browser'
 import React, { useState } from 'react'
+
+export const useWarmUpBrowser = () => {
+  React.useEffect(() => {
+    // Warm up the android browser to improve UX
+    // https://docs.expo.dev/guides/authentication/#improving-user-experience
+    void WebBrowser.warmUpAsync()
+    return () => {
+      void WebBrowser.coolDownAsync()
+    }
+  }, [])
+}
 import { Ionicons } from '@expo/vector-icons'
 import { FormProvider, useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -38,9 +51,18 @@ export default function LoginPage() {
 
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
 
+  // Warm up browser for better UX
+  useWarmUpBrowser();
+
   const onGoogleSignInPress = React.useCallback(async () => {
     try {
-      const { createdSessionId, setActive } = await startOAuthFlow();
+      // Create a redirect URI that points to the root of the app
+      const redirectUrl = Linking.createURL('oauth_callback');
+      console.log("Starting OAuth flow with redirect:", redirectUrl);
+
+      const { createdSessionId, setActive, signUp, signIn } = await startOAuthFlow({
+        redirectUrl,
+      });
 
       if (createdSessionId) {
         setActive!({ session: createdSessionId });

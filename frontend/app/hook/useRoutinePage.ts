@@ -15,7 +15,7 @@ import {
   getUserGoals
 } from "../service/InfinityhealthApi";
 import { useFocusEffect } from 'expo-router';
-import * as Notifications from 'expo-notifications';
+import { scheduleRoutineNotification, cancelRoutineNotification } from './usePushNotifications';
 
 
 // Types
@@ -278,111 +278,135 @@ export const useRoutinePage = () => {
       return;
     }
 
-    // Helper to schedule notification
-    const scheduleNotification = async (id: number, title: string, time: string, date: string) => {
-      try {
-        // Ensure channel exists (Safety Fallback)
-        if (Platform.OS === 'android') {
-          await Notifications.setNotificationChannelAsync('infinity_channel', {
-            name: 'Infinity Health Notifications',
-            importance: Notifications.AndroidImportance.MAX,
-            vibrationPattern: [0, 250, 250, 250],
-            lightColor: '#FF231F7C',
-          });
-        }
-
-        // Check if enabled
-        if (!formNotifications) {
-          alert("Please enable 'Enable Notifications' toggle first.");
-          return;
-        }
-
-        // Check permissions (Should be handled in Layout, but safe to check)
-        const { status } = await Notifications.getPermissionsAsync();
-        if (status !== 'granted') return;
-
-        const [hours, minutes] = time.split(':').map(Number);
-
-        // Construct Trigger Date
-        const triggerDate = new Date(date);
-        triggerDate.setHours(hours, minutes, 0, 0);
-
-        // Only schedule if future
-        if (triggerDate > new Date()) {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: "Routine Reminder",
-              body: `Time for: ${title}`,
-              data: { routineId: id },
-              sound: true,
-              channelId: 'infinity_channel',
-            } as any,
-            trigger: triggerDate as unknown as Notifications.NotificationTriggerInput,
-          });
-          console.log('[Routine] Scheduled notification for:', title, 'at', time);
-          alert(`Reminder set for ${time}`); // Feedback to user
-        } else {
-          console.warn('[Routine] Time is in the past, skipping notification');
-          // Optional: Alert user if they expected a notification
-          if (formNotifications) {
-            alert('Time is in the past. Notification not scheduled.');
-          }
-        }
-      } catch (err) {
-        console.error("Schedule Notification Error:", err);
-        alert(`Failed to schedule: ${err}`);
-      }
-    };
-
-
     try {
       if (isGoalsTab) {
         if (editingRoutine) {
-          await updateGoal(editingRoutine.id, {
+          const updatedGoal = {
             title: formTitle,
             goal_date: new Date(formDate).toISOString(),
             completed: editingRoutine.completed
-          });
+          };
+          await updateGoal(editingRoutine.id, updatedGoal);
+
+          // Optimistic Update
+          setGoals(prev => prev.map(g => g.id === editingRoutine.id ? { ...g, ...updatedGoal, date: formDate } : g));
+          setAllGoals(prev => prev.map(g => g.id === editingRoutine.id ? { ...g, ...updatedGoal, goalDate: updatedGoal.goal_date } : g));
         } else {
-          await createGoal({
+          const res = await createGoal({
             user_id: userId,
             title: formTitle,
             goal_date: new Date(formDate).toISOString()
           });
+
+          if (res && res.success && res.data) {
+            const newGoal = {
+              id: res.data.id,
+              title: formTitle, // Use form data
+              time: '',
+              date: formDate, // Use form data
+              completed: false,
+              notifications: false,
+              scheduledDate: res.data.goal_date || res.data.goalDate || new Date(formDate).toISOString()
+            };
+            // Add to list if date matches
+            if (newGoal.date === formDate) {
+              setGoals(prev => [...prev, newGoal]);
+            }
+            setAllGoals(prev => [...prev, newGoal]); // Use constructed safe object or careful merge
+          }
         }
       } else {
         // Routine Logic
         let targetId = editingRoutine?.id;
 
+        const routineData = {
+          title: formTitle,
+          scheduled_time: formTime,
+          scheduled_date: new Date(formDate).toISOString(),
+          completed: editingRoutine?.completed ?? false
+        };
+
         if (editingRoutine) {
-          await updateRoutine(editingRoutine.id, {
-            title: formTitle,
-            scheduled_time: formTime,
-            scheduled_date: new Date(formDate).toISOString(),
-            completed: editingRoutine.completed
-          });
+          await updateRoutine(editingRoutine.id, routineData);
+
+          // Optimistic Update
+          setRoutines(prev => prev.map(r => r.id === editingRoutine.id ? {
+            ...r,
+            ...routineData,
+            time: formTime,
+            date: formDate
+          } : r));
+          setAllRoutines(prev => prev.map(r => r.id === editingRoutine.id ? {
+            ...r,
+            ...routineData,
+            scheduledTime: formTime,
+            scheduledDate: routineData.scheduled_date
+          } : r));
+
         } else {
           const res = await createRoutine({
             user_id: userId,
-            title: formTitle,
-            scheduled_time: formTime,
-            scheduled_date: new Date(formDate).toISOString()
+            ...routineData
           });
+
           if (res && res.success && res.data) {
             targetId = res.data.id;
+
+            const newRoutine = {
+              id: res.data.id,
+              title: formTitle,
+              time: formTime,
+              date: formDate,
+              completed: false,
+              notifications: true,
+              scheduledDate: res.data.scheduled_date || res.data.scheduledDate || routineData.scheduled_date,
+              scheduledTime: res.data.scheduled_time || res.data.scheduledTime || formTime
+            };
+
+            // Add to list if date matches
+            if (newRoutine.date === formDate) {
+              setRoutines(prev => [...prev, newRoutine]);
+            }
+            setAllRoutines(prev => [...prev, newRoutine]);
           }
         }
 
-        // Schedule Notification if we have ID
+        // Notification Logic
         if (targetId && !isGoalsTab) {
-          await scheduleNotification(targetId, formTitle, formTime, formDate);
+          try {
+            // 1. Cancel existing if updating
+            if (editingRoutine) {
+              const oldNotificationId = await storage.getItem(`routine_notification_${editingRoutine.id}`);
+              if (oldNotificationId) {
+                await cancelRoutineNotification(oldNotificationId);
+                await storage.removeItem(`routine_notification_${editingRoutine.id}`);
+              }
+            }
+
+            // 2. Schedule new if enabled
+            if (formNotifications) {
+              const [hour, minute] = formTime.split(':').map(Number);
+              const newId = await scheduleRoutineNotification(formTitle, hour, minute);
+              if (newId) {
+                await storage.setItem(`routine_notification_${targetId}`, newId);
+                console.log(`[Routine] Notification Scheduled: ${newId} for Routine ID: ${targetId}`);
+              } else {
+                console.warn(`[Routine] Failed to schedule notification for Routine ID: ${targetId}`);
+              }
+            }
+          } catch (notiError) {
+            console.error('[Routine] Notification Error (Non-fatal):', notiError);
+            // Don't re-throw, allow save to complete
+          }
         }
       }
 
       setShowAddModal(false);
-      fetchData(); // Refresh
+      // fetchData(); // Optional: Refresh from server to ensure consistency, but allow optimistic UI to show first
     } catch (error) {
       console.error("Save item error", error);
+      Alert.alert("Error", "Failed to save routine. Please try again.");
+      fetchData(); // Revert on error
     }
   };
 
@@ -392,6 +416,12 @@ export const useRoutinePage = () => {
         if (isGoalsTab) {
           await deleteGoal(deletingRoutine.id);
         } else {
+          // Cancel Notification
+          const notificationId = await storage.getItem(`routine_notification_${deletingRoutine.id}`);
+          if (notificationId) {
+            await cancelRoutineNotification(notificationId);
+            await storage.removeItem(`routine_notification_${deletingRoutine.id}`);
+          }
           await deleteRoutine(deletingRoutine.id);
         }
         fetchData();

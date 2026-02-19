@@ -16,7 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.19.1",
+    "@prisma/client": "^6.19.2",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -25,7 +25,9 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.20.4",
-    "node-fetch": "^3.3.2"
+    "node-cron": "^4.2.1",
+    "node-fetch": "^3.3.2",
+    "onesignal-node": "^3.4.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.11",

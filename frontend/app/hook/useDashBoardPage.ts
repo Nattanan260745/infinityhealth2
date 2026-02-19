@@ -15,10 +15,10 @@ const defaultStatCards: StatCard[] = [
 
 const filterTabs: MetricType[] = ['Weight', 'BMI', 'Water', 'Sleep', 'Steps'];
 
-import { usePedometer } from "./usePedometer";
+import { useGoogleFit } from "../hooks/useGoogleFit";
 
 export const useDashBoardPage = () => {
-    const { currentStepCount, isPedometerAvailable } = usePedometer();
+    const { steps: googleFitSteps, isAuthorized } = useGoogleFit();
     const [selectedTab, setSelectedTab] = useState<MetricType>('Weight');
     const [statCards, setStatCards] = useState<StatCard[]>(defaultStatCards);
     const [chartData, setChartData] = useState<{ date: string; value: number }[]>([]);
@@ -26,20 +26,17 @@ export const useDashBoardPage = () => {
     const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
 
     // Use Ref to avoid stale closures in fetchData
-    const stepCountRef = useRef(currentStepCount);
+    const stepCountRef = useRef(googleFitSteps);
     useEffect(() => {
-        stepCountRef.current = currentStepCount;
-    }, [currentStepCount]);
+        stepCountRef.current = googleFitSteps;
+    }, [googleFitSteps]);
 
-    // Update Steps card when Pedometer updates
+    // Update Steps card when Google Fit updates
     useEffect(() => {
-        // Update if we have meaningful steps OR if pedometer is ready
-        // Allow cached steps to show even if sensor is still "checking"
-        if (currentStepCount > 0 || isPedometerAvailable === 'true') {
+        if (isAuthorized && googleFitSteps >= 0) {
             setStatCards(prev => prev.map(card => {
                 if (card.id === 'Steps') {
-                    // Use the greater of current or existing? Usually current is authority.
-                    const newVal = currentStepCount.toString();
+                    const newVal = googleFitSteps.toString();
                     if (card.value !== newVal) {
                         return { ...card, value: newVal };
                     }
@@ -47,7 +44,7 @@ export const useDashBoardPage = () => {
                 return card;
             }));
         }
-    }, [currentStepCount, isPedometerAvailable]);
+    }, [googleFitSteps, isAuthorized]);
 
     const fetchData = async () => {
         setIsLoading(true);
