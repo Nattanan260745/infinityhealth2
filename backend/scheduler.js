@@ -32,15 +32,17 @@ cron.schedule('* * * * *', async () => {
     console.log(`[Scheduler] Checking for routines at ${timeStr}...`);
 
     try {
+        // DEBUG: Print ALL routines to find why query fails
+        const allRoutines = await prisma.routine.findMany({ take: 5, orderBy: { createdAt: 'desc' } });
+        console.log('[DEBUG] Last 5 routines in DB:', JSON.stringify(allRoutines, null, 2));
+
         // 1. Find Routines scheduled for NOW
         // Schema: Routine.scheduledTime (String "HH:MM")
         const routines = await prisma.routine.findMany({
             where: {
                 scheduledTime: timeStr,
                 // Note: Currently no 'days' column in schema, assuming daily for now.
-                completed: false // Optional: Only notify if not completed? Or notify regardless? 
-                // Usually alarm notifies regardless of completion status.
-                // Let's remove 'completed' check for alarm clock behavior.
+                completed: false
             },
             include: {
                 user: true // Include user to get ID for OneSignal
