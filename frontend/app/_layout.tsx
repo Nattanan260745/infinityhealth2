@@ -7,7 +7,8 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { ClerkProvider, ClerkLoaded } from '@clerk/clerk-expo'; // Added Clerk imports
 import * as SecureStore from 'expo-secure-store'; // Added SecureStore import
-import { usePushNotifications } from './hook/usePushNotifications'; // Import Hook
+import { usePushNotifications } from './hook/usePushNotifications';
+import { usePollingNotifications } from './hook/usePollingNotifications';
 
 import '../app/global.css';
 
@@ -90,7 +91,8 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  usePushNotifications(); // Initialize Push Notifications
+  usePushNotifications();
+  usePollingNotifications();
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

@@ -25,6 +25,10 @@ const notificationSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  is_sent: {
+    type: Boolean,
+    default: false,
+  },
 }, {
   timestamps: true,
 });

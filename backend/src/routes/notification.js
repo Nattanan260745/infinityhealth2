@@ -68,6 +68,59 @@ router.get('/user/:userId/unread', async (req, res) => {
   }
 });
 
+// Get unsent routine notifications (For Polling)
+router.get('/user/:userId/unsent', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const uid = parseId(userId);
+
+    const notifications = await prisma.notification.findMany({
+      where: {
+        userId: uid,
+        isSent: false,
+        type: 'ROUTINE_REMINDER'
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json({
+      success: true,
+      data: notifications,
+    });
+  } catch (error) {
+    console.error('Get unsent notifications error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get unsent notifications',
+    });
+  }
+});
+
+// Mark as sent (After frontend shows local notification)
+router.patch('/:notificationId/sent', async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const nid = parseId(notificationId);
+
+    const notification = await prisma.notification.update({
+      where: { id: nid },
+      data: { isSent: true }
+    });
+
+    res.json({
+      success: true,
+      message: 'Notification marked as sent',
+      data: notification,
+    });
+  } catch (error) {
+    console.error('Mark as sent error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update notification',
+    });
+  }
+});
+
 // Get single notification
 router.get('/:notificationId', async (req, res) => {
   try {

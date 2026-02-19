@@ -63,23 +63,22 @@ cron.schedule('* * * * *', async () => {
             const userId = String(routine.userId || routine.user.id);
             console.log(`   -> Notifying User ${userId} for routine: ${routine.title}`);
 
-            const notification = {
-                headings: { en: 'InfinityHealth 🧘', th: 'ได้เวลาแล้ว!' },
-                contents: {
-                    en: `It's time for your routine: ${routine.title}`,
-                    th: `ถึงเวลา ${routine.title} แล้วนะครับ`
-                },
-                include_aliases: {
-                    external_id: [userId] // Target specific user by our DB ID
-                },
-                target_channel: 'push',
-            };
-
             try {
-                const response = await client.createNotification(notification);
-                console.log(`      Success! OneSignal ID: ${response.body.id}`);
+                // Instead of OneSignal, create a Notification record in DB
+                // Frontend will poll for 'isSent: false' notifications
+                const newNotification = await prisma.notification.create({
+                    data: {
+                        userId: parseInt(userId),
+                        type: 'ROUTINE_REMINDER',
+                        title: 'ได้เวลาแล้ว!',
+                        message: `ถึงเวลา ${routine.title} แล้วนะครับ`,
+                        isRead: false,
+                        isSent: false // Frontend will mark this true after showing local notification
+                    }
+                });
+                console.log(`      Created DB Notification ID: ${newNotification.id}`);
             } catch (e) {
-                console.error(`      Failed to send to User ${userId}:`, e.statusCode, e.body);
+                console.error(`      Failed to create DB notification for User ${userId}:`, e);
             }
         }
 
