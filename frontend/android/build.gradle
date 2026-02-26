@@ -33,7 +33,7 @@ allprojects {
     maven { url 'https://www.jitpack.io' }
   }
   
-  configurations.all {
+  configurations.configureEach {
     resolutionStrategy {
       force "com.google.android.gms:play-services-auth:20.7.0"
       force "com.google.android.gms:play-services-fitness:21.1.0"

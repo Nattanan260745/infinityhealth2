@@ -16,9 +16,29 @@ export const useGoogleFit = () => {
     // Load cached steps on mount
     useEffect(() => {
         const loadCache = async () => {
-            const cached = await storage.getItem(SYSTEM_STEPS_KEY);
-            if (cached) {
-                setSteps(parseInt(cached, 10));
+            try {
+                const now = new Date();
+                const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                const legacyTodayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`; // Non-padded
+
+                const cached = await storage.getItem(SYSTEM_STEPS_KEY);
+                const cachedDate = await storage.getItem('google_fit_steps_date');
+
+                // Support both formats during transition
+                if (cached && (cachedDate === todayStr || cachedDate === legacyTodayStr)) {
+                    setSteps(parseInt(cached, 10));
+                    console.log(`[GoogleFit] Restored cached steps: ${cached}`);
+
+                    // Migrate to new format if it was legacy
+                    if (cachedDate === legacyTodayStr && cachedDate !== todayStr) {
+                        storage.setItem('google_fit_steps_date', todayStr);
+                    }
+                }
+            } catch (err) {
+                console.warn("[GoogleFit] Failed to load cache:", err);
+            } finally {
+                // Initial baseline established
+                setLoading(false);
             }
         };
         loadCache();
@@ -28,11 +48,23 @@ export const useGoogleFit = () => {
         try {
             const stepCount = await getDailySteps();
             console.log("Fetched GoogleFit steps:", stepCount);
-            setSteps(stepCount);
-            // Reset session steps on every fresh fetch from Google Fit to avoid double counting
-            setSessionSteps(0);
-            // Cache the new value
-            storage.setItem(SYSTEM_STEPS_KEY, stepCount.toString());
+
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const cachedDate = await storage.getItem('google_fit_steps_date');
+            const cachedValueStr = await storage.getItem(SYSTEM_STEPS_KEY);
+            const cachedValue = cachedValueStr ? parseInt(cachedValueStr, 10) : 0;
+
+            // If it's a new day, we allow 0 or any value (reset)
+            // If it's the same day, we only update if the new value is higher (prevents 0 overwrite on sync fail)
+            if (todayStr !== cachedDate || stepCount >= cachedValue) {
+                setSteps(stepCount);
+                setSessionSteps(0);
+                storage.setItem(SYSTEM_STEPS_KEY, stepCount.toString());
+                storage.setItem('google_fit_steps_date', todayStr);
+            } else {
+                console.log(`[GoogleFit] Ignoring zero/lower value (${stepCount}) for existing day (${cachedValue})`);
+            }
         } catch (error) {
             console.error("Failed to fetch steps:", error);
         }
@@ -66,6 +98,15 @@ export const useGoogleFit = () => {
                 );
             } else {
                 setIsAuthorized(false);
+                // Even if not authorized by Fit, we might have cached steps from Pedometer
+                const cachedValueStr = await storage.getItem(SYSTEM_STEPS_KEY);
+                const cachedDate = await storage.getItem('google_fit_steps_date');
+                const now = new Date();
+                const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+                if (cachedValueStr && cachedDate === todayStr) {
+                    setSteps(parseInt(cachedValueStr, 10));
+                }
             }
         }
 
@@ -96,6 +137,15 @@ export const useGoogleFit = () => {
                 pedometerSubscription = Pedometer.watchStepCount(result => {
                     // Pedometer returns number of steps since subscription started
                     setSessionSteps(result.steps);
+
+                    // Periodically cache total to avoid loss on app close
+                    const total = steps + result.steps;
+                    if (total > 0 && !loading) {
+                        const now = new Date();
+                        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                        storage.setItem(SYSTEM_STEPS_KEY, total.toString());
+                        storage.setItem('google_fit_steps_date', todayStr);
+                    }
                 });
             }
         };
@@ -112,8 +162,12 @@ export const useGoogleFit = () => {
 
     // Expose a refetch function
     // Total steps = Google Fit Baseline + Session Pedometer Steps
+    // Only add sessionSteps once loading is false to avoid "1" flash
+    const totalSteps = loading ? steps : (steps + sessionSteps);
+
     return {
-        steps: steps + sessionSteps,
+        steps: totalSteps,
+        setBaselineSteps: setSteps, // Allow upward syncing from API
         isAuthorized,
         loading,
         refetch: fetchSteps,

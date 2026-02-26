@@ -57,7 +57,7 @@ export default function LoginPage() {
   const onGoogleSignInPress = React.useCallback(async () => {
     try {
       // Create a redirect URI that points to the root of the app
-      const redirectUrl = Linking.createURL('oauth_callback');
+      const redirectUrl = Linking.createURL('/');
       console.log("Starting OAuth flow with redirect:", redirectUrl);
 
       const { createdSessionId, setActive, signUp, signIn } = await startOAuthFlow({

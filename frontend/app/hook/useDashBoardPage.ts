@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { MetricType, StatCard, HealthTrack } from "../interface/infinityhealth.interface";
-import { getHealthTrackToday, getHealthTrackRange } from "../service/InfinityhealthApi";
+import { getHealthTrackToday, getHealthTrackRange, saveHealthData } from "../service/InfinityhealthApi";
 import storage from "../utils/storage";
 import { useFocusEffect } from "expo-router";
 
@@ -18,7 +18,7 @@ const filterTabs: MetricType[] = ['Weight', 'BMI', 'Water', 'Sleep', 'Steps'];
 import { useGoogleFit } from "../hooks/useGoogleFit";
 
 export const useDashBoardPage = () => {
-    const { steps: googleFitSteps, isAuthorized } = useGoogleFit();
+    const { steps: googleFitSteps, setBaselineSteps, isAuthorized } = useGoogleFit();
     const [selectedTab, setSelectedTab] = useState<MetricType>('Weight');
     const [statCards, setStatCards] = useState<StatCard[]>(defaultStatCards);
     const [chartData, setChartData] = useState<{ date: string; value: number }[]>([]);
@@ -31,20 +31,50 @@ export const useDashBoardPage = () => {
         stepCountRef.current = googleFitSteps;
     }, [googleFitSteps]);
 
-    // Update Steps card when Google Fit updates
+    // Update Steps card when Google Fit updates (now works even if not authorized by Fit)
     useEffect(() => {
-        if (isAuthorized && googleFitSteps >= 0) {
+        if (googleFitSteps >= 0) {
             setStatCards(prev => prev.map(card => {
                 if (card.id === 'Steps') {
-                    const newVal = googleFitSteps.toString();
-                    if (card.value !== newVal) {
-                        return { ...card, value: newVal };
+                    const newVal = googleFitSteps;
+                    const currentValStr = card.value;
+                    const currentVal = (currentValStr && currentValStr !== '-') ? parseInt(currentValStr, 10) : 0;
+
+                    // ONLY update if it's an increase (fixes the "stays at 1" or "downgrade" issue)
+                    if (newVal > currentVal) {
+                        return { ...card, value: newVal.toString() };
                     }
                 }
                 return card;
             }));
         }
-    }, [googleFitSteps, isAuthorized]);
+    }, [googleFitSteps]);
+
+    // AUTO-SAVE Steps debounced logic
+    const lastSavedSteps = useRef<number>(0);
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (googleFitSteps > 0 && Math.abs(googleFitSteps - lastSavedSteps.current) >= 50) {
+                try {
+                    let userId = await storage.getItem('internalUserId') || await storage.getItem('userId');
+                    if (userId) {
+                        const now = new Date();
+                        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                        await saveHealthData(userId, {
+                            date: today,
+                            steps_count: googleFitSteps,
+                            stepsCount: googleFitSteps
+                        });
+                        lastSavedSteps.current = googleFitSteps;
+                        console.log(`[Dashboard Hook] Auto-saved steps: ${googleFitSteps}`);
+                    }
+                } catch (e) {
+                    console.log('[Dashboard Hook] Auto-save steps failed');
+                }
+            }
+        }, 10000); // 10 seconds debounce
+        return () => clearTimeout(timer);
+    }, [googleFitSteps]);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -89,61 +119,76 @@ export const useDashBoardPage = () => {
                 }) || null;
             }
 
-            // Update Cards (Today's Data)
-            if (displayData) {
-                const data = displayData;
-                const weight = typeof data.weight === 'number' ? data.weight : NaN;
-                const height = typeof data.height === 'number' ? data.height : NaN;
+            // Update Cards (Today's Data or Defaults)
+            const currentRefSteps = stepCountRef.current;
+            const data = (displayData || {}) as any; // Use empty object with any cast to avoid lint errors
 
-                const bmi = (!isNaN(weight) && !isNaN(height) && height > 0)
-                    ? (weight / ((height / 100) ** 2)).toFixed(2)
-                    : '-';
+            // Fallback to latest history for weight/height/water/sleep if today is missing
+            let fallbackData: any = {};
+            if (!displayData && rangeRes.success && rangeRes.data && Array.isArray(rangeRes.data) && rangeRes.data.length > 0) {
+                const history = rangeRes.data as any[];
+                // Find most recent record that has the metric, starting from most recent day
+                const findLatest = (key: string, altKey?: string) => {
+                    const found = history.find((item: any) => (item[key] !== undefined && item[key] !== null && item[key] !== 0) || (altKey && item[altKey] !== undefined && item[altKey] !== null && item[altKey] !== 0));
+                    return found ? (found[key] || (altKey ? found[altKey] : undefined)) : undefined;
+                };
+                fallbackData = {
+                    weight: findLatest('weight'),
+                    height: findLatest('height'),
+                    water: findLatest('water'),
+                    sleep_hours: findLatest('sleep_hours', 'sleepHours'),
+                };
+                console.log('[Dashboard Hook] Using fallback data from history:', fallbackData);
+            }
 
-                // Debugging Step Count Logic
-                const currentRefSteps = stepCountRef.current;
-                // Fix: Handle 0 correctly (0 || undefined -> undefined)
-                const apiSteps = (data.stepsCount !== undefined && data.stepsCount !== null)
-                    ? data.stepsCount
-                    : ((data.steps_count !== undefined && data.steps_count !== null) ? data.steps_count : 0);
+            // Pull weight/height/etc from data or fallback
+            const weight = typeof (data.weight || fallbackData.weight) === 'number' ? (data.weight || fallbackData.weight) : NaN;
+            const height = typeof (data.height || fallbackData.height) === 'number' ? (data.height || fallbackData.height) : NaN;
 
-                // Determine final value
-                const finalSteps = currentRefSteps > 0 ? currentRefSteps : apiSteps;
+            const bmi = (!isNaN(weight) && !isNaN(height) && height > 0)
+                ? (weight / ((height / 100) ** 2)).toFixed(2)
+                : '-';
 
-                const newCards: StatCard[] = [
-                    { id: 'Weight', icon: 'bag-handle', iconColor: '#009E0B', value: data.weight?.toString() || '-', unit: 'kg', bgColor: '#DAEDDC' },
-                    { id: 'Height', icon: 'swap-vertical', iconColor: '#009E0B', value: data.height?.toString() || '-', unit: 'cm', bgColor: '#D8F4DC' },
-                    { id: 'BMI', icon: 'options', iconColor: '#FF5100', value: bmi, unit: '', bgColor: '#FFE2D7' },
-                    { id: 'Water', icon: 'water', iconColor: '#00BFFF', value: data.water?.toString() || '-', unit: 'ml', bgColor: '#D8F4FF' },
-                    { id: 'Sleep', icon: 'moon', iconColor: '#FFEA00', value: (data.sleepHours || data.sleep_hours)?.toString() || '-', unit: 'hr', bgColor: '#FAF5DE' },
-                    {
-                        id: 'Steps',
-                        icon: 'footsteps',
-                        iconColor: '#6004FF',
-                        // Initial propose: Ref or API
-                        value: finalSteps.toString(),
-                        unit: 'steps',
-                        bgColor: '#EAE1F9'
-                    },
-                ];
+            const apiSteps = (data.stepsCount !== undefined && data.stepsCount !== null)
+                ? data.stepsCount
+                : ((data.steps_count !== undefined && data.steps_count !== null) ? data.steps_count : 0);
 
-                setStatCards(prevCards => {
-                    return newCards.map(newCard => {
-                        if (newCard.id === 'Steps') {
-                            const prevCard = prevCards.find(c => c.id === 'Steps');
-                            const prevVal = parseInt(prevCard?.value || '0');
-                            const newVal = parseInt(newCard.value || '0');
+            // Determine final value
+            const finalSteps = currentRefSteps > apiSteps ? currentRefSteps : apiSteps;
 
-                            // If we have a higher value in UI already (from Pedometer event), keep it!
-                            // This prevents API (0) from overwriting Pedometer (46)
-                            if (!isNaN(prevVal) && prevVal > newVal) {
-                                return { ...newCard, value: prevCard!.value };
-                            }
+            // SYNC UPWARD: If API has higher steps, update local baseline to avoid downgrades/jumps
+            if (apiSteps > currentRefSteps) {
+                setBaselineSteps(apiSteps);
+                lastSavedSteps.current = apiSteps;
+            }
+
+            const newCards: StatCard[] = [
+                { id: 'Weight', icon: 'bag-handle', iconColor: '#009E0B', value: (data.weight || fallbackData.weight)?.toString() || '-', unit: 'kg', bgColor: '#DAEDDC' },
+                { id: 'Height', icon: 'swap-vertical', iconColor: '#009E0B', value: (data.height || fallbackData.height)?.toString() || '-', unit: 'cm', bgColor: '#D8F4DC' },
+                { id: 'BMI', icon: 'options', iconColor: '#FF5100', value: bmi, unit: '', bgColor: '#FFE2D7' },
+                { id: 'Water', icon: 'water', iconColor: '#00BFFF', value: (data.water || fallbackData.water)?.toString() || '-', unit: 'ml', bgColor: '#D8F4FF' },
+                { id: 'Sleep', icon: 'moon', iconColor: '#FFEA00', value: (data.sleepHours || data.sleep_hours || fallbackData.sleep_hours)?.toString() || '-', unit: 'hr', bgColor: '#FAF5DE' },
+                { id: 'Steps', icon: 'footsteps', iconColor: '#6004FF', value: finalSteps.toString(), unit: 'steps', bgColor: '#EAE1F9' },
+            ];
+
+            setStatCards(prevCards => {
+                return newCards.map(newCard => {
+                    if (newCard.id === 'Steps') {
+                        const prevCard = prevCards.find(c => c.id === 'Steps');
+                        const prevValStr = prevCard?.value;
+                        const prevVal = (prevValStr && prevValStr !== '-') ? parseInt(prevValStr, 10) : 0;
+                        const newVal = parseInt(newCard.value || '0', 10);
+
+                        if (!isNaN(prevVal) && prevVal > newVal) {
+                            return { ...newCard, value: prevVal.toString() };
                         }
-                        return newCard;
-                    });
+                    }
+                    return newCard;
                 });
-            } else {
-                console.log('[Dashboard Hook] No display data found');
+            });
+
+            if (!displayData) {
+                console.log('[Dashboard Hook] No display data found (Initialized with defaults/local steps/history)');
             }
 
             // Update Chart (Range Data)
@@ -160,10 +205,11 @@ export const useDashBoardPage = () => {
 
                     if (item.date) {
                         itemDate = new Date(item.date);
-                        dateKey = itemDate.toISOString().split('T')[0];
+                        // Use local YMD for consistency across components
+                        dateKey = toLocalYMD(itemDate);
                     } else if ((item as any)['trackingDate']) {
                         itemDate = new Date((item as any)['trackingDate']);
-                        dateKey = itemDate.toISOString().split('T')[0];
+                        dateKey = toLocalYMD(itemDate);
                     } else {
                         return;
                     }
@@ -174,7 +220,7 @@ export const useDashBoardPage = () => {
                         const existing = latestPerDayMap.get(dateKey)!;
                         const existingDate = new Date(existing.date || (existing as any)['trackingDate']);
 
-                        // เอา record ที่ timestamp ใหม่กว่า
+                        // Use the record with the more recent timestamp
                         if (itemDate > existingDate) {
                             latestPerDayMap.set(dateKey, item);
                         }
@@ -202,33 +248,30 @@ export const useDashBoardPage = () => {
                 // Update Cards again with potentially better DisplayData
                 if (displayData) {
                     const data = displayData;
-                    const weight = typeof data.weight === 'number' ? data.weight : NaN;
-                    const height = typeof data.height === 'number' ? data.height : NaN;
+
+                    // Pull fallback from history for metrics missing in today's best record
+                    const weight = (typeof data.weight === 'number' && data.weight > 0) ? data.weight : fallbackData.weight;
+                    const height = (typeof data.height === 'number' && data.height > 0) ? data.height : fallbackData.height;
+                    const water = (typeof data.water === 'number') ? data.water : fallbackData.water;
+                    const sleep = (data.sleepHours || data.sleep_hours) || fallbackData.sleep_hours;
+
                     const bmi = (!isNaN(weight) && !isNaN(height) && height > 0)
                         ? (weight / ((height / 100) ** 2)).toFixed(2)
                         : '-';
 
-                    // Logic again for Range block (if needed, but usually Today block covers it)
-                    // ... simpler setStatCards here if needed, but let's assume Today block is primary for Steps
-
-                    // Update Cards again but preserve Steps if logic requires
                     setStatCards(prevCards => {
-                        // Re-construct cards based on NEW displayData
                         return prevCards.map(card => {
-                            // Only update non-Steps or handle Steps carefully
-                            if (card.id === 'Weight') return { ...card, value: data.weight?.toString() || '-' };
-                            if (card.id === 'Height') return { ...card, value: data.height?.toString() || '-' };
+                            if (card.id === 'Weight') return { ...card, value: weight?.toString() || '-' };
+                            if (card.id === 'Height') return { ...card, value: height?.toString() || '-' };
                             if (card.id === 'BMI') return { ...card, value: bmi };
-                            if (card.id === 'Water') return { ...card, value: data.water?.toString() || '-' };
-                            if (card.id === 'Sleep') return { ...card, value: (data.sleepHours || data.sleep_hours)?.toString() || '-' };
+                            if (card.id === 'Water') return { ...card, value: water?.toString() || '-' };
+                            if (card.id === 'Sleep') return { ...card, value: sleep?.toString() || '-' };
 
-                            // Steps: Don't overwrite if prev is higher?
                             if (card.id === 'Steps') {
                                 const apiVal = data.stepsCount || data.steps_count || 0;
-                                const prevVal = parseInt(card.value || '0');
-
-                                if (!isNaN(prevVal) && prevVal > apiVal) return card;
-                                return { ...card, value: apiVal.toString() };
+                                const currentLocalSteps = stepCountRef.current;
+                                const finalSteps = currentLocalSteps > apiVal ? currentLocalSteps : apiVal;
+                                return { ...card, value: finalSteps.toString() };
                             }
                             return card;
                         });
