@@ -3,11 +3,46 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Platform } from 'react-native';
 import storage from '../utils/storage';
-import { getUserNotifications, getUserRoutinesByDate, getUserProfile } from '../service/InfinityhealthApi';
+import { getUserNotifications, getUserRoutinesByDate, getUserProfile, syncClerkUser } from '../service/InfinityhealthApi';
 import { Notification } from '../interface/infinityhealth.interface';
+import { useUser } from '@clerk/clerk-expo';
 
 export default function TabLayout() {
+  const { user } = useUser();
   const [hasUnread, setHasUnread] = useState(false);
+
+  // Global User Sync (Clerk -> Backend)
+  useEffect(() => {
+    const syncUser = async () => {
+      if (user) {
+        try {
+          const internalId = await storage.getItem('internalUserId');
+          if (!internalId) {
+            console.log('[GlobalSync] No internalId found. Syncing...');
+            const email = user.primaryEmailAddress?.emailAddress;
+            if (email) {
+              const res = await syncClerkUser(
+                email,
+                user.firstName || 'User',
+                user.lastName || '',
+                user.imageUrl || ''
+              );
+              const data = res as any;
+              if (data.success && data.user) {
+                const newId = String(data.user.id);
+                await storage.setItem('internalUserId', newId);
+                await storage.setItem('userId', newId);
+                console.log('[GlobalSync] Synced successfully. ID:', newId);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[GlobalSync] Sync failed:', e);
+        }
+      }
+    };
+    syncUser();
+  }, [user]);
 
   useEffect(() => {
     const checkNotifications = async () => {
