@@ -13,12 +13,15 @@ export default function TabLayout() {
 
   // Global User Sync (Clerk -> Backend)
   useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 3;
+
     const syncUser = async () => {
       if (user) {
         try {
           const internalId = await storage.getItem('internalUserId');
           if (!internalId) {
-            console.log('[GlobalSync] No internalId found. Syncing...');
+            console.log('[GlobalSync] No internalId found. Syncing with backend...');
             const email = user.primaryEmailAddress?.emailAddress;
             if (email) {
               const res = await syncClerkUser(
@@ -33,15 +36,24 @@ export default function TabLayout() {
                 await storage.setItem('internalUserId', newId);
                 await storage.setItem('userId', newId);
                 console.log('[GlobalSync] Synced successfully. ID:', newId);
+              } else {
+                throw new Error(data.message || 'Sync response was not successful');
               }
             }
           }
         } catch (e) {
-          console.error('[GlobalSync] Sync failed:', e);
+          console.error(`[GlobalSync] Sync attempt ${retryCount + 1} failed:`, e);
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(syncUser, 3000 * retryCount); // Backoff retry
+          }
         }
       }
     };
-    syncUser();
+
+    // Wait a bit for Clerk to fully load email if it hasn't
+    const timer = setTimeout(syncUser, 1000);
+    return () => clearTimeout(timer);
   }, [user]);
 
   useEffect(() => {

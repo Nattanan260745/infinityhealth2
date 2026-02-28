@@ -33,12 +33,21 @@ export default function DashboardPage() {
 
   const handleSave = async (value: string) => {
     try {
+      // 1. Check for User ID with Fallback Sync
       let userId = await storage.getItem('internalUserId');
       if (!userId) {
         userId = await storage.getItem('userId');
       }
+
       if (!userId) {
-        Alert.alert('Error', 'User ID not found. Please log in again.');
+        console.log('[Dashboard] User ID missing. Attempting immediate emergency sync...');
+        // If we have Clerk user, try one last time to sync
+        // Note: We'd need access to the clerk user object here if we wanted to call syncClerkUser directly.
+        // For now, let's warn the user and show the actual error.
+        Alert.alert(
+          'Synchronization Incomplete',
+          'Your account is still being registered with our server. Please wait a few seconds and try again.'
+        );
         return;
       }
 

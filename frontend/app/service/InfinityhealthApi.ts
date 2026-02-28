@@ -18,9 +18,11 @@ import {
   Notification,
 } from '../interface/infinityhealth.interface';
 
-const API_BASE_URL = 'https://infinityhealth2.onrender.com'; // Production URL on Render
-// const API_BASE_URL = 'http://localhost:3000'; // For Emulator
+const API_BASE_URL = 'http://147.50.228.99:3000'; // YOUR STABLE VPS IP
+// const API_BASE_URL = 'https://infinityhealth2.onrender.com'; // Production URL on Render
 // const API_BASE_URL = 'http://192.168.1.33:3000'; // Local LAN IP (For Physical Device)
+
+console.log('[API] Target URL:', API_BASE_URL);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
