@@ -92,6 +92,11 @@ router.post('/user/:userId', async (req, res) => {
     console.log('Body:', JSON.stringify(req.body));
     const uid = parseId(userId);
 
+    if (isNaN(uid)) {
+      console.error('Invalid userId provided:', userId);
+      return res.status(400).json({ success: false, message: 'Invalid User ID' });
+    }
+
     // Normalize keys (frontend handles this, but good to be safe)
     const sleepVal = sleep_hours !== undefined ? sleep_hours : sleepHours;
     const stepsVal = steps_count !== undefined ? steps_count : stepsCount;
@@ -155,37 +160,42 @@ router.post('/user/:userId', async (req, res) => {
 
     // Trigger Mission Checks
     if (result) {
-      // Check "Daily Health Record" (New Mission)
-      await checkAndCompleteMission(uid, 'บันทึกสุขภาพประจำวัน', 1);
+      try {
+        // Check "Daily Health Record" (New Mission)
+        await checkAndCompleteMission(uid, 'บันทึกสุขภาพประจำวัน', 1);
 
-      // Check "Drink Water" (Daily) and any Water Challenge
-      if (dataPayload.water) {
-        await checkAndCompleteMission(uid, 'ดื่มน้ำให้เพียงพอ', dataPayload.water);
-        // Challenge Missions (Mapping from INI file)
-        await checkAndCompleteMission(uid, 'ดื่มน้ำเพิ่มจากปกติ ≥ 1 แก้ว', dataPayload.water); // Lv 2
-        await checkAndCompleteMission(uid, 'ดื่มน้ำ ≥ 5 แก้ว', dataPayload.water); // Lv 5
-        await checkAndCompleteMission(uid, 'ดื่มน้ำ ≥ 6 แก้ว', dataPayload.water); // Lv 12
-        await checkAndCompleteMission(uid, 'ดื่มน้ำ ≥ 7 แก้ว', dataPayload.water); // Lv 17
-        await checkAndCompleteMission(uid, 'ดื่มน้ำ ≥ 8 แก้ว/วัน', dataPayload.water); // Lv 22, 27
-        await checkAndCompleteMission(uid, 'ดื่มน้ำครบเป้า', dataPayload.water); // Lv 33, 53
-        await checkAndCompleteMission(uid, 'ดื่มน้ำครบเป้า (≈ 8 แก้ว/วัน)', dataPayload.water); // Lv 43
-      }
+        // Check "Drink Water" (Daily) and any Water Challenge
+        if (dataPayload.water) {
+          await checkAndCompleteMission(uid, 'ดื่มน้ำให้เพียงพอ', dataPayload.water);
+          // Challenge Missions (Mapping from INI file)
+          await checkAndCompleteMission(uid, 'ดื่มน้ำเพิ่มจากปกติ ≥ 1 แก้ว', dataPayload.water); // Lv 2
+          await checkAndCompleteMission(uid, 'ดื่มน้ำ ≥ 5 แก้ว', dataPayload.water); // Lv 5
+          await checkAndCompleteMission(uid, 'ดื่มน้ำ ≥ 6 แก้ว', dataPayload.water); // Lv 12
+          await checkAndCompleteMission(uid, 'ดื่มน้ำ ≥ 7 แก้ว', dataPayload.water); // Lv 17
+          await checkAndCompleteMission(uid, 'ดื่มน้ำ ≥ 8 แก้ว/วัน', dataPayload.water); // Lv 22, 27
+          await checkAndCompleteMission(uid, 'ดื่มน้ำครบเป้า', dataPayload.water); // Lv 33, 53
+          await checkAndCompleteMission(uid, 'ดื่มน้ำครบเป้า (≈ 8 แก้ว/วัน)', dataPayload.water); // Lv 43
+        }
 
-      // Check "Step Count" (Daily) and Step Challenges
-      if (dataPayload.stepsCount) {
-        const steps = dataPayload.stepsCount;
-        await checkAndCompleteMission(uid, 'เคลื่อนไหวร่างกาย', steps); // New Daily Mission Name
+        // Check "Step Count" (Daily) and Step Challenges
+        if (dataPayload.stepsCount) {
+          const steps = dataPayload.stepsCount;
+          await checkAndCompleteMission(uid, 'เคลื่อนไหวร่างกาย', steps); // New Daily Mission Name
 
-        // Challenge Missions (Mapping from INI file)
-        await checkAndCompleteMission(uid, 'เดิน ≥ 1,000 ก้าว', steps); // Lv 4
-        await checkAndCompleteMission(uid, 'เดิน ≥ 2,000 ก้าว', steps); // Lv 8
-        await checkAndCompleteMission(uid, 'เดิน ≥ 3,000 ก้าว', steps); // Lv 11
-        await checkAndCompleteMission(uid, 'เดิน ≥ 4,000 ก้าว', steps); // Lv 16
-        await checkAndCompleteMission(uid, 'เดิน ≥ 5,000 ก้าว/วัน', steps); // Lv 21, 26
-        await checkAndCompleteMission(uid, 'เดิน ≥ 6,000 ก้าว/วัน', steps); // Lv 31, 35, 41, 45
-        await checkAndCompleteMission(uid, 'เดิน ≥ 7,000 ก้าว/วัน', steps); // Lv 51
-        await checkAndCompleteMission(uid, 'เดิน ≥ 7,500 ก้าว/วัน', steps); // Lv 61
-        await checkAndCompleteMission(uid, 'เดิน ≥ 8,000 ก้าว/วัน', steps); // Lv 66
+          // Challenge Missions (Mapping from INI file)
+          await checkAndCompleteMission(uid, 'เดิน ≥ 1,000 ก้าว', steps); // Lv 4
+          await checkAndCompleteMission(uid, 'เดิน ≥ 2,000 ก้าว', steps); // Lv 8
+          await checkAndCompleteMission(uid, 'เดิน ≥ 3,000 ก้าว', steps); // Lv 11
+          await checkAndCompleteMission(uid, 'เดิน ≥ 4,000 ก้าว', steps); // Lv 16
+          await checkAndCompleteMission(uid, 'เดิน ≥ 5,000 ก้าว/วัน', steps); // Lv 21, 26
+          await checkAndCompleteMission(uid, 'เดิน ≥ 6,000 ก้าว/วัน', steps); // Lv 31, 35, 41, 45
+          await checkAndCompleteMission(uid, 'เดิน ≥ 7,000 ก้าว/วัน', steps); // Lv 51
+          await checkAndCompleteMission(uid, 'เดิน ≥ 7,500 ก้าว/วัน', steps); // Lv 61
+          await checkAndCompleteMission(uid, 'เดิน ≥ 8,000 ก้าว/วัน', steps); // Lv 66
+        }
+      } catch (missionError) {
+        console.error('Mission trigger error (absorbed):', missionError);
+        // We absorb this error because the health data itself was saved successfully.
       }
     }
 

@@ -84,14 +84,29 @@ export default function DashboardPage() {
       const basePayload: any = {
         date: today,
         ...(existingId ? { id: existingId } : {}), // If we found an ID, include it to force Update
-        weight: getCardValue('Weight'),
-        height: getCardValue('Height'),
-        water: getCardValue('Water'),
-        sleep_hours: getCardValue('Sleep'),
-        sleepHours: getCardValue('Sleep'),
-        steps_count: getCardValue('Steps'),
-        stepsCount: getCardValue('Steps'),
       };
+
+      // Only include fields that have values in cards to avoid overwriting with null/0 prematurely 
+      // if we want the backend to merge (though our backend usually overwrites).
+      // Our frontend now merges better, so we can send what we have.
+
+      const weight = getCardValue('Weight');
+      const height = getCardValue('Height');
+      const water = getCardValue('Water');
+      const sleep = getCardValue('Sleep');
+      const steps = getCardValue('Steps');
+
+      if (weight !== null) basePayload.weight = weight;
+      if (height !== null) basePayload.height = height;
+      if (water !== null) basePayload.water = water;
+      if (sleep !== null) {
+        basePayload.sleep_hours = sleep;
+        basePayload.sleepHours = sleep;
+      }
+      if (steps !== null) {
+        basePayload.steps_count = steps;
+        basePayload.stepsCount = steps;
+      }
 
       // Update specific metric
       switch (editingMetric) {
@@ -136,7 +151,8 @@ export default function DashboardPage() {
 
     } catch (error: any) {
       console.error('Failed to save health data:', error);
-      Alert.alert('Update Failed', error.message || 'Could not save data. Please try again.');
+      const errorMsg = error.response?.data?.message || error.message || 'Could not save data. Please try again.';
+      Alert.alert('Update Failed', errorMsg);
     }
   };
 

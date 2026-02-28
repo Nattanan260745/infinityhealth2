@@ -7,11 +7,17 @@ import storage from '../utils/storage';
 
 const SYSTEM_STEPS_KEY = 'google_fit_steps_today';
 
+// Global shared state to prevent race conditions across multiple hook instances
+let globalHasAttemptedAuth = false;
+let globalIsAuthInProgress = false;
+
 export const useGoogleFit = () => {
     const [steps, setSteps] = useState<number>(0);
     const [sessionSteps, setSessionSteps] = useState<number>(0);
     const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
+    // Local state to trigger re-renders, synced with global
+    const [attempted, setAttempted] = useState<boolean>(globalHasAttemptedAuth);
 
     // Load cached steps on mount
     useEffect(() => {
@@ -57,10 +63,12 @@ export const useGoogleFit = () => {
 
             // If it's a new day, we allow 0 or any value (reset)
             // If it's the same day, we only update if the new value is higher (prevents 0 overwrite on sync fail)
-            if (todayStr !== cachedDate || stepCount >= cachedValue) {
+            if (todayStr !== cachedDate || (stepCount > 0 && stepCount >= cachedValue)) {
                 setSteps(stepCount);
-                setSessionSteps(0);
-                storage.setItem(SYSTEM_STEPS_KEY, stepCount.toString());
+                if (stepCount >= cachedValue) {
+                    setSessionSteps(0); // Only reset if we actually got a baseline that covers or exceeds our cache
+                }
+                storage.setItem(SYSTEM_STEPS_KEY, Math.max(stepCount, cachedValue).toString());
                 storage.setItem('google_fit_steps_date', todayStr);
             } else {
                 console.log(`[GoogleFit] Ignoring zero/lower value (${stepCount}) for existing day (${cachedValue})`);
@@ -71,20 +79,27 @@ export const useGoogleFit = () => {
     }, []);
 
     const initializeGoogleFit = useCallback(async () => {
-        setLoading(true);
+        if (globalIsAuthInProgress) {
+            console.log("[GoogleFit] Auth already in progress, skipping concurrent call.");
+            return;
+        }
 
+        setLoading(true);
         const isAuthorizedFit = GoogleFit.isAuthorized;
         const hasRuntimePermissions = await checkPermissions();
 
         console.log(`[GoogleFit] Authorized: ${isAuthorizedFit}, RuntimePerms: ${hasRuntimePermissions}`);
 
         if (isAuthorizedFit && hasRuntimePermissions) {
-            console.log("[GoogleFit] Already authorized with permissions. Fetching silently...");
+            console.log("[GoogleFit] Already authorized. Fetching steps...");
             setIsAuthorized(true);
             await fetchSteps();
         } else {
             console.log("[GoogleFit] Not fully authorized. Requesting auth...");
+            globalIsAuthInProgress = true;
             const success = await authorizeGoogleFit();
+            globalIsAuthInProgress = false;
+
             console.log("[GoogleFit] Auth Success:", success);
 
             if (success) {
@@ -98,6 +113,7 @@ export const useGoogleFit = () => {
                 );
             } else {
                 setIsAuthorized(false);
+                setHasAttemptedAuth(true); // Don't auto-prompt again this session if it failed/cancelled
                 // Even if not authorized by Fit, we might have cached steps from Pedometer
                 const cachedValueStr = await storage.getItem(SYSTEM_STEPS_KEY);
                 const cachedDate = await storage.getItem('google_fit_steps_date');
@@ -115,7 +131,10 @@ export const useGoogleFit = () => {
 
     // Hybrid Logic: Pedometer for Real-time Foreground Updates
     useEffect(() => {
-        initializeGoogleFit();
+        // Only auto-initialize if we haven't failed an attempt yet globally
+        if (!globalHasAttemptedAuth) {
+            initializeGoogleFit();
+        }
 
         const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
             if (nextAppState === 'active') {

@@ -24,7 +24,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.ohm_zxc2545.infinityhealth",
-      "versionCode": 38,
+      "versionCode": 39,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.ACTIVITY_RECOGNITION",

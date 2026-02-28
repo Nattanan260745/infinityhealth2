@@ -141,11 +141,30 @@ export const useDashBoardPage = () => {
                 console.log('[Dashboard Hook] Using fallback data from history:', fallbackData);
             }
 
-            // Pull weight/height/etc from data or fallback
-            const weight = typeof (data.weight || fallbackData.weight) === 'number' ? (data.weight || fallbackData.weight) : NaN;
-            const height = typeof (data.height || fallbackData.height) === 'number' ? (data.height || fallbackData.height) : NaN;
+            // Pull weight/height/etc from data with aggressive fallback per field
+            const getValueWithFallback = (dataKey: string, fallbackKey?: string) => {
+                const val = data[dataKey] !== undefined && data[dataKey] !== null && data[dataKey] !== 0
+                    ? data[dataKey]
+                    : (fallbackKey ? fallbackData[fallbackKey] : fallbackData[dataKey]);
+                return val;
+            };
 
-            const bmi = (!isNaN(weight) && !isNaN(height) && height > 0)
+            // Persistent metrics (Carry over from history)
+            const weight = getValueWithFallback('weight');
+            const height = getValueWithFallback('height');
+
+            // Daily Cumulative metrics (Should be 0 if today is missing)
+            const getDailyValue = (dataKey: string, fallbackKey?: string) => {
+                const val = data[dataKey] !== undefined && data[dataKey] !== null && data[dataKey] !== 0
+                    ? data[dataKey]
+                    : 0; // Don't fallback to yesterday for steps/water/sleep
+                return val;
+            };
+
+            const water = getDailyValue('water');
+            const sleep = getDailyValue('sleepHours', 'sleep_hours');
+
+            const bmi = (typeof weight === 'number' && typeof height === 'number' && height > 0)
                 ? (weight / ((height / 100) ** 2)).toFixed(2)
                 : '-';
 
@@ -163,11 +182,11 @@ export const useDashBoardPage = () => {
             }
 
             const newCards: StatCard[] = [
-                { id: 'Weight', icon: 'bag-handle', iconColor: '#009E0B', value: (data.weight || fallbackData.weight)?.toString() || '-', unit: 'kg', bgColor: '#DAEDDC' },
-                { id: 'Height', icon: 'swap-vertical', iconColor: '#009E0B', value: (data.height || fallbackData.height)?.toString() || '-', unit: 'cm', bgColor: '#D8F4DC' },
+                { id: 'Weight', icon: 'bag-handle', iconColor: '#009E0B', value: weight?.toString() || '-', unit: 'kg', bgColor: '#DAEDDC' },
+                { id: 'Height', icon: 'swap-vertical', iconColor: '#009E0B', value: height?.toString() || '-', unit: 'cm', bgColor: '#D8F4DC' },
                 { id: 'BMI', icon: 'options', iconColor: '#FF5100', value: bmi, unit: '', bgColor: '#FFE2D7' },
-                { id: 'Water', icon: 'water', iconColor: '#00BFFF', value: (data.water || fallbackData.water)?.toString() || '-', unit: 'ml', bgColor: '#D8F4FF' },
-                { id: 'Sleep', icon: 'moon', iconColor: '#FFEA00', value: (data.sleepHours || data.sleep_hours || fallbackData.sleep_hours)?.toString() || '-', unit: 'hr', bgColor: '#FAF5DE' },
+                { id: 'Water', icon: 'water', iconColor: '#00BFFF', value: water?.toString() || '-', unit: 'ml', bgColor: '#D8F4FF' },
+                { id: 'Sleep', icon: 'moon', iconColor: '#FFEA00', value: sleep?.toString() || '-', unit: 'hr', bgColor: '#FAF5DE' },
                 { id: 'Steps', icon: 'footsteps', iconColor: '#6004FF', value: finalSteps.toString(), unit: 'steps', bgColor: '#EAE1F9' },
             ];
 

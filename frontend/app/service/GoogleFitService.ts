@@ -39,7 +39,9 @@ export const authorizeGoogleFit = async (): Promise<boolean> => {
         }
 
         const authResult = await GoogleFit.authorize(GOOGLE_FIT_OPTIONS);
+        console.log("[GoogleFit] Auth Result:", JSON.stringify(authResult));
         if (authResult.success) {
+            console.log("[GoogleFit] Authorization successful.");
             return true;
         } else {
             console.warn("Google Fit Authorization failed:", authResult.message);
