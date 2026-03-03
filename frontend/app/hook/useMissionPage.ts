@@ -99,7 +99,9 @@ export const useMissionPage = () => {
       // Changed to use internalUserId from Sync
       const id = await storage.getItem('internalUserId');
       const level = await storage.getItem('userLevel');
-      setUserId(id);
+      if (id) {
+        setUserId(id);
+      }
       setUserLevel(level ? parseInt(level) : 1);
     };
     loadUserData();
@@ -178,10 +180,13 @@ export const useMissionPage = () => {
       // If no internal ID, wait or fallback (profile should handle sync)
     }
 
-    // NOTE: The initial useEffect loads 'userId'. We must ensure it loads 'internalUserId'.
-    const idToUse = await storage.getItem('internalUserId') || userId;
+    // Use internalUserId from storage with fallback to local state
+    let idToUse = await storage.getItem('internalUserId') || userId;
 
-    if (!idToUse) return;
+    if (!idToUse) {
+      setIsLoading(false);
+      return;
+    }
 
     if (!silent) setIsLoading(true);
     setError(null);

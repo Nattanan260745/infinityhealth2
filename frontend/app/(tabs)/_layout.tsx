@@ -51,9 +51,8 @@ export default function TabLayout() {
       }
     };
 
-    // Wait a bit for Clerk to fully load email if it hasn't
-    const timer = setTimeout(syncUser, 1000);
-    return () => clearTimeout(timer);
+    // Trigger sync immediately when user is available
+    syncUser();
   }, [user]);
 
   useEffect(() => {

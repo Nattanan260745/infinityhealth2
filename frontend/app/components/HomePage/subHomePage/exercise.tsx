@@ -21,7 +21,7 @@ const levels = ['Beginner', 'Intermediate', 'Expert'];
 
 export default function ExerciseScreen() {
   const [selectedTab, setSelectedTab] = useState<TabType>('cardio');
-  const [selectedLevel, setSelectedLevel] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState('Beginner');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showLevelPicker, setShowLevelPicker] = useState(false);
 

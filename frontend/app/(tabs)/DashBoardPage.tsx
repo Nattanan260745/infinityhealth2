@@ -8,14 +8,16 @@ import ChartSection from '../components/SummaryDashBoard/ChartSection';
 import { useDashBoardPage } from '../hook/useDashBoardPage';
 import DashBoardEditModal from '../components/SummaryDashBoard/DashBoardEditModal';
 import SuccessModal from '../components/SummaryDashBoard/SuccessModal';
-import { saveHealthData, getHealthTrackRange } from '../service/InfinityhealthApi';
+import { saveHealthData, getHealthTrackRange, syncClerkUser } from '../service/InfinityhealthApi';
 import storage from '../utils/storage';
+import { useUser } from '@clerk/clerk-expo';
 
 
 import { useRouter } from 'expo-router';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { user } = useUser();
   const { selectedTab, setSelectedTab, maxValue, chartData, statCards, filterTabs, trendValue, trendDirection, fetchData, handleDataPointClick, selectedPointIndex } = useDashBoardPage();
 
   /* Modal State */
@@ -41,9 +43,30 @@ export default function DashboardPage() {
 
       if (!userId) {
         console.log('[Dashboard] User ID missing. Attempting immediate emergency sync...');
-        // If we have Clerk user, try one last time to sync
-        // Note: We'd need access to the clerk user object here if we wanted to call syncClerkUser directly.
-        // For now, let's warn the user and show the actual error.
+
+        // Emergency Sync: If we have a Clerk user, sync right now
+        if (user && user.primaryEmailAddress?.emailAddress) {
+          try {
+            const syncRes = await syncClerkUser(
+              user.primaryEmailAddress.emailAddress,
+              user.firstName || 'User',
+              user.lastName || '',
+              user.imageUrl || ''
+            ) as any;
+
+            if (syncRes.success && syncRes.user) {
+              userId = String(syncRes.user.id);
+              await storage.setItem('internalUserId', userId);
+              await storage.setItem('userId', userId);
+              console.log('[Dashboard] Emergency sync successful. ID:', userId);
+            }
+          } catch (syncErr) {
+            console.error('[Dashboard] Emergency sync failed:', syncErr);
+          }
+        }
+      }
+
+      if (!userId) {
         Alert.alert(
           'Synchronization Incomplete',
           'Your account is still being registered with our server. Please wait a few seconds and try again.'

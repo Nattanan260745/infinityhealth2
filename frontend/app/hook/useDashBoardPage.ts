@@ -85,6 +85,7 @@ export const useDashBoardPage = () => {
                 userId = await storage.getItem('userId');
             }
             if (!userId) {
+                setIsLoading(false);
                 return;
             }
 
