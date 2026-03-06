@@ -30,19 +30,9 @@ server {
         try_files \$uri \$uri/ /index.html;
     }
 
-    # Backend API
-    location /api/ {
-        # Rewrite /api/foo to /foo if your backend doesn't expect /api prefix
-        # But usually, it's safer to keep it or adjust backend.
-        # Based on index.js, backend routes start with /auth, /profile etc.
-        # So if frontend calls /api/auth, we should rewrite it?
-        # Or did we configure frontend to call http://IP:5000 directly?
-        # PLAN: Frontend calls http://IP:5000 directly in current .env.production
-        # So Nginx acts as web server for Admin only.
-        # BUT standard practice is reverse proxy.
-        # Let's keep it simple: Frontend calls port 5000 directly for now as per .env config.
-        # So this block is just a placeholder or for future use.
-        proxy_pass http://localhost:3000; # WAIT, Backend default port is 3000 or 5000? env says 3000 default.
+        location /api/ {
+        rewrite ^/api/(.*)$ /$1 break;
+        proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';

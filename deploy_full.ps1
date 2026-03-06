@@ -21,40 +21,41 @@ if ($LASTEXITCODE -ne 0) {
 
 # 2. Create Remote Directories
 Write-Host ""
-Write-Host "Cc📁 Creating remote directories..."
-& ssh "$User@$ServerIP" "mkdir -p $RemoteRoot/admin $RemoteRoot/backend"
+Write-Host "📁 Creating remote directories..."
+ssh "$User@$ServerIP" "mkdir -p $RemoteRoot/admin $RemoteRoot/backend"
 
 # 3. Upload Admin Files
 Write-Host ""
 Write-Host "📤 Uploading Admin Panel..."
-& scp -r "dist\*" "$User@$ServerIP:$RemoteRoot/admin"
+scp -r "dist\*" "${User}@${ServerIP}:${RemoteRoot}/admin"
 
 # 4. Upload Backend Files
 Write-Host ""
 Write-Host "📤 Uploading Backend..."
 Set-Location "d:\infinityhealth\infinityhealth2\backend"
 # Copy package files
-& scp "package.json" "package-lock.json" "$User@$ServerIP:$RemoteRoot/backend"
+scp "package.json" "package-lock.json" "${User}@${ServerIP}:${RemoteRoot}/backend"
 # Copy source
-& scp -r "src" "config" "routes" "prisma" "$User@$ServerIP:$RemoteRoot/backend"
+scp -r "src" "config" "routes" "prisma" "${User}@${ServerIP}:${RemoteRoot}/backend"
 
 # Create proper .env content
-$EnvContent = "PORT=3000`r`nNODE_ENV=production`r`nDATABASE_URL=postgresql://postgres:postgres@localhost:5432/infinityhealth?schema=public"
+# Using simple single quotes for the main string and let PowerShell do its thing.
+$EnvContent = "PORT=3000`nNODE_ENV=production`nDATABASE_URL=postgresql://postgres:postgres@localhost:5432/infinityhealth?schema=public"
 Set-Content -Path ".env.production" -Value $EnvContent -Force
 
-& scp ".env.production" "$User@$ServerIP:$RemoteRoot/backend/.env"
+scp ".env.production" "${User}@${ServerIP}:${RemoteRoot}/backend/.env"
 
 # 5. Upload Setup Script
 Write-Host ""
 Write-Host "📜 Uploading Setup Script..."
 Set-Location "d:\infinityhealth\infinityhealth2"
-& scp "remote_setup.sh" "$User@$ServerIP:$RemoteRoot"
-& ssh "$User@$ServerIP" "chmod +x $RemoteRoot/remote_setup.sh"
+scp "remote_setup.sh" "${User}@${ServerIP}:${RemoteRoot}"
+ssh "${User}@${ServerIP}" "chmod +x ${RemoteRoot}/remote_setup.sh"
 
 # 6. Execute Remote Setup
 Write-Host ""
 Write-Host "⚙️ Running Remote Setup..."
-& ssh "$User@$ServerIP" "$RemoteRoot/remote_setup.sh"
+ssh "${User}@${ServerIP}" "${RemoteRoot}/remote_setup.sh"
 
 Write-Host ""
 Write-Host "========================================"
