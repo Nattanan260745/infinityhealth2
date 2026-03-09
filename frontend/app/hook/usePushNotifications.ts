@@ -1,75 +1,108 @@
 
 import { useState, useEffect } from 'react';
 import { Platform } from 'react-native';
-import { LogLevel, OneSignal } from 'react-native-onesignal';
-import Constants from 'expo-constants';
+import * as Notifications from 'expo-notifications';
 import storage from '../utils/storage';
 
-const ONESIGNAL_APP_ID = '62a8a981-4a2b-4a4f-8b7b-e67c65ff0017';
+// Configure how notifications should be handled when the app is in the foreground
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+    }),
+});
 
 export const usePushNotifications = () => {
-    const [pushToken, setPushToken] = useState<string | undefined>(undefined);
-    const [notification, setNotification] = useState<any | undefined>(undefined); // Keep for compatibility
+    const [notification, setNotification] = useState<Notifications.Notification | undefined>(undefined);
 
     useEffect(() => {
-        // 1. OneSignal Init
-        OneSignal.Debug.setLogLevel(LogLevel.Verbose);
-        OneSignal.initialize(ONESIGNAL_APP_ID);
-
-        // 2. Request Permission
-        OneSignal.Notifications.requestPermission(true);
-
-        // 3. Login User (Associate with our Internal ID)
-        const identifyUser = async () => {
-            const userId = await storage.getItem('internalUserId');
-            if (userId) {
-                console.log('Logging in to OneSignal with External ID:', userId);
-                OneSignal.login(userId);
+        // 1. Request Permissions (POST_NOTIFICATIONS for Android 13+)
+        const requestPermissions = async () => {
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+            if (existingStatus !== 'granted') {
+                const { status } = await Notifications.requestPermissionsAsync();
+                finalStatus = status;
+            }
+            if (finalStatus !== 'granted') {
+                console.warn('Failed to get push token for push notification!');
+                return;
             }
         };
-        identifyUser();
 
-        // 4. Listener
-        // Note: For 'click', the event is of type NotificationClickEvent
-        // For 'foregroundWillDisplay', it's NotificationWillDisplayEvent
-        OneSignal.Notifications.addEventListener('click', (event: any) => {
-            console.log('OneSignal Notification Clicked:', event);
-            setNotification(event.notification);
+        requestPermissions();
+
+        // 2. Listeners
+        const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+            setNotification(notification);
         });
 
-        OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event: any) => {
-            console.log('OneSignal Notification Received (Foreground):', event);
-            setNotification(event.getNotification());
+        const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+            console.log('Notification Response:', response);
         });
 
+        return () => {
+            notificationListener.remove();
+            responseListener.remove();
+        };
     }, []);
 
     return {
-        pushToken,
         notification
     };
 };
 
-// Remote Push Logic:
-// The backend will send the notification. We don't need to 'schedule' locally anymore.
-// However, if we still want local fallback, we can use OneSignal.Notifications.simplePush or keep expo-notifications.
-// For now, we rely on the Backend to trigger the "Alarm".
-
+/**
+ * Schedules a daily routine notification using a Calendar trigger.
+ * This is "Exact" on Android and works even if the app is closed.
+ */
 export async function scheduleRoutineNotification(
     title: string,
     hour: number,
     minute: number
 ) {
-    // This function is now a placeholder.
-    // In a full Remote Push system, the "Schedule" happens on the Backend Database.
-    // When user saves a routine -> We save to DB -> Backend Cron Job picks it up.
-    // So usually we don't need to do anything here client-side for scheduling.
+    console.log(`[LocalNotif] Scheduling: "${title}" at ${hour}:${minute}`);
 
-    console.log('Skipping local schedule. Routine saved to backend will be picked up by Cron Job.');
-    return 'backend-managed';
+    try {
+        // Check for permission first
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== 'granted') {
+            await Notifications.requestPermissionsAsync();
+        }
+
+        const identifier = await Notifications.scheduleNotificationAsync({
+            content: {
+                title: "ถึงเวลาแล้ว! ⏰",
+                body: `ได้เวลาทำภารกิจ: ${title}`,
+                sound: 'default',
+                priority: Notifications.AndroidNotificationPriority.MAX,
+                // @ts-ignore
+                channelId: 'default',
+            },
+            trigger: {
+                hour: hour,
+                minute: minute,
+                repeats: true, // Daily
+            } as Notifications.CalendarTriggerInput,
+        });
+
+        console.log(`[LocalNotif] Scheduled successfully. ID: ${identifier}`);
+        return identifier;
+    } catch (error) {
+        console.error('[LocalNotif] Scheduling failed:', error);
+        return null;
+    }
 }
 
 export async function cancelRoutineNotification(notificationId: string) {
-    // Managed by Backend
-    console.log('Skipping local cancel. Backend manages the schedule.');
+    if (!notificationId) return;
+    try {
+        await Notifications.cancelScheduledNotificationAsync(notificationId);
+        console.log(`[LocalNotif] Cancelled ID: ${notificationId}`);
+    } catch (error) {
+        console.error('[LocalNotif] Cancel failed:', error);
+    }
 }

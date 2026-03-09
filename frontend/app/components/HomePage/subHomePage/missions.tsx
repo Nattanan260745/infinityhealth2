@@ -44,18 +44,18 @@ const getPresets = (mission: any) => {
   }
 
   // Case 2: Water (Standard)
-  if (title.includes('water') || unit.includes('ml')) {
+  if (title.includes('water') || title.includes('น้ำ') || unit.includes('แก้ว')) {
     return [
-      { label: '250ml', value: 250 },
-      { label: '600ml', value: 600 }
+      { label: '1 แก้ว', value: 1 },
+      { label: '2 แก้ว', value: 2 }
     ];
   }
 
-  // Case 3: Steps (Standard)
-  if (title.includes('step') || unit.includes('step')) {
+  // Case 3: Steps (Standard - now Exercise)
+  if (title.includes('step') || title.includes('ก้าว') || title.includes('ออกกำลังกาย') || unit.includes('นาที')) {
     return [
-      { label: '500', value: 500 },
-      { label: '1000', value: 1000 }
+      { label: '5 นาที', value: 5 },
+      { label: '15 นาที', value: 15 }
     ];
   }
 

@@ -64,6 +64,29 @@ cron.schedule('* * * * *', async () => {
             console.log(`   -> Notifying User ${userId} for routine: ${routine.title}`);
 
             try {
+                // 1.5 Check if we already notified this user for this routine TODAY
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+
+                const existingNotification = await prisma.notification.findFirst({
+                    where: {
+                        userId: parseInt(userId),
+                        type: 'ROUTINE_REMINDER',
+                        referenceId: routine.id,
+                        createdAt: {
+                            gte: today,
+                            lt: tomorrow
+                        }
+                    }
+                });
+
+                if (existingNotification) {
+                    console.log(`      Already notified today for routine ${routine.id}. Skipping.`);
+                    continue;
+                }
+
                 // Instead of OneSignal, create a Notification record in DB
                 // Frontend will poll for 'isSent: false' notifications
                 const newNotification = await prisma.notification.create({
@@ -74,7 +97,8 @@ cron.schedule('* * * * *', async () => {
                         message: `ถึงเวลา ${routine.title} แล้วนะครับ`,
                         isRead: false,
                         isSent: false,
-                        notiAt: new Date() // Set current time as notification time
+                        notiAt: new Date(), // Set current time as notification time
+                        referenceId: routine.id
                     }
                 });
                 console.log(`      Created DB Notification ID: ${newNotification.id}`);

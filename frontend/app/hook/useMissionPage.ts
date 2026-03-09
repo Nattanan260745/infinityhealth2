@@ -15,10 +15,10 @@ type TabType = 'daily' | 'challenge';
 const getMissionIcon = (title: string, type: string): string => {
   const titleLower = title.toLowerCase();
 
-  if (titleLower.includes('water') || titleLower.includes('drink')) return '💧';
-  if (titleLower.includes('walk') || titleLower.includes('step')) return '👟';
-  if (titleLower.includes('exercise') || titleLower.includes('workout')) return '💪';
-  if (titleLower.includes('sleep') || titleLower.includes('rest')) return '😴';
+  if (titleLower.includes('water') || titleLower.includes('drink') || titleLower.includes('น้ำ')) return '💧';
+  if (titleLower.includes('walk') || titleLower.includes('step') || titleLower.includes('เดิน') || titleLower.includes('ก้าว')) return '👟';
+  if (titleLower.includes('exercise') || titleLower.includes('workout') || titleLower.includes('ออกกำลังกาย')) return '💪';
+  if (titleLower.includes('sleep') || titleLower.includes('rest') || titleLower.includes('นอน')) return '😴';
   if (titleLower.includes('food') || titleLower.includes('meal') || titleLower.includes('eat')) return '🥗';
   if (titleLower.includes('sugar')) return '🍬';
   if (titleLower.includes('stretch')) return '🧘';
@@ -97,7 +97,7 @@ export const useMissionPage = () => {
   useEffect(() => {
     const loadUserData = async () => {
       // Changed to use internalUserId from Sync
-      const id = await storage.getItem('internalUserId');
+      const id = await storage.getItem('internalUserId') || await storage.getItem('userId');
       const level = await storage.getItem('userLevel');
       if (id) {
         setUserId(id);
@@ -106,6 +106,17 @@ export const useMissionPage = () => {
     };
     loadUserData();
   }, []);
+
+  // Helper to ensure userId is available (Retry from storage if state is null)
+  const ensureUserId = async () => {
+    if (userId) return userId;
+    const storedId = await storage.getItem('internalUserId') || await storage.getItem('userId');
+    if (storedId) {
+      setUserId(storedId);
+      return storedId;
+    }
+    return null;
+  };
 
   // Load Streak (omitted unchanged parts for brevity if handled by diff, but need context)
   // ... (keeping existing streak logic ideally, but since I'm replacing a huge chunk, let's just make sure I don't delete it. 
@@ -174,17 +185,9 @@ export const useMissionPage = () => {
 
   // Fetch missions
   const fetchMissions = useCallback(async (silent = false) => {
-    // Sync ID if needed (although profile likely syncs it first, safe to check)
-    let internalId = await storage.getItem('internalUserId');
-    if (!internalId) {
-      // If no internal ID, wait or fallback (profile should handle sync)
-    }
-
-    // Use internalUserId from storage with fallback to local state
-    let idToUse = await storage.getItem('internalUserId') || userId;
-
-    if (!idToUse) {
-      setIsLoading(false);
+    const currentId = await ensureUserId();
+    if (!currentId) {
+      if (!silent) setIsLoading(false);
       return;
     }
 
@@ -192,7 +195,7 @@ export const useMissionPage = () => {
     setError(null);
 
     try {
-      const response = await getUserMissions(idToUse);
+      const response = await getUserMissions(currentId);
 
       if (response.success && response.data) {
         setMissions(response.data);
@@ -207,9 +210,9 @@ export const useMissionPage = () => {
     }
 
     // Fetch User Profile for latest Stats
-    if (idToUse) {
+    if (currentId) {
       try {
-        const profileRes = await getUserProfile(idToUse);
+        const profileRes = await getUserProfile(currentId);
         if (profileRes.success && profileRes.data) {
           setUserXP(profileRes.data.exp || 0);
           setUserGems(profileRes.data.points || 0);
@@ -231,24 +234,41 @@ export const useMissionPage = () => {
   // Convert API mission to display format
   const convertToDisplayMission = (mission: MissionWithStatus): DisplayMission => {
     const progressParts = mission.user_status?.progress?.split('/') || ['0', String(mission.target_value || 100)];
-    const currentProgress = parseInt(progressParts[0]) || 0;
-    const totalProgress = parseInt(progressParts[1]) || mission.target_value || 100;
+    let currentProgress = parseInt(progressParts[0]) || 0;
+    let totalProgress = parseInt(progressParts[1]) || mission.target_value || 100;
+    let title = mission.title;
+    let targetUnit = mission.target_unit || '';
+
+    // Professor Feedback Logic:
+    // 1. "Steps/Walk" -> "ออกกำลังกาย 30 นาที"
+    if (title.toLowerCase().includes('walk') || title.toLowerCase().includes('step')) {
+      title = "ออกกำลังกาย 30 นาที";
+      targetUnit = "นาที";
+      // Map steps to minutes (approx 100 steps = 1 min)
+      if (totalProgress > 1000) {
+        currentProgress = Math.floor(currentProgress / 100);
+        totalProgress = 30; // Force 30 mins
+      }
+    }
+
+    // 2. "Water" -> "แก้ว" (1 glass = 250ml)
+    if (title.toLowerCase().includes('water')) {
+      targetUnit = "แก้ว";
+      // Convert ml to glasses if total is large (ml)
+      if (totalProgress >= 250) {
+        currentProgress = Math.floor(currentProgress / 250);
+        totalProgress = Math.floor(totalProgress / 250);
+      }
+    }
+
     const minLevel = mission.min_level || 1;
-
-    // Lock Logic:
-    // 1. Challenge visible ONLY for current level (Handled in filter).
-    // 2. Locked if User XP is not full.
-    // XP Cap for level L is L * 1000.
-    // So if userLevel == X, they need X * 1000 XP to unlock the challenge.
     const xpRequired = userLevel * 1000;
-
-    // Only apply lock logic to Challenge missions
     const isLocked = mission.type === 'challenge' && userXP < xpRequired;
 
     return {
       id: mission._id,
-      title: mission.title,
-      icon: getMissionIcon(mission.title, mission.type),
+      title: title,
+      icon: getMissionIcon(title, mission.type),
       progress: currentProgress,
       total: totalProgress,
       xp: mission.reward_exp,
@@ -258,8 +278,8 @@ export const useMissionPage = () => {
       description: mission.description,
       missionId: mission._id,
       minLevel: minLevel,
-      targetValue: mission.target_value || 1,
-      targetUnit: mission.target_unit || '',
+      targetValue: totalProgress,
+      targetUnit: targetUnit,
       isLocked: isLocked,
       presets: mission.presets,
     };
@@ -304,7 +324,8 @@ export const useMissionPage = () => {
 
   // Handle save progress
   const handleSave = async () => {
-    if (!selectedMission || !userId) return;
+    const currentId = await ensureUserId();
+    if (!selectedMission || !currentId) return;
 
     const newProgress = parseFloat(inputValue) || 0;
     const isCompleted = newProgress >= selectedMission.total;
@@ -312,7 +333,7 @@ export const useMissionPage = () => {
     try {
       if (isCompleted) {
         // Complete the mission
-        const response = await completeMission(userId, selectedMission.missionId);
+        const response = await completeMission(currentId, selectedMission.missionId);
 
         if (response.success) {
           // Show reward notification
@@ -327,7 +348,7 @@ export const useMissionPage = () => {
       } else {
         // Update progress
         await updateMissionProgress(
-          userId,
+          currentId,
           selectedMission.missionId,
           `${Math.min(newProgress, selectedMission.total)}/${selectedMission.total}`,
           'in_progress'
@@ -353,10 +374,11 @@ export const useMissionPage = () => {
 
   // Handle complete mission directly
   const handleComplete = async (mission: DisplayMission) => {
-    if (!userId) return;
+    const currentId = await ensureUserId();
+    if (!currentId) return;
 
     try {
-      const response = await completeMission(userId, mission.missionId);
+      const response = await completeMission(currentId, mission.missionId);
 
       if (response.success) {
         const rewards = response.data?.rewards;
@@ -375,7 +397,8 @@ export const useMissionPage = () => {
 
   // Handle quick update (add/subtract value)
   const handleQuickUpdate = async (mission: DisplayMission, changeAmount: number) => {
-    if (!userId) return;
+    const currentId = await ensureUserId();
+    if (!currentId) return;
 
     const currentProgress = mission.progress;
     const newProgress = Math.max(0, currentProgress + changeAmount); // Prevent negative
@@ -397,7 +420,7 @@ export const useMissionPage = () => {
 
     try {
       if (isCompleted) {
-        const response = await completeMission(userId, mission.missionId);
+        const response = await completeMission(currentId, mission.missionId);
         if (response.success) {
           const rewards = response.data?.rewards;
           setStatusModal({
@@ -409,7 +432,7 @@ export const useMissionPage = () => {
         }
       } else {
         await updateMissionProgress(
-          userId,
+          currentId,
           mission.missionId,
           `${Math.min(newProgress, mission.total)}/${mission.total}`,
           'in_progress'

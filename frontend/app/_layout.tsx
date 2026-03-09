@@ -4,13 +4,24 @@ import { useFonts } from 'expo-font';
 import { Stack, Slot } from 'expo-router'; // Added Slot
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, Platform } from 'react-native';
 import { ClerkProvider, ClerkLoaded } from '@clerk/clerk-expo'; // Added Clerk imports
 import * as SecureStore from 'expo-secure-store'; // Added SecureStore import
+import * as Notifications from 'expo-notifications';
 import { usePushNotifications } from './hook/usePushNotifications';
 import { usePollingNotifications } from './hook/usePollingNotifications';
 
 import '../app/global.css';
+
+// Configure Notification Channel for Android
+if (Platform.OS === 'android') {
+  Notifications.setNotificationChannelAsync('default', {
+    name: 'default',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#FF231F7C',
+  });
+}
 
 export {
   // Catch any errors thrown by the Layout component.

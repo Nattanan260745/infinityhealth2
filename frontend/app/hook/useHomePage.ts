@@ -259,39 +259,8 @@ export const useHomePage = () => {
                 }));
                 setRoutines(mapped);
 
-                // SCHEDULE LOCAL NOTIFICATIONS FOR TODAY'S PENDING ROUTINES
-                // Only if looking at TODAY
-                const todayStr = new Date().toISOString().split('T')[0];
-                if (queryDate === todayStr) {
-                    // Cancel all existing to avoid dupes (optional, but cleaner)
-                    await Notifications.cancelAllScheduledNotificationsAsync();
-
-                    for (const r of mapped) {
-                        if (r.status === 'pending' && r.time) {
-                            const [hours, minutes] = r.time.split(':').map(Number);
-                            const triggerDate = new Date();
-                            triggerDate.setHours(hours, minutes, 0, 0);
-
-                            // Only schedule if time is in future
-                            if (triggerDate > new Date()) {
-                                await Notifications.scheduleNotificationAsync({
-                                    content: {
-                                        title: "InfinityHealth Routine",
-                                        body: `It's time for: ${r.title}`,
-                                        data: { routineId: r.id },
-                                    },
-                                    trigger: {
-                                        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-                                        hour: hours,
-                                        minute: minutes,
-                                        repeats: false,
-                                    },
-                                });
-                                console.log(`Scheduled notification for ${r.title} at ${r.time}`);
-                            }
-                        }
-                    }
-                }
+                // Note: Notifications are handled by usePushNotifications at the time of creation/edit
+                // This keeps the Home Page focus on display stability.
             } else {
                 setRoutines([]);
             }

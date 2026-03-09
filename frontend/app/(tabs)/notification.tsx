@@ -31,20 +31,33 @@ export default function NotificationScreen() {
         return `${year}-${month}-${day}`;
     };
 
+    // Helper to ensure userId is available (Retry from storage if state is null)
+    const [userId, setUserId] = useState<string | null>(null);
+
+    const ensureUserId = async () => {
+        if (userId) return userId;
+        const storedId = await storage.getItem('internalUserId') || await storage.getItem('userId');
+        if (storedId) {
+            setUserId(storedId);
+            return storedId;
+        }
+        return null;
+    };
+
     const fetchNotifications = async () => {
+        const currentId = await ensureUserId();
         setIsLoading(true);
         try {
-            const userId = await storage.getItem('userId');
-            console.log('[NotificationScreen] Fetching for UserId:', userId);
+            console.log('[NotificationScreen] Fetching for UserId:', currentId);
 
-            if (!userId) {
-                console.log('[NotificationScreen] No UserId found in storage');
+            if (!currentId) {
+                console.log('[NotificationScreen] No UserId found or synced yet');
                 setNotifications([]);
                 return;
             }
 
             // 1. Fetch Backend Notifications
-            const notifRes = await getUserNotifications(userId);
+            const notifRes = await getUserNotifications(currentId);
             let backendNotifs: Notification[] = [];
             if (notifRes.success && notifRes.data) {
                 backendNotifs = notifRes.data;
@@ -55,7 +68,7 @@ export default function NotificationScreen() {
             console.log('[NotificationScreen] Fetching routines for local display:', today);
 
             // Note: getUserRoutinesByDate returns { success: boolean, data: Routine[] }
-            const routineRes = await getUserRoutinesByDate(userId, today);
+            const routineRes = await getUserRoutinesByDate(currentId, today);
             let routineNotifs: Notification[] = [];
 
             if (routineRes.success && Array.isArray(routineRes.data)) {
@@ -99,7 +112,7 @@ export default function NotificationScreen() {
                         // r.id is likely number
                         return {
                             id: -Math.abs(r.id),
-                            userId: parseInt(userId),
+                            userId: parseInt(currentId),
                             type: 'ROUTINE',
                             title: 'Routine Reminder',
                             message: `It's time for: ${r.title}`,
@@ -110,8 +123,13 @@ export default function NotificationScreen() {
                     });
             }
 
-            // 3. Merge & Sort
-            const allNotifs = [...backendNotifs, ...routineNotifs];
+            // 3. Merge, Filter & Sort
+            const fortEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+            const allNotifs = [...backendNotifs, ...routineNotifs].filter(n => {
+                const createdAt = new Date(n.createdAt);
+                return createdAt >= fortEightHoursAgo;
+            });
             const sorted = allNotifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
             console.log(`[NotificationScreen] Merged: ${backendNotifs.length} Backend + ${routineNotifs.length} Routines`);

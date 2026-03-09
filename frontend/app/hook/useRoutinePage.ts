@@ -109,21 +109,33 @@ export const useRoutinePage = () => {
   // Load User ID
   useEffect(() => {
     const loadUser = async () => {
-      const id = await storage.getItem('userId');
-      setUserId(id);
+      const id = await storage.getItem('userId') || await storage.getItem('internalUserId');
+      if (id) setUserId(id);
     };
     loadUser();
   }, []);
 
+  // Helper to ensure userId is available (Retry from storage if state is null)
+  const ensureUserId = async () => {
+    if (userId) return userId;
+    const storedId = await storage.getItem('userId') || await storage.getItem('internalUserId');
+    if (storedId) {
+      setUserId(storedId);
+      return storedId;
+    }
+    return null;
+  };
+
   // Fetch Data
   const fetchData = useCallback(async () => {
-    if (!userId) return;
+    const currentId = await ensureUserId();
+    if (!currentId) return;
     setLoading(true);
     try {
       // Fetch ALL data once (bypass broken /date endpoints which return 500)
       const [routineRes, goalRes] = await Promise.all([
-        getUserRoutines(userId),
-        getUserGoals(userId)
+        getUserRoutines(currentId),
+        getUserGoals(currentId)
       ]);
 
       if (routineRes.success && Array.isArray(routineRes.data)) {
@@ -255,11 +267,12 @@ export const useRoutinePage = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
-    console.log('[Routine] handleSave called. Title:', formTitle, 'UserID:', userId, 'Time:', formTime);
+    const currentId = await ensureUserId();
+    console.log('[Routine] handleSave called. Title:', formTitle, 'UserID:', currentId, 'Time:', formTime);
 
-    if (!userId) {
-      console.error('[Routine] Error: No User ID found');
-      setError("User ID missing. Try relogin.");
+    if (!currentId) {
+      console.error('[Routine] Error: No User ID found after retry');
+      setError("User ID missing. Please try re-logging in if the problem persists.");
       return;
     }
 
@@ -293,7 +306,7 @@ export const useRoutinePage = () => {
           setAllGoals(prev => prev.map(g => g.id === editingRoutine.id ? { ...g, ...updatedGoal, goalDate: updatedGoal.goal_date } : g));
         } else {
           const res = await createGoal({
-            user_id: userId,
+            user_id: currentId,
             title: formTitle,
             goal_date: new Date(formDate).toISOString()
           });
@@ -345,7 +358,7 @@ export const useRoutinePage = () => {
 
         } else {
           const res = await createRoutine({
-            user_id: userId,
+            user_id: currentId,
             ...routineData
           });
 
@@ -402,7 +415,7 @@ export const useRoutinePage = () => {
       }
 
       setShowAddModal(false);
-      // fetchData(); // Optional: Refresh from server to ensure consistency, but allow optimistic UI to show first
+      fetchData(); // Refresh from server to ensure consistency
     } catch (error) {
       console.error("Save item error", error);
       Alert.alert("Error", "Failed to save routine. Please try again.");
@@ -411,7 +424,8 @@ export const useRoutinePage = () => {
   };
 
   const handleDelete = async () => {
-    if (deletingRoutine && userId) {
+    const currentId = await ensureUserId();
+    if (deletingRoutine && currentId) {
       try {
         if (isGoalsTab) {
           await deleteGoal(deletingRoutine.id);
