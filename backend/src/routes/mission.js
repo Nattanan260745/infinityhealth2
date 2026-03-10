@@ -141,7 +141,12 @@ router.put('/:missionId', async (req, res) => {
   try {
     const { missionId } = req.params;
     const id = parseId(missionId);
-    const { title, type, reward_exp, reward_points, start_time, end_time, description, is_active, presets } = req.body;
+    const {
+      title, type, reward_exp, reward_points,
+      start_time, end_time, description,
+      target_value, target_unit, required_level, duration_days,
+      is_active, presets
+    } = req.body;
 
     const dataToUpdate = {};
     if (title !== undefined) dataToUpdate.missionName = title;
@@ -151,6 +156,10 @@ router.put('/:missionId', async (req, res) => {
     if (start_time !== undefined) dataToUpdate.startTime = start_time;
     if (end_time !== undefined) dataToUpdate.endTime = end_time;
     if (description !== undefined) dataToUpdate.description = description;
+    if (target_value !== undefined) dataToUpdate.targetValue = target_value;
+    if (target_unit !== undefined) dataToUpdate.targetUnit = target_unit;
+    if (required_level !== undefined) dataToUpdate.requiredLevel = required_level;
+    if (duration_days !== undefined) dataToUpdate.durationDays = duration_days;
     if (is_active !== undefined) dataToUpdate.isActive = is_active;
     if (presets !== undefined) dataToUpdate.presets = presets;
 

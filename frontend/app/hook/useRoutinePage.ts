@@ -156,7 +156,7 @@ export const useRoutinePage = () => {
           time: r.scheduledTime,
           date: new Date(r.scheduledDate).toISOString().split('T')[0],
           completed: r.completed,
-          notifications: true,
+          notifications: r.notifications ?? true,
           scheduledDate: r.scheduledDate,
           scheduledTime: r.scheduledTime
         }));
@@ -336,7 +336,8 @@ export const useRoutinePage = () => {
           title: formTitle,
           scheduled_time: formTime,
           scheduled_date: new Date(formDate).toISOString(),
-          completed: editingRoutine?.completed ?? false
+          completed: editingRoutine?.completed ?? false,
+          notifications: formNotifications
         };
 
         if (editingRoutine) {
@@ -371,7 +372,7 @@ export const useRoutinePage = () => {
               time: formTime,
               date: formDate,
               completed: false,
-              notifications: true,
+              notifications: formNotifications,
               scheduledDate: res.data.scheduled_date || res.data.scheduledDate || routineData.scheduled_date,
               scheduledTime: res.data.scheduled_time || res.data.scheduledTime || formTime
             };

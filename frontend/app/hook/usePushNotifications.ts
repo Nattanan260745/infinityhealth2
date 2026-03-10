@@ -51,7 +51,22 @@ export const usePushNotifications = () => {
     }, []);
 
     return {
-        notification
+        notification,
+        getPushToken: async () => {
+            const { status } = await Notifications.getPermissionsAsync();
+            if (status !== 'granted') return null;
+
+            try {
+                const token = (await Notifications.getExpoPushTokenAsync({
+                    projectId: '298db57a-8f12-4299-9743-987889708940', // Correct Project ID from Expo dashboard for InfinityHealth
+                })).data;
+                console.log('[PushHook] Expo Push Token:', token);
+                return token;
+            } catch (e) {
+                console.error('[PushHook] Failed to get token:', e);
+                return null;
+            }
+        }
     };
 };
 

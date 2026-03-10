@@ -100,7 +100,7 @@ router.get('/user/:userId/date/:date', async (req, res) => {
 // Create routine
 router.post('/', async (req, res) => {
   try {
-    const { user_id, title, scheduled_time, scheduled_date } = req.body;
+    const { user_id, title, scheduled_time, scheduled_date, notifications } = req.body;
     const uid = parseId(user_id);
 
     const routine = await prisma.routine.create({
@@ -109,7 +109,8 @@ router.post('/', async (req, res) => {
         title: title,
         scheduledTime: scheduled_time,
         scheduledDate: scheduled_date || new Date(),
-        completed: false
+        completed: false,
+        notifications: notifications !== undefined ? notifications : true
       }
     });
 
@@ -137,13 +138,14 @@ router.put('/:routineId', async (req, res) => {
   try {
     const { routineId } = req.params;
     const id = parseId(routineId);
-    const { title, scheduled_time, scheduled_date, completed } = req.body;
+    const { title, scheduled_time, scheduled_date, completed, notifications } = req.body;
 
     const dataUpdate = {};
     if (title !== undefined) dataUpdate.title = title;
     if (scheduled_time !== undefined) dataUpdate.scheduledTime = scheduled_time;
     if (scheduled_date !== undefined) dataUpdate.scheduledDate = scheduled_date;
     if (completed !== undefined) dataUpdate.completed = completed;
+    if (notifications !== undefined) dataUpdate.notifications = notifications;
 
     const routine = await prisma.routine.update({
       where: { id: id },

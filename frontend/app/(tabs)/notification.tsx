@@ -56,83 +56,24 @@ export default function NotificationScreen() {
                 return;
             }
 
-            // 1. Fetch Backend Notifications
+            // 1. Fetch Backend Notifications (Single Source of Truth)
             const notifRes = await getUserNotifications(currentId);
             let backendNotifs: Notification[] = [];
             if (notifRes.success && notifRes.data) {
                 backendNotifs = notifRes.data;
             }
 
-            // 2. Fetch Today's Routines (Local Notifications)
-            const today = getTodayStr();
-            console.log('[NotificationScreen] Fetching routines for local display:', today);
-
-            // Note: getUserRoutinesByDate returns { success: boolean, data: Routine[] }
-            const routineRes = await getUserRoutinesByDate(currentId, today);
-            let routineNotifs: Notification[] = [];
-
-            if (routineRes.success && Array.isArray(routineRes.data)) {
-                // Check local read status for routines
-                const readKey = `read_notifications_${today}`;
-                const readData = await storage.getItem(readKey);
-                const readIds: number[] = readData ? JSON.parse(readData) : [];
-
-                // Check local deleted status
-                const deleteKey = `deleted_notifications_${today}`;
-                const deleteData = await storage.getItem(deleteKey);
-                const deletedIds: number[] = deleteData ? JSON.parse(deleteData) : [];
-
-                const now = new Date();
-                const currentHours = now.getHours();
-                const currentMinutes = now.getMinutes();
-
-                routineNotifs = routineRes.data
-                    .filter((r: any) => {
-                        // 1. Check Deletion
-                        if (deletedIds.includes(r.id)) return false;
-
-                        // 2. Check Time (Only show if time has passed)
-                        if (r.scheduledTime) {
-                            const [h, m] = r.scheduledTime.split(':').map(Number);
-                            if (h > currentHours) return false;
-                            if (h === currentHours && m > currentMinutes) return false;
-                        }
-                        return true;
-                    })
-                    .map((r: any) => {
-                        // Create a valid date object for sorting
-                        // r.scheduledTime is "HH:MM"
-                        let createdDate = new Date();
-                        if (r.scheduledTime) {
-                            const [h, m] = r.scheduledTime.split(':');
-                            createdDate.setHours(parseInt(h), parseInt(m), 0, 0);
-                        }
-
-                        // Use Negative ID for Routines to avoid collision with DB IDs
-                        // r.id is likely number
-                        return {
-                            id: -Math.abs(r.id),
-                            userId: parseInt(currentId),
-                            type: 'ROUTINE',
-                            title: 'Routine Reminder',
-                            message: `It's time for: ${r.title}`,
-                            isRead: readIds.includes(r.id), // Check against original ID
-                            referenceId: r.id, // Keep original ID here
-                            createdAt: createdDate.toISOString()
-                        };
-                    });
-            }
-
-            // 3. Merge, Filter & Sort
+            // 2. Filter & Sort
+            // Filter out notifications older than 48 hours for performance/relevance
             const fortEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
-            const allNotifs = [...backendNotifs, ...routineNotifs].filter(n => {
+            const allNotifs = backendNotifs.filter(n => {
                 const createdAt = new Date(n.createdAt);
                 return createdAt >= fortEightHoursAgo;
             });
             const sorted = allNotifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-            console.log(`[NotificationScreen] Merged: ${backendNotifs.length} Backend + ${routineNotifs.length} Routines`);
+            console.log(`[NotificationScreen] Displaying ${backendNotifs.length} Backend Notifications`);
             setNotifications(sorted);
 
         } catch (error) {
@@ -234,10 +175,10 @@ export default function NotificationScreen() {
         setNotifications([]);
 
         try {
-            const userId = await storage.getItem('userId');
-            if (userId) {
+            const currentId = await ensureUserId();
+            if (currentId) {
                 // 1. Delete All Backend Notifications
-                await deleteAllNotifications(userId);
+                await deleteAllNotifications(currentId);
 
                 // 2. Clear Local (Add all today's routines to deleted list)
                 const today = getTodayStr();

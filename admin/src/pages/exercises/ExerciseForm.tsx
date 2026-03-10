@@ -16,7 +16,9 @@ export default function ExerciseForm() {
         majorType: 'cardio', // 'cardio' or 'weight'
         subType: 'full_body', // 'full_body', 'upper_body', 'lower_body', 'core'
         difficulty: 'beginner',
-        video_url: ''
+        video_url: '',
+        thumbnail: '',
+        duration: 0
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -56,7 +58,9 @@ export default function ExerciseForm() {
                 majorType: maj,
                 subType: sub,
                 difficulty: ex.difficulty,
-                video_url: ex.videoUrl || ex.video_url || ''
+                video_url: ex.videoUrl || ex.video_url || '',
+                thumbnail: ex.thumbnail || '',
+                duration: ex.duration || 0
             });
         } catch (err) {
             console.error(err);
@@ -85,7 +89,9 @@ export default function ExerciseForm() {
                 description: formData.description,
                 type: finalType,
                 difficulty: formData.difficulty,
-                video_url: formData.video_url
+                video_url: formData.video_url,
+                thumbnail: formData.thumbnail,
+                duration: formData.duration
             };
 
             if (isEditMode) {
@@ -188,17 +194,31 @@ export default function ExerciseForm() {
                         </select>
                     </div>
                     <div className="form-group">
-                        {/* Empty spacer or third column if needed, but 2 items look fine if grid is 3 cols? 
-                             Wait, App.css grid is 3 cols.
-                             If I want 2 items side-by-side filling the row, I might need to span them differently or leave a gap.
-                             Let's stick to 2 items + 1 empty or span?
-                             MissionForm used col-span-2 for some.
-                             Let's make these span 1.5? No, grid doesn't work like that easily.
-                             Let's make them Span 1 each, and maybe the Video URL span 3.
-                          */}
+                        <label className="form-label">Duration (Minutes)</label>
+                        <input
+                            type="number"
+                            name="duration"
+                            value={formData.duration}
+                            onChange={handleChange}
+                            min="0"
+                            className="form-input"
+                        />
+                    </div>
+                </div>
+
+                <div className="form-grid">
+                    <div className="form-group col-span-3">
+                        <label className="form-label">Thumbnail URL (Optional)</label>
+                        <input
+                            type="text"
+                            name="thumbnail"
+                            value={formData.thumbnail}
+                            onChange={handleChange}
+                            className="form-input"
+                            placeholder="e.g., https://img.youtube.com/vi/VIDEO_ID/hqdefault.jpg"
+                        />
                     </div>
 
-                    {/* Row 4: Video URL (Full Width) */}
                     <div className="form-group col-span-3">
                         <label className="form-label">Video URL (YouTube Embed Link)</label>
                         <input
@@ -213,7 +233,6 @@ export default function ExerciseForm() {
                             Use the "Embed" URL from YouTube (e.g. https://www.youtube.com/embed/VIDEO_ID)
                         </p>
                     </div>
-
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #f3f4f6', paddingTop: '1.5rem', marginTop: '1rem' }}>

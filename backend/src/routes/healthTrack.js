@@ -180,7 +180,7 @@ router.post('/user/:userId', async (req, res) => {
         // Check "Step Count" (Daily) and Step Challenges
         if (dataPayload.stepsCount) {
           const steps = dataPayload.stepsCount;
-          await checkAndCompleteMission(uid, 'เคลื่อนไหวร่างกาย', steps); // New Daily Mission Name
+          // await checkAndCompleteMission(uid, 'เคลื่อนไหวร่างกาย', steps); // New Daily Mission Name - Decoupled per user request
 
           // Challenge Missions (Mapping from INI file)
           await checkAndCompleteMission(uid, 'เดิน ≥ 1,000 ก้าว', steps); // Lv 4

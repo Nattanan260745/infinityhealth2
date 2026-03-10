@@ -58,12 +58,13 @@ export const logout = async (): Promise<ApiResponse<null>> => {
   return response.data;
 };
 
-export const syncClerkUser = async (email: string, firstName?: string, lastName?: string, image?: string): Promise<ApiResponse<any>> => {
+export const syncClerkUser = async (email: string, firstName?: string, lastName?: string, image?: string, pushToken?: string): Promise<ApiResponse<any>> => {
   const response = await api.post<ApiResponse<any>>('/auth/clerk-sync', {
     email,
     firstName,
     lastName,
-    image
+    image,
+    pushToken
   });
   return response.data;
 };

@@ -53,6 +53,7 @@ model Routine {
   scheduledTime String   @map("scheduled_time")
   scheduledDate DateTime @default(now()) @map("scheduled_date") @db.Date
   completed     Boolean  @default(false)
+  notifications Boolean  @default(true)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 

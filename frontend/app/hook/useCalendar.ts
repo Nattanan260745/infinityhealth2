@@ -39,7 +39,7 @@ export const useCalendar = () => {
     // Load User ID
     useEffect(() => {
         const loadUser = async () => {
-            const id = await storage.getItem('userId');
+            const id = await storage.getItem('internalUserId') || await storage.getItem('userId');
             setUserId(id);
         };
         loadUser();
@@ -53,7 +53,14 @@ export const useCalendar = () => {
     const fetchTasksForDate = useCallback(async () => {
         if (!userId) return;
 
+        // Clerk ID Safety: Skip if userId starts with "user_"
+        if (userId.toString().startsWith('user')) {
+            console.warn('[Calendar] Skipping fetch with Clerk ID:', userId);
+            return;
+        }
+
         const dateKey = getDateKey(selectedDay);
+        console.log('[Calendar] Fetching tasks for:', dateKey);
 
         try {
             const [routineRes, goalRes] = await Promise.all([
@@ -96,7 +103,11 @@ export const useCalendar = () => {
         }
     }, [userId, selectedDay, year, month]);
 
-    // Re-fetch when date changes or screen is focused
+    // Re-fetch when date changes, userId changes, or screen is focused
+    useEffect(() => {
+        fetchTasksForDate();
+    }, [fetchTasksForDate]);
+
     useFocusEffect(
         useCallback(() => {
             fetchTasksForDate();

@@ -240,7 +240,8 @@ export const useMissionPage = () => {
     let targetUnit = mission.target_unit || '';
 
     // Professor Feedback Logic:
-    // 1. "Steps/Walk" -> "ออกกำลังกาย 30 นาที"
+    // 1. "Steps/Walk" -> Keep as is (Decoupled per user request)
+    /*
     if (title.toLowerCase().includes('walk') || title.toLowerCase().includes('step')) {
       title = "ออกกำลังกาย 30 นาที";
       targetUnit = "นาที";
@@ -250,6 +251,7 @@ export const useMissionPage = () => {
         totalProgress = 30; // Force 30 mins
       }
     }
+    */
 
     // 2. "Water" -> "แก้ว" (1 glass = 250ml)
     if (title.toLowerCase().includes('water')) {

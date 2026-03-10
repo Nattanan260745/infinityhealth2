@@ -156,11 +156,12 @@ router.get('/:exerciseId', async (req, res) => {
 // Create exercise (Admin)
 router.post('/', async (req, res) => {
   try {
-    const { type, difficulty, title, description, video_url } = req.body;
+    const { type, difficulty, title, description, video_url, thumbnail, duration } = req.body;
 
     // Map type to Category
     let categoryName = 'Cardio';
     if (type && type.startsWith('weight')) categoryName = 'Strength';
+    if (type && type.toLowerCase().includes('yoga')) categoryName = 'Yoga';
 
     const category = await prisma.exerciseCategory.findFirst({
       where: { categoryName: categoryName }
@@ -177,6 +178,8 @@ router.post('/', async (req, res) => {
         title,
         description,
         videoUrl: video_url,
+        thumbnail: thumbnail,
+        duration: parseInt(duration) || 0,
         categoryId: category.id
       }
     });
@@ -200,7 +203,7 @@ router.put('/:exerciseId', async (req, res) => {
   try {
     const { exerciseId } = req.params;
     const id = parseId(exerciseId);
-    const { type, difficulty, title, description, video_url } = req.body;
+    const { type, difficulty, title, description, video_url, thumbnail, duration } = req.body;
 
     const dataToUpdate = {};
     if (type !== undefined) dataToUpdate.bodyPart = type;
@@ -208,6 +211,8 @@ router.put('/:exerciseId', async (req, res) => {
     if (title !== undefined) dataToUpdate.title = title;
     if (description !== undefined) dataToUpdate.description = description;
     if (video_url !== undefined) dataToUpdate.videoUrl = video_url;
+    if (thumbnail !== undefined) dataToUpdate.thumbnail = thumbnail;
+    if (duration !== undefined) dataToUpdate.duration = parseInt(duration) || 0;
 
     const exercise = await prisma.exercise.update({
       where: { id: id },

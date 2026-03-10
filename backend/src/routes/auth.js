@@ -171,7 +171,7 @@ router.post('/logout', (req, res) => {
 // Clerk Sync: Get or Create Internal User ID from Email
 router.post('/clerk-sync', async (req, res) => {
   try {
-    const { email, firstName, lastName, image } = req.body;
+    const { email, firstName, lastName, image, pushToken } = req.body;
 
     if (!email) {
       return res.status(400).json({ success: false, message: 'Email is required' });
@@ -198,6 +198,7 @@ router.post('/clerk-sync', async (req, res) => {
           lastName: lastName || '',
           role: 'user',
           profileImg: image || '',
+          pushToken: pushToken || null,
           userStats: {
             create: {
               level: 1,
@@ -210,11 +211,15 @@ router.post('/clerk-sync', async (req, res) => {
       });
     } else {
       console.log('Clerk Sync: User found', user.id);
-      // Optionally update profile image if provided
-      if (image && user.profileImg !== image) {
+      // Optionally update profile image or push token if provided
+      const updateData = {};
+      if (image && user.profileImg !== image) updateData.profileImg = image;
+      if (pushToken && user.pushToken !== pushToken) updateData.pushToken = pushToken;
+
+      if (Object.keys(updateData).length > 0) {
         await prisma.user.update({
           where: { id: user.id },
-          data: { profileImg: image }
+          data: updateData
         });
       }
     }

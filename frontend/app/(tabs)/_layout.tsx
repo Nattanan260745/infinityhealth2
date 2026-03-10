@@ -6,9 +6,11 @@ import storage from '../utils/storage';
 import { getUserNotifications, getUserRoutinesByDate, getUserProfile, syncClerkUser } from '../service/InfinityhealthApi';
 import { Notification } from '../interface/infinityhealth.interface';
 import { useUser } from '@clerk/clerk-expo';
+import { usePushNotifications } from '../hook/usePushNotifications';
 
 export default function TabLayout() {
   const { user } = useUser();
+  const { getPushToken } = usePushNotifications();
   const [hasUnread, setHasUnread] = useState(false);
 
   // Global User Sync (Clerk -> Backend)
@@ -24,11 +26,15 @@ export default function TabLayout() {
             console.log('[GlobalSync] No internalId found. Syncing with backend...');
             const email = user.primaryEmailAddress?.emailAddress;
             if (email) {
+              const pushToken = await getPushToken();
+              console.log('[GlobalSync] Syncing with pushToken:', pushToken);
+
               const res = await syncClerkUser(
                 email,
                 user.firstName || 'User',
                 user.lastName || '',
-                user.imageUrl || ''
+                user.imageUrl || '',
+                pushToken || undefined
               );
               const data = res as any;
               if (data.success && data.user) {
