@@ -85,13 +85,20 @@ const getWeekDays = () => {
     const days: (CalendarDay & { fullDate: string })[] = [];
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+    const toLocalYMD = (date: Date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
+
     for (let i = 0; i < 7; i++) {
         const d = new Date(startOfWeek);
         d.setDate(startOfWeek.getDate() + i);
         days.push({
             day: dayNames[d.getDay()],
             date: d.getDate(),
-            fullDate: d.toISOString().split('T')[0] // Store YYYY-MM-DD
+            fullDate: toLocalYMD(d) // Use local YMD to avoid UTC shifts
         });
     }
     return days;

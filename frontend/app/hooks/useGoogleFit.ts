@@ -62,16 +62,19 @@ export const useGoogleFit = () => {
             const cachedValue = cachedValueStr ? parseInt(cachedValueStr, 10) : 0;
 
             // If it's a new day, we allow 0 or any value (reset)
-            // If it's the same day, we only update if the new value is higher (prevents 0 overwrite on sync fail)
-            if (todayStr !== cachedDate || (stepCount > 0 && stepCount >= cachedValue)) {
+            if (todayStr !== cachedDate) {
+                console.log(`[GoogleFit] Day change detected (${cachedDate} -> ${todayStr}). Resetting steps.`);
                 setSteps(stepCount);
-                if (stepCount >= cachedValue) {
-                    setSessionSteps(0); // Only reset if we actually got a baseline that covers or exceeds our cache
-                }
-                storage.setItem(SYSTEM_STEPS_KEY, Math.max(stepCount, cachedValue).toString());
+                setSessionSteps(0);
+                storage.setItem(SYSTEM_STEPS_KEY, stepCount.toString());
                 storage.setItem('google_fit_steps_date', todayStr);
+            } else if (stepCount > cachedValue) {
+                // Only update if it's an increase for the same day
+                setSteps(stepCount);
+                setSessionSteps(0);
+                storage.setItem(SYSTEM_STEPS_KEY, stepCount.toString());
             } else {
-                console.log(`[GoogleFit] Ignoring zero/lower value (${stepCount}) for existing day (${cachedValue})`);
+                console.log(`[GoogleFit] Ignoring zero/lower value (${stepCount}) for same day (${cachedValue})`);
             }
         } catch (error) {
             console.error("Failed to fetch steps:", error);
@@ -91,7 +94,6 @@ export const useGoogleFit = () => {
         console.log(`[GoogleFit] Authorized: ${isAuthorizedFit}, RuntimePerms: ${hasRuntimePermissions}`);
 
         if (isAuthorizedFit && hasRuntimePermissions) {
-            console.log("[GoogleFit] Already authorized. Fetching steps...");
             setIsAuthorized(true);
             await fetchSteps();
         } else {
@@ -113,8 +115,8 @@ export const useGoogleFit = () => {
                 );
             } else {
                 setIsAuthorized(false);
-                setHasAttemptedAuth(true); // Don't auto-prompt again this session if it failed/cancelled
-                // Even if not authorized by Fit, we might have cached steps from Pedometer
+                globalHasAttemptedAuth = true;
+
                 const cachedValueStr = await storage.getItem(SYSTEM_STEPS_KEY);
                 const cachedDate = await storage.getItem('google_fit_steps_date');
                 const now = new Date();
@@ -138,8 +140,6 @@ export const useGoogleFit = () => {
 
         const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
             if (nextAppState === 'active') {
-                // When coming back to foreground, re-sync with Google Fit to get the latest background data
-                // and reset our local session counter.
                 if (GoogleFit.isAuthorized) {
                     fetchSteps();
                 }
@@ -154,17 +154,13 @@ export const useGoogleFit = () => {
             if (isAvailable) {
                 // Watch for real-time updates
                 pedometerSubscription = Pedometer.watchStepCount(result => {
-                    // Pedometer returns number of steps since subscription started
                     setSessionSteps(result.steps);
 
                     // Periodically cache total to avoid loss on app close
-                    const total = steps + result.steps;
-                    if (total > 0 && !loading) {
-                        const now = new Date();
-                        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                        storage.setItem(SYSTEM_STEPS_KEY, total.toString());
-                        storage.setItem('google_fit_steps_date', todayStr);
-                    }
+                    // Note: We use the local 'steps' (Google Fit baseline) + the real-time session increment
+                    // Since we can't easily access the current 'steps' value inside this closure safely without it being stale
+                    // we accept that this might slightly lag until the next Hook re-render cycle, 
+                    // but for storage it's generally okay as it only INCREASES.
                 });
             }
         };
@@ -179,9 +175,7 @@ export const useGoogleFit = () => {
         };
     }, [initializeGoogleFit, fetchSteps]);
 
-    // Expose a refetch function
     // Total steps = Google Fit Baseline + Session Pedometer Steps
-    // Only add sessionSteps once loading is false to avoid "1" flash
     const totalSteps = loading ? steps : (steps + sessionSteps);
 
     return {

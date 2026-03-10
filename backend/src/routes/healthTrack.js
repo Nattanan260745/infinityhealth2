@@ -16,12 +16,13 @@ const getTodayRange = () => {
   return { start, end };
 };
 
-// Helper: Get range for specific date
-const getDateRange = (date) => {
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(date);
-  end.setHours(23, 59, 59, 999);
+// Helper: Get range for specific date (YYYY-MM-DD)
+const getDateRange = (dateString) => {
+  // Ensure we interpret the string as a local date by adding a time part if missing
+  // or use the start of that UTC day if that's the convention.
+  // Using 00:00:00 to 23:59:59 for the provided date string.
+  const start = new Date(`${dateString}T00:00:00`);
+  const end = new Date(`${dateString}T23:59:59.999`);
   return { start, end };
 };
 
@@ -105,7 +106,8 @@ router.post('/user/:userId', async (req, res) => {
     let targetDate;
     let range;
     if (date) {
-      targetDate = new Date(date);
+      // date is YYYY-MM-DD
+      targetDate = new Date(`${date}T12:00:00`); // Set to noon to stay within the day regardless of small shifts
       range = getDateRange(date);
     } else {
       targetDate = new Date();

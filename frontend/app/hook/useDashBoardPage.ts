@@ -40,8 +40,10 @@ export const useDashBoardPage = () => {
                     const currentValStr = card.value;
                     const currentVal = (currentValStr && currentValStr !== '-') ? parseInt(currentValStr, 10) : 0;
 
-                    // ONLY update if it's an increase (fixes the "stays at 1" or "downgrade" issue)
-                    if (newVal > currentVal) {
+                    // UI Guard: Usually we only update if it's an increase to prevent "flickering" 
+                    // BUT we must allow a reset if the value is very low (e.g. < 5 steps) and our current UI is high (e.g. > 1000)
+                    // which implies a midnight reset has occurred.
+                    if (newVal > currentVal || (newVal < 10 && currentVal > 1000)) {
                         return { ...card, value: newVal.toString() };
                     }
                 }
@@ -195,13 +197,15 @@ export const useDashBoardPage = () => {
                 return newCards.map(newCard => {
                     if (newCard.id === 'Steps') {
                         const prevCard = prevCards.find(c => c.id === 'Steps');
-                        const prevValStr = prevCard?.value;
-                        const prevVal = (prevValStr && prevValStr !== '-') ? parseInt(prevValStr, 10) : 0;
+                        const prevVal = (prevCard?.value && prevCard?.value !== '-') ? parseInt(prevCard.value, 10) : 0;
                         const newVal = parseInt(newCard.value || '0', 10);
 
-                        if (!isNaN(prevVal) && prevVal > newVal) {
-                            return { ...newCard, value: prevVal.toString() };
+                        // Allow reset if newVal is low and prevVal was high
+                        if (newVal > prevVal || (newVal < 10 && prevVal > 1000)) {
+                            return { ...newCard, value: newVal.toString() };
                         }
+                        // Otherwise keep the highest to prevent flickering on sync delay
+                        return { ...newCard, value: Math.max(newVal, prevVal).toString() };
                     }
                     return newCard;
                 });
