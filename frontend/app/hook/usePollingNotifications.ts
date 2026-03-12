@@ -44,15 +44,23 @@ export const usePollingNotifications = () => {
 
                 if (notifications.length > 0) {
                     console.log(`[Polling] Found ${notifications.length} unsent notifications`);
+                    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
 
                     for (const notif of notifications) {
-                        // 1. Local Duplication Check (Session Cache)
-                        if (displayedIds.has(notif.id)) {
-                            console.log(`[Polling] Notification ${notif.id} already shown this session. Skipping.`);
+                        // 1. Local Duplication Check (Session Cache) - Check EARLY
+                        if (displayedIds.has(notif.id)) continue;
+
+                        // 2. Safety Date Filter (4 hours)
+                        const notifDate = new Date(notif.createdAt);
+                        if (notifDate < fourHoursAgo) {
+                            console.log(`[Polling] Notification ${notif.id} too old (${notif.createdAt}). Clearing.`);
+                            // Mark as sent to clear backend, but don't show to user
+                            InfinityhealthApi.patch(`/notification/${notif.id}/sent`).catch(e => {});
+                            setDisplayedIds(prev => new Set(prev).add(notif.id));
                             continue;
                         }
 
-                        // 2. Trigger Local Notification
+                        // 3. Trigger Local Notification
                         await Notifications.scheduleNotificationAsync({
                             content: {
                                 title: notif.title || "แจ้งเตือน",
@@ -65,13 +73,15 @@ export const usePollingNotifications = () => {
                             trigger: null, // Send immediately
                         });
 
-                        // 3. Mark as displayed in local state
+                        // 4. Mark as displayed in local state
                         setDisplayedIds(prev => new Set(prev).add(notif.id));
 
-                        // 4. Mark as Sent in Backend
+                        // 5. Mark as Sent in Backend
                         try {
-                            await InfinityhealthApi.patch(`/notification/${notif.id}/sent`);
-                            console.log(`[Polling] Marked notification ${notif.id} as sent.`);
+                            const patchRes = await InfinityhealthApi.patch(`/notification/${notif.id}/sent`);
+                            if (patchRes.data && patchRes.data.success) {
+                                console.log(`[Polling] Marked notification ${notif.id} as sent.`);
+                            }
                         } catch (patchErr) {
                             console.error(`[Polling] Failed to sync 'sent' status for ${notif.id}`, patchErr);
                         }

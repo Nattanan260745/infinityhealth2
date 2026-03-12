@@ -74,11 +74,16 @@ router.get('/user/:userId/unsent', async (req, res) => {
     const { userId } = req.params;
     const uid = parseId(userId);
 
+    // Filter for notifications created in the last 4 hours ONLY
+    // This prevents stale test data or old missed alerts from flooding the user
+    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
+
     const notifications = await prisma.notification.findMany({
       where: {
         userId: uid,
         isSent: false,
-        type: 'ROUTINE_REMINDER'
+        type: 'ROUTINE_REMINDER',
+        createdAt: { gte: fourHoursAgo }
       },
       orderBy: { createdAt: 'desc' }
     });
