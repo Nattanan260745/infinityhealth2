@@ -46,11 +46,18 @@ router.delete('/:userId', async (req, res) => {
     const { userId } = req.params;
     const uid = parseId(userId);
 
-    // Delete user (cascade should handle related data if configured, otherwise might need manual delete)
-    // Prisma usually handles cascade if defined in schema.
-    await prisma.user.delete({
-      where: { id: uid }
-    });
+    // Use a transaction to delete all dependent rows before deleting the user
+    // to prevent foreign key cascade errors.
+    await prisma.$transaction([
+      prisma.userStats.deleteMany({ where: { userId: uid } }),
+      prisma.healthTracking.deleteMany({ where: { userId: uid } }),
+      prisma.dailyGoal.deleteMany({ where: { userId: uid } }),
+      prisma.routine.deleteMany({ where: { userId: uid } }),
+      prisma.userMission.deleteMany({ where: { userId: uid } }),
+      prisma.notification.deleteMany({ where: { userId: uid } }),
+      prisma.pointHistory.deleteMany({ where: { userId: uid } }),
+      prisma.user.delete({ where: { id: uid } })
+    ]);
 
     res.json({
       success: true,
