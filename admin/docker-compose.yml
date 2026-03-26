@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  admin:
+    build: .
+    restart: always
+    ports:
+      # Mapping port 8080 on the host to port 80 inside the container
+      - "8080:80"
