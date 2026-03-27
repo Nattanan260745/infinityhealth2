@@ -2,7 +2,7 @@
   "expo": {
     "name": "infinityhealth",
     "slug": "infinityhealth",
-    "version": "1.49.0",
+    "version": "1.50.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "infinityhealth",
@@ -24,7 +24,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.ohm_zxc2545.infinityhealth",
-      "versionCode": 49,
+      "versionCode": 50,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.ACTIVITY_RECOGNITION",

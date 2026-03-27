@@ -20,8 +20,9 @@ import {
 
 // const API_BASE_URL = 'http://147.50.228.99:3000'; // YOUR STABLE VPS IP
 // const API_BASE_URL = 'https://infinityhealth2.onrender.com'; // Production URL on Render
-const API_BASE_URL = 'https://cc53-202-44-32-253.ngrok-free.app'; // Public Ngrok Tunnel
+// const API_BASE_URL = 'https://cc53-202-44-32-253.ngrok-free.app'; // Public Ngrok Tunnel
 // const API_BASE_URL = 'http://192.168.1.33:3000'; // Local LAN IP (For Physical Device)
+const API_BASE_URL = 'http://172.16.214.143'; // University Server IP
 
 console.log('[API] Target URL:', API_BASE_URL);
 
