@@ -75,7 +75,7 @@ const TutorialOverlay: React.FC = () => {
   if (!isActive || !currentStep) return null;
 
   return (
-    <Modal transparent visible={isActive} animationType="fade">
+    <Modal transparent visible={isActive} animationType="fade" statusBarTranslucent={true}>
       <View style={StyleSheet.absoluteFill}>
         {/* SVG Drawing the "Mask" for the spotlight */}
         <Svg height={SCREEN_HEIGHT} width={SCREEN_WIDTH} style={StyleSheet.absoluteFill}>
@@ -113,7 +113,7 @@ const TutorialOverlay: React.FC = () => {
               <Text style={styles.skipTxt}>ข้าม (Skip)</Text>
             </TouchableOpacity>
             
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 6, flexShrink: 1 }}>
               {currentStepIndex > 0 && (
                 <TouchableOpacity onPress={prevStep} style={styles.backBtn}>
                   <Text style={styles.backTxt}>ย้อนกลับ</Text>
@@ -170,25 +170,25 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     backgroundColor: '#F3F4F6',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
   },
   backTxt: {
     color: '#4B5563',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 14,
   },
   nextBtn: {
     backgroundColor: '#3B82F6',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
   },
   nextTxt: {
     color: '#FFFFFF',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 14,
   },
 });
 
