@@ -3,6 +3,7 @@ import React from 'react';
 import { TouchableOpacity, Dimensions, Image, ImageSourcePropType, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MetricType } from '@/app/interface/infinityhealth.interface';
+import TutorialTarget from '../shared/TutorialTarget';
 
 import { formatNumber } from '@/app/utils/format';
 
@@ -32,7 +33,9 @@ const DashBoardCard: React.FC<DashBoardCardProps> = (props) => {
             {props.statCards.map((card) => {
                 if (card.id === 'Steps') console.log(`[DashBoardCard Render] Steps Value: ${card.value}`);
                 const isSelected = props.selectedId === card.id;
-                return (
+                const tutorialKey = card.id === 'Weight' ? 'dashboard_weight_card' : undefined;
+
+                const cardContent = (
                     <TouchableOpacity
                         key={card.id}
                         onPress={() => props.onCardPress && props.onCardPress(card.id as MetricType)}
@@ -44,7 +47,6 @@ const DashBoardCard: React.FC<DashBoardCardProps> = (props) => {
                             padding: 16,
                             marginBottom: 16,
                             borderWidth: 0,
-                            // borderColor: '#1F2937', // Removed highlight border
                         }}
                     >
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
@@ -72,24 +74,50 @@ const DashBoardCard: React.FC<DashBoardCardProps> = (props) => {
                                 <Text style={{ fontSize: 12, color: '#6B7280' }}>{card.unit}</Text>
                             ) : <View />}
 
-                            {/* Edit Icon Button */}
                             {props.onEdit && card.id !== 'BMI' && card.id !== 'Steps' && (
-                                <TouchableOpacity
-                                    onPress={() => props.onEdit && props.onEdit(card.id)}
-                                    style={{
-                                        padding: 4,
-                                        borderRadius: 8,
-                                        backgroundColor: 'rgba(255,255,255,0.5)'
-                                    }}
-                                >
-                                    <View>
-                                        <Ionicons name="create-outline" size={16} color="#4B5563" />
-                                    </View>
-                                </TouchableOpacity>
+                                card.id === 'Weight' ? (
+                                    <TutorialTarget tutorialKey="dashboard_edit_button">
+                                        <TouchableOpacity
+                                            onPress={() => props.onEdit && props.onEdit(card.id)}
+                                            style={{
+                                                padding: 4,
+                                                borderRadius: 8,
+                                                backgroundColor: 'rgba(255,255,255,0.5)'
+                                            }}
+                                        >
+                                            <View>
+                                                <Ionicons name="create-outline" size={16} color="#4B5563" />
+                                            </View>
+                                        </TouchableOpacity>
+                                    </TutorialTarget>
+                                ) : (
+                                    <TouchableOpacity
+                                        onPress={() => props.onEdit && props.onEdit(card.id)}
+                                        style={{
+                                            padding: 4,
+                                            borderRadius: 8,
+                                            backgroundColor: 'rgba(255,255,255,0.5)'
+                                        }}
+                                    >
+                                        <View>
+                                            <Ionicons name="create-outline" size={16} color="#4B5563" />
+                                        </View>
+                                    </TouchableOpacity>
+                                )
                             )}
                         </View>
                     </TouchableOpacity>
                 );
+
+                if (tutorialKey) {
+                    return (
+                        <TutorialTarget tutorialKey={tutorialKey} key={card.id}>
+                            {cardContent}
+                        </TutorialTarget>
+                    );
+                }
+
+                return cardContent;
             })}
         </View>
     );

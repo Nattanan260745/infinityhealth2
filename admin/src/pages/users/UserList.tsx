@@ -49,9 +49,11 @@ const UserList = () => {
             try {
                 await api.delete(`/profile/${userId}`);
                 setUsers(users.filter(u => u.user_id !== userId));
-            } catch (err) {
+                alert('User deleted successfully.');
+            } catch (err: any) {
                 console.error('Failed to delete user:', err);
-                alert('Failed to delete user');
+                const errorMsg = err.response?.data?.message || err.message || 'Unknown error';
+                alert(`Failed to delete user: ${errorMsg}`);
             }
         }
     };

@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import storage from '../utils/storage';
 import { getUserProfile, getMissionsByType, getUserMissions, syncClerkUser, getLevelByExp, getLevelById, rankUpUser } from '../service/InfinityhealthApi';
 import { useUser, useAuth } from '@clerk/clerk-expo';
+import { useTutorial } from '../context/TutorialContext';
+import TutorialTarget from '../components/shared/TutorialTarget';
 
 import LogoutModal from '../shared/LogoutModal';
 import UsernameModal from '../components/shared/UsernameModal';
@@ -20,6 +22,7 @@ export default function ProfileScreen() {
   const { user } = useUser();
   const { signOut } = useAuth();
   const router = useRouter();
+  const { resetTutorial } = useTutorial();
   const [date, setDate] = useState(new Date());
   const [userName, setUserName] = useState('User');
 
@@ -525,66 +528,64 @@ export default function ProfileScreen() {
         </View>
 
         {/* Level Card */}
-        <View style={{
-          backgroundColor: '#F9FAFB',
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 16,
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-            {/* Level Circle */}
-            <View style={{
-              width: 50,
-              height: 50,
-              borderRadius: 25,
-              backgroundColor: hexToRgba(levelColor, 0.2), // Light background tint
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
-            }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: levelColor }}>
-                {userData.level}
-              </Text>
-            </View>
-
-            {/* Level Info */}
-            <View>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937' }}>
-                Level {userData.level}
-              </Text>
-              <Text style={{ fontSize: 14, color: '#6B7280' }}>
-                {userData.rank}
-              </Text>
-            </View>
-          </View>
-
-          {/* Experience */}
-          <View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: '#374151' }}>
-                Experience
-              </Text>
-              <Text style={{ fontSize: 14, color: '#6B7280' }}>
-                {userData.experience - userData.minExperience} / {userData.maxExperience - userData.minExperience + 1}
-              </Text>
-            </View>
-
-            {/* Progress Bar */}
-            <View style={{
-              height: 12,
-              backgroundColor: '#E5E7EB',
-              borderRadius: 6,
-              overflow: 'hidden',
-            }}>
+        <TutorialTarget tutorialKey="profile_level_card">
+          <View style={{
+            backgroundColor: '#F9FAFB',
+            borderRadius: 16,
+            padding: 20,
+            marginBottom: 16,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
               <View style={{
-                width: `${experienceProgress}%`,
-                height: '100%',
-                backgroundColor: '#7DD1E0', // Fixed Cyan color
+                width: 50,
+                height: 50,
+                borderRadius: 25,
+                backgroundColor: hexToRgba(levelColor, 0.2), // Light background tint
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 12,
+              }}>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: levelColor }}>
+                  {userData.level}
+                </Text>
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937' }}>
+                  Level {userData.level}
+                </Text>
+                <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                  {userData.rank}
+                </Text>
+              </View>
+            </View>
+
+            <View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: '#374151' }}>
+                  Experience
+                </Text>
+                <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                  {userData.experience - userData.minExperience} / {userData.maxExperience - userData.minExperience + 1}
+                </Text>
+              </View>
+
+              <View style={{
+                height: 12,
+                backgroundColor: '#E5E7EB',
                 borderRadius: 6,
-              }} />
+                overflow: 'hidden',
+              }}>
+                <View style={{
+                  width: `${experienceProgress}%`,
+                  height: '100%',
+                  backgroundColor: '#7DD1E0', // Fixed Cyan color
+                  borderRadius: 6,
+                }} />
+              </View>
             </View>
           </View>
-        </View>
+        </TutorialTarget>
 
         {/* Total Points Card */}
         <View style={{
@@ -705,6 +706,27 @@ export default function ProfileScreen() {
         })()}
 
         {/* Logout Button */}
+        {/* Tutorial Guide Button */}
+        <TouchableOpacity
+          onPress={async () => {
+            await resetTutorial();
+            router.replace('/(tabs)');
+          }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#F3F4F6',
+            borderRadius: 12,
+            paddingVertical: 14,
+            marginTop: 40
+          }}
+        >
+          <Ionicons name="help-circle-outline" size={22} color="#4B5563" style={{ marginRight: 8 }} />
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#4B5563' }}>คู่มือการใช้งาน (Restart Tutorial)</Text>
+        </TouchableOpacity>
+
+        {/* Logout Button */}
         <TouchableOpacity
           onPress={handleLogoutPress}
           style={{
@@ -714,7 +736,7 @@ export default function ProfileScreen() {
             backgroundColor: '#FEE2E2',
             borderRadius: 12,
             paddingVertical: 14,
-            marginTop: 20
+            marginTop: 12
           }}
         >
           <Ionicons name="log-out-outline" size={20} color="#EF4444" style={{ marginRight: 8 }} />

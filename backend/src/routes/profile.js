@@ -46,18 +46,18 @@ router.delete('/:userId', async (req, res) => {
     const { userId } = req.params;
     const uid = parseId(userId);
 
-    // Use a transaction to delete all dependent rows before deleting the user
-    // to prevent foreign key cascade errors.
-    await prisma.$transaction([
-      prisma.userStats.deleteMany({ where: { userId: uid } }),
-      prisma.healthTracking.deleteMany({ where: { userId: uid } }),
-      prisma.dailyGoal.deleteMany({ where: { userId: uid } }),
-      prisma.routine.deleteMany({ where: { userId: uid } }),
-      prisma.userMission.deleteMany({ where: { userId: uid } }),
-      prisma.notification.deleteMany({ where: { userId: uid } }),
-      prisma.pointHistory.deleteMany({ where: { userId: uid } }),
-      prisma.user.delete({ where: { id: uid } })
-    ]);
+    // Delete related records sequentially (Fixes Neon/PgBouncer transaction limit issues)
+    // This ensures no orphaned data like old EXP remains if a transaction fails midway.
+    await prisma.userStats.deleteMany({ where: { userId: uid } });
+    await prisma.healthTracking.deleteMany({ where: { userId: uid } });
+    await prisma.dailyGoal.deleteMany({ where: { userId: uid } });
+    await prisma.routine.deleteMany({ where: { userId: uid } });
+    await prisma.userMission.deleteMany({ where: { userId: uid } });
+    await prisma.notification.deleteMany({ where: { userId: uid } });
+    await prisma.pointHistory.deleteMany({ where: { userId: uid } });
+
+    // Finally delete the user
+    await prisma.user.delete({ where: { id: uid } });
 
     res.json({
       success: true,
@@ -65,7 +65,7 @@ router.delete('/:userId', async (req, res) => {
     });
   } catch (error) {
     console.error('Delete user error:', error);
-    res.status(500).json({ success: false, message: 'Failed to delete user' });
+    res.status(500).json({ success: false, message: 'Failed to delete user: ' + (error.message || 'Unknown error') });
   }
 });
 

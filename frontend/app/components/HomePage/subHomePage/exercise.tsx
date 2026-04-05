@@ -59,9 +59,18 @@ export default function ExerciseScreen() {
   });
 
   // Apply level filter
-  const finalExercises = filteredExercises.filter(ex =>
-    selectedLevel ? ex.difficulty.toLowerCase() === selectedLevel.toLowerCase() : true
-  );
+  const finalExercises = filteredExercises.filter(ex => {
+    if (!selectedLevel) return true;
+    const dbDiff = ex.difficulty.toLowerCase();
+    const selLevel = selectedLevel.toLowerCase();
+    
+    // Mapping: Beginner -> easy, Intermediate -> medium, Expert -> hard
+    if (selLevel === 'beginner') return dbDiff === 'easy' || dbDiff === 'beginner';
+    if (selLevel === 'intermediate') return dbDiff === 'medium' || dbDiff === 'intermediate';
+    if (selLevel === 'expert') return dbDiff === 'hard' || dbDiff === 'expert';
+    
+    return dbDiff === selLevel;
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>

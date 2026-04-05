@@ -11,6 +11,9 @@ import * as Notifications from 'expo-notifications';
 import { usePushNotifications } from './hook/usePushNotifications';
 import { usePollingNotifications } from './hook/usePollingNotifications';
 
+import { TutorialProvider } from './context/TutorialContext';
+import TutorialOverlay from './components/shared/TutorialOverlay';
+
 import '../app/global.css';
 
 // Configure Notification Channel for Android
@@ -106,16 +109,19 @@ function RootLayoutNav() {
   usePollingNotifications();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="components/HomePage/subHomePage/missions" options={{ headerShown: false }} />
-        <Stack.Screen name="components/HomePage/subHomePage/exercise" options={{ headerShown: false }} />
-        <Stack.Screen name="components/HomePage/subHomePage/routine" options={{ headerShown: false }} />
-        <Stack.Screen name="components/HomePage/subHomePage/modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <TutorialProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="components/HomePage/subHomePage/missions" options={{ headerShown: false }} />
+          <Stack.Screen name="components/HomePage/subHomePage/exercise" options={{ headerShown: false }} />
+          <Stack.Screen name="components/HomePage/subHomePage/routine" options={{ headerShown: false }} />
+          <Stack.Screen name="components/HomePage/subHomePage/modal" options={{ presentation: 'modal' }} />
+        </Stack>
+        <TutorialOverlay />
+      </ThemeProvider>
+    </TutorialProvider>
   );
 }

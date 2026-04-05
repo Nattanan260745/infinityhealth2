@@ -7,6 +7,7 @@ import { getUserNotifications, getUserRoutinesByDate, getUserProfile, syncClerkU
 import { Notification } from '../interface/infinityhealth.interface';
 import { useUser } from '@clerk/clerk-expo';
 import { usePushNotifications } from '../hook/usePushNotifications';
+import TutorialTarget from '../components/shared/TutorialTarget';
 
 export default function TabLayout() {
   const { user } = useUser();
@@ -21,30 +22,27 @@ export default function TabLayout() {
     const syncUser = async () => {
       if (user) {
         try {
-          const internalId = await storage.getItem('internalUserId');
-          if (!internalId) {
-            console.log('[GlobalSync] No internalId found. Syncing with backend...');
-            const email = user.primaryEmailAddress?.emailAddress;
-            if (email) {
-              const pushToken = await getPushToken();
-              console.log('[GlobalSync] Syncing with pushToken:', pushToken);
+          console.log('[GlobalSync] Syncing with backend to ensure ID is valid...');
+          const email = user.primaryEmailAddress?.emailAddress;
+          if (email) {
+            const pushToken = await getPushToken();
+            console.log('[GlobalSync] Syncing with pushToken:', pushToken);
 
-              const res = await syncClerkUser(
-                email,
-                user.firstName || 'User',
-                user.lastName || '',
-                user.imageUrl || '',
-                pushToken || undefined
-              );
-              const data = res as any;
-              if (data.success && data.user) {
-                const newId = String(data.user.id);
-                await storage.setItem('internalUserId', newId);
-                await storage.setItem('userId', newId);
-                console.log('[GlobalSync] Synced successfully. ID:', newId);
-              } else {
-                throw new Error(data.message || 'Sync response was not successful');
-              }
+            const res = await syncClerkUser(
+              email,
+              user.firstName || 'User',
+              user.lastName || '',
+              user.imageUrl || '',
+              pushToken || undefined
+            );
+            const data = res as any;
+            if (data.success && data.user) {
+              const newId = String(data.user.id);
+              await storage.setItem('internalUserId', newId);
+              await storage.setItem('userId', newId);
+              console.log('[GlobalSync] Synced successfully. ID:', newId);
+            } else {
+              throw new Error(data.message || 'Sync response was not successful');
             }
           }
         } catch (e) {
@@ -167,9 +165,11 @@ export default function TabLayout() {
         name="calendar"
         options={{
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
-            </View>
+            <TutorialTarget tutorialKey="tab_calendar">
+              <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
+              </View>
+            </TutorialTarget>
           ),
         }}
       />
@@ -177,14 +177,24 @@ export default function TabLayout() {
         name="DashBoardPage"
         options={{
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name={focused ? 'grid' : 'grid-outline'} size={24} color={color} />
+            <TutorialTarget tutorialKey="tab_dashboard">
+              <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={focused ? 'grid' : 'grid-outline'} size={24} color={color} />
+              </View>
+            </TutorialTarget>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="timer"
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>
+              <Ionicons name={focused ? 'timer' : 'timer-outline'} size={28} color={color} />
             </View>
           ),
         }}
-
       />
-
       <Tabs.Screen
         name="notification"
         options={{
@@ -213,9 +223,11 @@ export default function TabLayout() {
         name="profile"
         options={{
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
-            </View>
+            <TutorialTarget tutorialKey="tab_profile">
+              <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+              </View>
+            </TutorialTarget>
           ),
         }}
       />

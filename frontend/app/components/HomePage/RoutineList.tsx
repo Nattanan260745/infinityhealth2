@@ -9,7 +9,24 @@ interface RoutineListProps {
 
 export function RoutineList({ routines }: RoutineListProps) {
   if (!routines || routines.length === 0) {
-    return null;
+    return (
+      <View style={{ marginTop: 24, paddingHorizontal: 20, paddingBottom: 24 }}>
+        <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginBottom: 16 }}>
+          Upcoming Routines
+        </Text>
+        <View style={{ 
+          padding: 24, 
+          backgroundColor: '#F9FAFB', 
+          borderRadius: 16, 
+          borderWidth: 1, 
+          borderColor: '#E5E7EB',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <Text style={{ color: '#6B7280', fontSize: 14 }}>ยังไม่มีกิจวัตรในวันนี้</Text>
+        </View>
+      </View>
+    );
   }
 
   const isOverdue = (routine: Routine) => {
