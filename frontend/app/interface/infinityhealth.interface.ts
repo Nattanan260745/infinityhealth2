@@ -162,12 +162,14 @@ export interface CompleteMissionResponse {
 // Exercise
 export interface Exercise {
   id: number;
-  type: string; // 'cardio' | 'weight' | 'weight_full_body' etc.
-  difficulty: 'beginner' | 'intermediate' | 'expert';
+  type: string; // Internal alias for bodyPart
+  bodyPart?: string;
+  difficulty: string;
   title: string;
   description: string;
   videoUrl?: string;
   thumbnail?: string;
+  duration?: number;
   createdAt?: string;
   updatedAt?: string;
 }

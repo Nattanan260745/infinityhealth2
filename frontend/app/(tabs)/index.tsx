@@ -20,10 +20,10 @@ interface HomePageProps {
 const HomePage: React.FC<HomePageProps> = (props) => {
     const homePageController = useHomePage();
     const { steps, isAuthorized, authorize } = useGoogleFit();
-    const { startTutorial, isComplete } = useTutorial();
+    const { startTutorial, isComplete, isLoading } = useTutorial();
 
     useEffect(() => {
-        if (!isComplete) {
+        if (!isLoading && !isComplete) {
             startTutorial([
                 { id: 'welcome', title: 'ยินดีต้อนรับสู่ InfinityHealth!', description: 'มาเริ่มต้นดูแลสุขภาพของคุณด้วยภารกิจสนุกๆ กันเถอะ!' },
 
@@ -39,7 +39,7 @@ const HomePage: React.FC<HomePageProps> = (props) => {
                 { id: 'profile_level_card', title: 'แถบค่าประสบการณ์ (Level)', description: 'ดูการเติบโตของคุณได้ที่หน้า Profile! ทุกครั้งที่ทำภารกิจหรือกิจวัตรสำเร็จ คุณจะได้รับ EXP เพื่ออัปเลเวลตัวเองนะ', targetKey: 'profile_level_card', screen: '/profile' },
             ]);
         }
-    }, [isComplete]);
+    }, [isComplete, isLoading]);
 
     // Format today's date
     const today = new Date();

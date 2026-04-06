@@ -15,14 +15,11 @@ const healthTrackRoutes = require('./routes/healthTrack');
 const notificationRoutes = require('./routes/notification');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Connect to MongoDB
-// connectDB();
+const PORT = process.env.PORT || 4500; // Moved from 4029 due to port conflict
 
 // Middleware
 app.use(cors({
-  origin: true, // Allow any origin to connect (for development)
+  origin: true,
   credentials: true,
 }));
 app.use(express.json());
@@ -39,6 +36,10 @@ app.use('/exercise', exerciseRoutes);
 app.use('/health-track', healthTrackRoutes);
 app.use('/notification', notificationRoutes);
 
+// Unique Server Identifier for debugging
+const SERVER_ID = Math.floor(Math.random() * 1000000);
+const START_TIME = new Date().toISOString();
+
 // Health Check Endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -46,7 +47,9 @@ app.get('/health', (req, res) => {
     message: 'Server is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    serverId: SERVER_ID,
+    startTime: START_TIME
   });
 });
 

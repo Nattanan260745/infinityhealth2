@@ -211,12 +211,15 @@ router.post('/clerk-sync', async (req, res) => {
       });
     } else {
       console.log('Clerk Sync: User found', user.id);
-      // Optionally update profile image or push token if provided
+      // Update profile fields if they have changed or are being provided for the first time
       const updateData = {};
+      if (firstName && user.firstName !== firstName) updateData.firstName = firstName;
+      if (lastName && user.lastName !== lastName) updateData.lastName = lastName;
       if (image && user.profileImg !== image) updateData.profileImg = image;
       if (pushToken && user.pushToken !== pushToken) updateData.pushToken = pushToken;
 
       if (Object.keys(updateData).length > 0) {
+        console.log('Clerk Sync: Updating user fields', Object.keys(updateData));
         await prisma.user.update({
           where: { id: user.id },
           data: updateData

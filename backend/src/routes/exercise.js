@@ -156,32 +156,32 @@ router.get('/:exerciseId', async (req, res) => {
 // Create exercise (Admin)
 router.post('/', async (req, res) => {
   try {
-    const { type, difficulty, title, description, video_url, thumbnail, duration } = req.body;
-
-    // Map type to Category
-    let categoryName = 'Cardio';
-    if (type && type.startsWith('weight')) categoryName = 'Strength';
-    if (type && type.toLowerCase().includes('yoga')) categoryName = 'Yoga';
-
-    const category = await prisma.exerciseCategory.findFirst({
-      where: { categoryName: categoryName }
-    });
-
-    if (!category) {
-      return res.status(400).json({ success: false, message: 'Exercise Category not found' });
-    }
+    const { 
+      type, 
+      difficulty, 
+      title, 
+      description, 
+      video_url, 
+      videoUrl, 
+      thumbnail, 
+      video_thumbnail,
+      difficulty_level,
+      bodyPart: reqBodyPart,
+      duration, 
+      duration_minutes 
+    } = req.body;
 
     const exercise = await prisma.exercise.create({
       data: {
-        bodyPart: type,
-        difficulty,
         title,
+        categoryId: 1, // Default category
+        videoUrl: videoUrl || video_url,
+        thumbnail: thumbnail || video_thumbnail,
+        difficulty: difficulty || difficulty_level || 'beginner',
+        bodyPart: type || reqBodyPart || 'cardio',
+        duration: duration ? parseInt(duration) : (duration_minutes ? parseInt(duration_minutes) : 0),
         description,
-        videoUrl: video_url,
-        thumbnail: thumbnail,
-        duration: parseInt(duration) || 0,
-        categoryId: category.id
-      }
+      },
     });
 
     res.status(201).json({

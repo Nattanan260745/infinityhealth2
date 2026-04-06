@@ -27,6 +27,7 @@ interface TutorialContextType {
   skipTutorial: () => void;
   resetTutorial: () => Promise<void>;
   isComplete: boolean;
+  isLoading: boolean;
   registerTarget: (key: string, rect: Rect) => void;
   targets: Record<string, Rect>;
 }
@@ -40,6 +41,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [steps, setSteps] = useState<TutorialStep[]>([]);
   const [isComplete, setIsComplete] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [targets, setTargets] = useState<Record<string, Rect>>({});
 
   useEffect(() => {
@@ -54,6 +56,8 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     } catch (e) {
       console.error('Tutorial: Error checking status', e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -108,7 +112,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [currentStepIndex, steps]);
 
   const skipTutorial = useCallback(() => {
-    setIsActive(false);
+    finishTutorial();
   }, []);
 
   const resetTutorial = useCallback(async () => {
@@ -145,6 +149,7 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         skipTutorial,
         resetTutorial,
         isComplete,
+        isLoading,
         registerTarget,
         targets,
       }}

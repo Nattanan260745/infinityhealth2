@@ -15,25 +15,27 @@ const getYoutubeId = (url: string) => {
   return (match && match[1]) ? match[1] : null;
 };
 
-type TabType = 'cardio' | 'weight';
+type TabType = 'all' | 'cardio' | 'weight';
 
-const levels = ['Beginner', 'Intermediate', 'Expert'];
+const levels = ['All', 'Beginner', 'Intermediate', 'Expert'];
 
 export default function ExerciseScreen() {
-  const [selectedTab, setSelectedTab] = useState<TabType>('cardio');
-  const [selectedLevel, setSelectedLevel] = useState('Beginner');
+  const [selectedTab, setSelectedTab] = useState<TabType>('all');
+  const [selectedLevel, setSelectedLevel] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showLevelPicker, setShowLevelPicker] = useState(false);
 
   // Real Data State
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
+  const [serverId, setServerId] = useState<number | null>(null);
 
 
   // Fetch Exercises
   useFocusEffect(
     React.useCallback(() => {
       fetchExercises();
+      fetchHealth();
     }, [])
   );
 
@@ -50,27 +52,21 @@ export default function ExerciseScreen() {
     }
   };
 
-  const filteredExercises = exercises.filter(ex => {
-    if (selectedTab === 'weight') {
-      if (!selectedCategory) return false;
-      return ex.type === `weight_${selectedCategory}`;
+  const fetchHealth = async () => {
+    try {
+      const response = await require('../../../service/InfinityhealthApi').getHealth();
+      if (response.serverId) {
+        setServerId(response.serverId);
+      }
+    } catch (error) {
+      console.log('Error fetching health:', error);
     }
-    return ex.type === 'cardio';
-  });
+  };
+
+  const filteredExercises = exercises; // Force show all for debugging
 
   // Apply level filter
-  const finalExercises = filteredExercises.filter(ex => {
-    if (!selectedLevel) return true;
-    const dbDiff = ex.difficulty.toLowerCase();
-    const selLevel = selectedLevel.toLowerCase();
-    
-    // Mapping: Beginner -> easy, Intermediate -> medium, Expert -> hard
-    if (selLevel === 'beginner') return dbDiff === 'easy' || dbDiff === 'beginner';
-    if (selLevel === 'intermediate') return dbDiff === 'medium' || dbDiff === 'intermediate';
-    if (selLevel === 'expert') return dbDiff === 'hard' || dbDiff === 'expert';
-    
-    return dbDiff === selLevel;
-  });
+  const finalExercises = filteredExercises; // Force show all for debugging
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
@@ -98,8 +94,11 @@ export default function ExerciseScreen() {
         }}
       >
         {/* Header */}
-        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937', textAlign: 'center', marginBottom: 24 }}>
-          Exercise
+        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937', textAlign: 'center', marginBottom: 4 }}>
+          Exercise ({exercises.length})
+        </Text>
+        <Text style={{ fontSize: 12, color: '#9CA3AF', textAlign: 'center', marginBottom: 20 }}>
+          Server ID: {serverId || 'connecting...'}
         </Text>
 
         {/* Tabs */}
@@ -110,6 +109,23 @@ export default function ExerciseScreen() {
           padding: 4,
           marginBottom: 20,
         }}>
+          <TouchableOpacity
+            onPress={() => setSelectedTab('all')}
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              borderRadius: 22,
+              backgroundColor: selectedTab === 'all' ? '#FFFFFF' : 'transparent',
+            }}
+          >
+            <Text style={{
+              textAlign: 'center',
+              fontWeight: '600',
+              color: selectedTab === 'all' ? '#7DD1E0' : '#6B7280',
+            }}>
+              All
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setSelectedTab('cardio')}
             style={{
@@ -130,7 +146,7 @@ export default function ExerciseScreen() {
           <TouchableOpacity
             onPress={() => {
               setSelectedTab('weight');
-              setSelectedCategory(null); // Reset category when switching tabs 
+              setSelectedCategory(null);
             }}
             style={{
               flex: 1,
@@ -144,7 +160,7 @@ export default function ExerciseScreen() {
               fontWeight: '600',
               color: selectedTab === 'weight' ? '#7DD1E0' : '#6B7280',
             }}>
-              Weight Training
+              Weight
             </Text>
           </TouchableOpacity>
         </View>
@@ -202,136 +218,128 @@ export default function ExerciseScreen() {
           </View>
         )}
 
-        {/* Weight Training Categories */}
-        {selectedTab === 'weight' && !selectedCategory ? (
-          <View style={{ gap: 16 }}>
-            {[
-              { id: 'full_body', label: 'Full Body', icon: 'body', desc: 'Complete workout for all muscle groups' },
-              { id: 'upper_body', label: 'Upper Body', icon: 'barbell', desc: 'Focus on chest, back, arms, and shoulders' },
-              { id: 'lower_body', label: 'Lower Body', icon: 'walk', desc: 'Strengthen legs, glutes, and calves' },
-              { id: 'core', label: 'Core', icon: 'fitness', desc: 'Build a strong core and abs' }
-            ].map((cat) => (
+        {/* Horizontal Category Selector for Weight/Yoga */}
+        {(selectedTab === 'weight') && (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={{ marginBottom: 20 }}
+            contentContainerStyle={{ gap: 10 }}
+          >
+            <TouchableOpacity
+              onPress={() => setSelectedCategory(null)}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: !selectedCategory ? '#7DD1E0' : '#F3F4F6',
+              }}
+            >
+              <Text style={{ color: !selectedCategory ? '#FFFFFF' : '#6B7280', fontWeight: '600' }}>All</Text>
+            </TouchableOpacity>
+            {selectedTab === 'weight' && [
+              { id: 'full_body', label: 'Full Body' },
+              { id: 'upper_body', label: 'Upper' },
+              { id: 'lower_body', label: 'Lower' },
+              { id: 'core', label: 'Core' }
+            ].map(cat => (
               <TouchableOpacity
                 key={cat.id}
                 onPress={() => setSelectedCategory(cat.id)}
                 style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  backgroundColor: selectedCategory === cat.id ? '#7DD1E0' : '#F3F4F6',
+                }}
+              >
+                <Text style={{ color: selectedCategory === cat.id ? '#FFFFFF' : '#6B7280', fontWeight: '600' }}>{cat.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
+        <View>
+          {/* Workouts List */}
+          {finalExercises.length > 0 ? (
+            finalExercises.map((workout) => (
+              <TouchableOpacity
+                key={workout.id}
+                onPress={() => {
+                  if (workout.videoUrl) {
+                    Linking.openURL(workout.videoUrl).catch(err => console.error("Couldn't open URL", err));
+                  }
+                }}
+                style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  backgroundColor: '#F3F4F6',
                   padding: 16,
+                  backgroundColor: workout.type?.startsWith('weight') ? '#FCE7F3' : '#E0F2FE',
                   borderRadius: 16,
+                  marginBottom: 12,
                 }}
               >
                 <View style={{
-                  width: 60,
-                  height: 60,
+                  width: 70,
+                  height: 70,
                   backgroundColor: '#FFFFFF',
                   borderRadius: 12,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginRight: 16
+                  marginRight: 16,
+                  overflow: 'hidden',
                 }}>
-                  <Ionicons name={cat.icon as any} size={30} color="#1F2937" />
+                  {workout.thumbnail ? (
+                    <Image
+                      source={{ uri: workout.thumbnail }}
+                      style={{ width: '100%', height: '100%' }}
+                      resizeMode="cover"
+                      onError={(e) => console.log('Error loading thumbnail from DB:', e.nativeEvent.error)}
+                    />
+                  ) : workout.videoUrl && getYoutubeId(workout.videoUrl) ? (
+                    <Image
+                      source={{ uri: `https://img.youtube.com/vi/${getYoutubeId(workout.videoUrl)}/hqdefault.jpg` }}
+                      style={{ width: '100%', height: '100%' }}
+                      resizeMode="cover"
+                      onError={(e) => console.log('Error loading thumbnail from YouTube:', e.nativeEvent.error)}
+                      defaultSource={require('@/assets/images/exercise.png')}
+                    />
+                  ) : (
+                    <Image
+                      source={require('@/assets/images/exercise.png')}
+                      style={{ width: '100%', height: '100%' }}
+                      resizeMode="contain"
+                    />
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937' }}>{cat.label}</Text>
-                  <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>{cat.desc}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : (
-          <View>
-            {/* Back Button for Weight Categories */}
-            {selectedTab === 'weight' && (
-              <TouchableOpacity
-                onPress={() => setSelectedCategory(null)}
-                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
-              >
-                <Ionicons name="arrow-back" size={20} color="#6B7280" />
-                <Text style={{ marginLeft: 8, color: '#6B7280', fontWeight: '500' }}>Back to Categories</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Workouts List */}
-            {(selectedTab === 'cardio' || !selectedLevel) && !selectedLevel ? (
-              <View style={{ marginTop: 60, alignItems: 'center', opacity: 0.5 }}>
-                <Ionicons name="options-outline" size={48} color="#9CA3AF" />
-                <Text style={{ marginTop: 12, fontSize: 16, color: '#9CA3AF' }}>Please select a level to view exercises</Text>
-              </View>
-            ) : (
-              /* Render Exercises (Filtered) */
-              finalExercises.length > 0 ? (
-                finalExercises.map((workout) => (
-                  <TouchableOpacity
-                    key={workout.id}
-                    onPress={() => {
-                      if (workout.videoUrl) {
-                        Linking.openURL(workout.videoUrl).catch(err => console.error("Couldn't open URL", err));
-                      }
-                    }}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 16,
-                      backgroundColor: selectedTab === 'weight' ? '#FCE7F3' : '#E0F2FE', // Pink for Weight, Blue for Cardio
-                      borderRadius: 16,
-                      marginBottom: 12,
-                    }}
+                  <Text 
+                    style={{ fontSize: 16, fontWeight: '700', color: '#1F2937', marginBottom: 4 }}
+                    numberOfLines={2}
                   >
-                    <View style={{
-                      width: 70,
-                      height: 70,
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: 12,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 16,
-                      overflow: 'hidden',
-                    }}>
-                      {workout.thumbnail ? (
-                        <Image
-                          source={{ uri: workout.thumbnail }}
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="cover"
-                          onError={(e) => console.log('Error loading thumbnail from DB:', e.nativeEvent.error)}
-                        />
-                      ) : workout.videoUrl && getYoutubeId(workout.videoUrl) ? (
-                        <Image
-                          source={{ uri: `https://img.youtube.com/vi/${getYoutubeId(workout.videoUrl)}/hqdefault.jpg` }}
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="cover"
-                          onError={(e) => console.log('Error loading thumbnail from YouTube:', e.nativeEvent.error)}
-                          defaultSource={require('@/assets/images/exercise.png')} // Fallback
-                        />
-                      ) : (
-                        <Image
-                          source={require('@/assets/images/exercise.png')}
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="contain"
-                        />
-                      )}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937' }}>{workout.title}</Text>
-                      <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>{workout.description || 'No description'}</Text>
-                      <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4, textTransform: 'capitalize' }}>{workout.difficulty}</Text>
-                    </View>
-                    {workout.videoUrl && <Ionicons name="play-circle" size={24} color="#9CA3AF" />}
-                  </TouchableOpacity>
-                ))
-              ) : (
-                <View style={{ alignItems: 'center', marginTop: 40 }}>
-                  <Text style={{ color: '#9CA3AF' }}>No exercises found for this level/category.</Text>
+                    {workout.title}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#6B7280', fontWeight: 'bold' }}>
+                    ID: {workout.id} | Type: {workout.type} | Diff: {workout.difficulty}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="time-outline" size={14} color="#6B7280" />
+                    <Text style={{ fontSize: 13, color: '#6B7280', marginLeft: 4 }}>
+                      {workout.duration || 0} min
+                    </Text>
+                  </View>
                 </View>
-              )
-            )}
-          </View>
-        )}
+                {workout.videoUrl && <Ionicons name="play-circle" size={28} color="#9CA3AF" />}
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={{ alignItems: 'center', marginTop: 60, opacity: 0.5 }}>
+              <Ionicons name="search-outline" size={48} color="#9CA3AF" />
+              <Text style={{ marginTop: 12, fontSize: 16, color: '#9CA3AF' }}>No exercises found.</Text>
+            </View>
+          )}
+        </View>
       </ScrollView>
-
-
     </View>
   );
 }

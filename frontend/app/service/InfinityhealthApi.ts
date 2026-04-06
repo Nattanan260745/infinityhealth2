@@ -22,7 +22,7 @@ import {
 // const API_BASE_URL = 'https://infinityhealth2.onrender.com'; // Production URL on Render
 // const API_BASE_URL = 'https://cc53-202-44-32-253.ngrok-free.app'; // Public Ngrok Tunnel
 // const API_BASE_URL = 'http://192.168.1.33:3000'; // Local LAN IP (For Physical Device)
-const API_BASE_URL = 'https://chip-platform-etc-plain.trycloudflare.com'; // Cloudflare Quick Tunnel URL
+const API_BASE_URL = 'https://namespace-plus-need-starsmerchant.trycloudflare.com'; // New Cloudflare Tunnel (http2 protocol)
 
 
 console.log('[API] Target URL:', API_BASE_URL);
@@ -141,12 +141,25 @@ export const updateMissionProgress = async (
   return response.data;
 };
 
+export const getHealth = async (): Promise<ApiResponse<any>> => {
+  const response = await api.get<ApiResponse<any>>('/health');
+  return response.data;
+};
+
 // ============================================
 // Exercises
 // ============================================
 export const getAllExercises = async (): Promise<ApiResponse<Exercise[]>> => {
-  const response = await api.get<ApiResponse<Exercise[]>>('/exercise');
-  return response.data;
+  try {
+    const timestamp = Date.now();
+    const response = await api.get<ApiResponse<Exercise[]>>(`/exercise?t=${timestamp}`);
+    console.log(`[API] Fetching exercises from: ${API_BASE_URL}/exercise?t=${timestamp}`);
+    console.log(`[API] Response data status: ${response.data.success}, Count: ${response.data.data?.length || 0}`);
+    return response.data;
+  } catch (error) {
+    console.error('[API] GET /exercise error:', error);
+    throw error;
+  }
 };
 
 export const getExercisesByType = async (type: string): Promise<ApiResponse<Exercise[]>> => {

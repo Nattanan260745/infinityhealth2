@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { View, LayoutChangeEvent } from 'react-native';
+import { View, LayoutChangeEvent, StatusBar, Platform } from 'react-native';
 import { useTutorial } from '../../context/TutorialContext';
 
 interface TutorialTargetProps {
@@ -16,7 +16,11 @@ const TutorialTarget: React.FC<TutorialTargetProps> = ({ tutorialKey, children, 
   const measure = () => {
     if (viewRef.current) {
       viewRef.current.measureInWindow((x, y, width, height) => {
-        registerTarget(tutorialKey, { x, y, width, height, borderRadius });
+        let adjustedY = y;
+        if (Platform.OS === 'android' && StatusBar.currentHeight) {
+          adjustedY += StatusBar.currentHeight;
+        }
+        registerTarget(tutorialKey, { x, y: adjustedY, width, height, borderRadius });
       });
     }
   };
