@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Platform } from 'react-native';
+import { View, Platform, DeviceEventEmitter } from 'react-native';
 import storage from '../utils/storage';
 import { getUserNotifications, getUserRoutinesByDate, getUserProfile, syncClerkUser } from '../service/InfinityhealthApi';
 import { Notification } from '../interface/infinityhealth.interface';
@@ -63,71 +63,38 @@ export default function TabLayout() {
     const checkNotifications = async () => {
       try {
         const userId = await storage.getItem('userId');
-        if (!userId) return;
+        if (!userId) {
+            setHasUnread(false);
+            return;
+        }
 
-        // 1. Fetch Backend Notifications
+        // Fetch Backend Notifications (Single Source of Truth)
         const notifRes = await getUserNotifications(userId);
-        let backendNotifs: Notification[] = [];
-        if (notifRes.success && notifRes.data) {
-          backendNotifs = notifRes.data;
+        if (notifRes.success && Array.isArray(notifRes.data)) {
+            // Count unread notifications
+            const unreadCount = notifRes.data.filter(n => !n.isRead).length;
+            setHasUnread(unreadCount > 0);
+        } else {
+            setHasUnread(false);
         }
-
-        // 2. Fetch Today's Routines (Local)
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const today = `${year}-${month}-${day}`;
-
-        const routineRes = await getUserRoutinesByDate(userId, today);
-        let routineNotifs: any[] = [];
-        if (routineRes.success && Array.isArray(routineRes.data)) {
-          routineNotifs = routineRes.data;
-        }
-
-        // 3. Check Local Read Status & Deleted Status
-        const readKey = `read_notifications_${today}`;
-        const readData = await storage.getItem(readKey);
-        const readIds: number[] = readData ? JSON.parse(readData) : [];
-
-        const deleteKey = `deleted_notifications_${today}`;
-        const deleteData = await storage.getItem(deleteKey);
-        const deletedIds: number[] = deleteData ? JSON.parse(deleteData) : [];
-
-        // 4. Calculate Unread Count
-        // Backend: isRead is false
-        const unreadBackend = backendNotifs.filter(n => !n.isRead).length;
-
-        // Routines: ID not in readIds AND not in deletedIds AND Time has passed
-        const now = new Date();
-        const currentHours = now.getHours();
-        const currentMinutes = now.getMinutes();
-
-        const unreadRoutines = routineNotifs.filter(r => {
-          if (readIds.includes(r.id)) return false;
-          if (deletedIds.includes(r.id)) return false; // Fix: Check deleted status
-
-          // Check Time (Only count if time has passed)
-          if (r.scheduledTime) {
-            const [h, m] = r.scheduledTime.split(':').map(Number);
-            if (h > currentHours) return false;
-            if (h === currentHours && m > currentMinutes) return false;
-          }
-          return true;
-        }).length;
-
-        const totalUnread = unreadBackend + unreadRoutines;
-
-        setHasUnread(totalUnread > 0);
 
       } catch (e) {
         console.error("Badge check failed", e);
+        setHasUnread(false);
       }
     };
 
     checkNotifications();
-    const interval = setInterval(checkNotifications, 5000); // Check every 5s
-    return () => clearInterval(interval);
+    
+    // Listen for manual refreshes (Instant update)
+    const subscription = DeviceEventEmitter.addListener('refresh_notification_badge', checkNotifications);
+    
+    const interval = setInterval(checkNotifications, 10000); // Pulse every 10s as backup
+    
+    return () => {
+        subscription.remove();
+        clearInterval(interval);
+    };
   }, []);
 
   return (

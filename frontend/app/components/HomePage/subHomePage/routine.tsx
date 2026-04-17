@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { useRoutinePage } from '../../../hook/useRoutinePage';
 import { Calendar } from 'react-native-calendars';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import TutorialTarget from '../../shared/TutorialTarget';
 
 export default function RoutineScreen() {
   const {
@@ -652,19 +653,21 @@ export default function RoutineScreen() {
         paddingBottom: Platform.OS === 'ios' ? 34 : Math.max(insets.bottom, 20) + 80, // Moved up significantly
         backgroundColor: colors.background,
       }}>
-        <TouchableOpacity
-          onPress={handleAddPress}
-          style={{
-            backgroundColor: colors.primary,
-            borderRadius: 25,
-            paddingVertical: 14,
-            alignItems: 'center',
-          }}
-        >
-          <Text style={{ color: colors.background, fontSize: 16, fontWeight: '600' }}>
-            {getAddButtonText()}
-          </Text>
-        </TouchableOpacity>
+        <TutorialTarget tutorialKey="add_routine_button" borderRadius={25}>
+          <TouchableOpacity
+            onPress={handleAddPress}
+            style={{
+              backgroundColor: colors.primary,
+              borderRadius: 25,
+              paddingVertical: 14,
+              alignItems: 'center',
+            }}
+          >
+            <Text style={{ color: colors.background, fontSize: 16, fontWeight: '600' }}>
+              {getAddButtonText()}
+            </Text>
+          </TouchableOpacity>
+        </TutorialTarget>
       </View>
     </View>
   );

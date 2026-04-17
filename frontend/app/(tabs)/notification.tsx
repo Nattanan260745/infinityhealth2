@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator, DeviceEventEmitter } from 'react-native';
 import { NotificationItem } from '../components/HomePage/NotificationItem';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -129,6 +129,7 @@ export default function NotificationScreen() {
             try {
                 await markNotificationAsRead(notif.id);
                 console.log(`Notification ${notif.id} marked as read`);
+                DeviceEventEmitter.emit('refresh_notification_badge');
             } catch (error) {
                 console.error('Failed to mark notification as read:', error);
             }
@@ -163,6 +164,7 @@ export default function NotificationScreen() {
         } else if (id > 0) { // Backend Notification
             try {
                 await deleteNotification(id);
+                DeviceEventEmitter.emit('refresh_notification_badge');
             } catch (error) {
                 console.error("Failed to delete notification", error);
             }
@@ -193,6 +195,7 @@ export default function NotificationScreen() {
                 });
                 await storage.setItem(deleteKey, JSON.stringify(deletedIds));
                 console.log(`[NotificationScreen] Clear All: Deleted ${routineNotifs.length} local routines`);
+                DeviceEventEmitter.emit('refresh_notification_badge');
             }
         } catch (error) {
             console.error("Failed to clear notifications", error);

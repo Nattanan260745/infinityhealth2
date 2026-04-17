@@ -25,6 +25,12 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+// Request Logger Middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${req.ip}`);
+  next();
+});
+
 // Routes
 app.use('/auth', authRoutes);
 app.use('/profile', profileRoutes);

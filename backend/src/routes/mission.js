@@ -219,6 +219,14 @@ router.get('/user/:userId', async (req, res) => {
     const { userId } = req.params;
     const uid = parseId(userId);
 
+    // --- SELF-HEALING: Trigger Streak Mission check on every fetch to ensure consistency ---
+    const { checkStreakMission } = require('../utils/missionUtils');
+    try {
+      await checkStreakMission(uid);
+    } catch (streakError) {
+      console.error('Self-healing streak check failed:', streakError);
+    }
+
     // Get today's range
     const { start, end } = getTodayRange();
 
@@ -287,7 +295,7 @@ router.get('/user/:userId', async (req, res) => {
 
         user_status: userMission ? {
           mission_status: userMission.status ? 'completed' : 'in_progress',
-          progress: `${userMission.currentProgress}/${mission.targetValue}`, // Format: "current/target"
+          progress: `${Math.min(userMission.currentProgress, mission.targetValue)}/${mission.targetValue}`, // Cap display at target (e.g. 3/3 instead of 4/3)
           completed_at: userMission.status ? userMission.updatedAt : null,
           is_claimed: userMission.isClaimed
         } : {
@@ -422,14 +430,13 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
       rewards.exp = mission.rewardExp;
       rewards.points = mission.rewardPoints;
 
-      // STREAK LOGIC
+      // STREAK LOGIC (Consecutive Days)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       let newStreak = userStats.currentStreak;
       let lastActivity = userStats.lastActivityDate;
 
-      // Check last activity date
       if (lastActivity) {
         const lastDate = new Date(lastActivity);
         lastDate.setHours(0, 0, 0, 0);
@@ -438,18 +445,14 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
         if (diffDays === 1) {
-          // Consecutive day
           newStreak += 1;
         } else if (diffDays > 1) {
-          // Broke streak (unless it's same day, diffDays=0)
           newStreak = 1;
         }
       } else {
-        // First time
         newStreak = 1;
       }
 
-      // Bonus Calculation
       if (newStreak === 3) rewards.bonus = 5;
       else if (newStreak === 7) rewards.bonus = 15;
       else if (newStreak === 30) rewards.bonus = 50;
@@ -457,10 +460,7 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
       rewards.points += rewards.bonus;
 
       const currentExp = userStats.currentExp + rewards.exp;
-
-      // Level logic
       const { calculateLevelWithCap } = require('../utils/levelUtils');
-      // Pass false to DISABLE manual rank up permission here (Mission completion != Rank Up action)
       const newLevel = await calculateLevelWithCap(userStats.level, currentExp, uid, false);
 
       await prisma.userStats.update({
@@ -470,12 +470,11 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
           totalPoints: userStats.totalPoints + rewards.points,
           level: newLevel,
           currentStreak: newStreak,
-          lastActivityDate: new Date() // Set to now
+          lastActivityDate: new Date()
         }
       });
 
-      // --- CREATE NOTIFICATION ---
-      // 1. Mission Completed Notification
+      // --- MISSION COMPLETED NOTIFICATIONS ---
       await prisma.notification.create({
         data: {
           userId: uid,
@@ -486,7 +485,6 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
         }
       });
 
-      // 2. Level Up Notification
       if (newLevel > userStats.level) {
         await prisma.notification.create({
           data: {
@@ -498,7 +496,10 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
           }
         });
       }
-      // ----------------------------
+
+      // --- TRIGGER STREAK MISSION (Missions per Day) ---
+      const { checkStreakMission } = require('../utils/missionUtils');
+      await checkStreakMission(uid);
     }
 
     res.json({
@@ -507,8 +508,7 @@ router.patch('/user/:userId/complete/:missionId', async (req, res) => {
       data: {
         userMission,
         rewards,
-        streak: userStats ? userStats.currentStreak : 0 // Note: this is old streak if reused variable, but we updated DB. 
-        // Ideally we return newStreak, but userStats variable is stale.
+        streak: userStats ? userStats.currentStreak : 0 
       },
     });
   } catch (error) {

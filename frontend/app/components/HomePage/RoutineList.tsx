@@ -14,16 +14,16 @@ export function RoutineList({ routines }: RoutineListProps) {
         <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1F2937', marginBottom: 16 }}>
           Upcoming Routines
         </Text>
-        <View style={{ 
-          padding: 24, 
-          backgroundColor: '#F9FAFB', 
-          borderRadius: 16, 
-          borderWidth: 1, 
+        <View style={{
+          padding: 24,
+          backgroundColor: '#F9FAFB',
+          borderRadius: 16,
+          borderWidth: 1,
           borderColor: '#E5E7EB',
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <Text style={{ color: '#6B7280', fontSize: 14 }}>ยังไม่มีกิจวัตรในวันนี้</Text>
+          <Text style={{ color: '#6B7280', fontSize: 14 }}>No Upcoming Routines</Text>
         </View>
       </View>
     );

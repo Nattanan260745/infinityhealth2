@@ -23,7 +23,7 @@ import StatusModal from '@/app/components/StatusModal';
 type TabType = 'daily' | 'challenge';
 
 const tabs: { key: TabType; label: string; icon: string }[] = [
-  { key: 'daily', label: 'Daily', icon: '📅' },
+  { key: 'daily', label: 'Daily', icon: '📜' },
   { key: 'challenge', label: 'Challenge', icon: '🏆' },
 ];
 
@@ -88,6 +88,21 @@ const getPresets = (mission: any) => {
     { label: '1', value: 1 },
     { label: '5', value: 5 }
   ];
+};
+
+// Helper to determine if a mission should ONLY be updated via system actions (No manual buttons)
+const isAutoMission = (mission: any) => {
+  const title = mission.title.toLowerCase();
+  const autoKeywords = [
+    'บันทึกสุขภาพ',
+    'บันทึกกิจวัตร',
+    'รักษาความสม่ำเสมอ',
+    'streak mission',
+    'health log',
+    'routine',
+    'goal log'
+  ];
+  return autoKeywords.some(keyword => title.includes(keyword));
 };
 
 // Generic Component for Quick Update
@@ -617,7 +632,9 @@ export default function MissionsScreen() {
                   </View>
                 ) : (
                   <View>
-                    <QuickUpdateControl mission={mission} onUpdate={handleQuickUpdate} />
+                    {!isAutoMission(mission) && (
+                      <QuickUpdateControl mission={mission} onUpdate={handleQuickUpdate} />
+                    )}
                   </View>
                 )}
               </View>

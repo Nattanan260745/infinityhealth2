@@ -5,8 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "concurrently \"node src/index.js\" \"node scheduler.js\"",
-    "dev": "concurrently \"nodemon src/index.js\" \"node scheduler.js\"",
-    "seed": "node src/seed.js"
+    "dev": "concurrently \"nodemon src/index.js\" \"node scheduler.js\""
   },
   "keywords": [
     "health",

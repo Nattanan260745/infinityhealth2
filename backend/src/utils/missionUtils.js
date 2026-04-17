@@ -32,14 +32,7 @@ const checkAndCompleteMission = async (userId, missionName, currentValue) => {
         if (!missions || missions.length === 0) return;
 
         for (const mission of missions) {
-            // 2. Check if target met (Simple GTE check)
-            if (currentValue < mission.targetValue) continue;
-
-            // 3. Find or Create UserMission
-            // For DAILY: Check for TODAY.
-            // For CHALLENGE: Check if EVER completed (unless it's repeatable, but challenges are usually one-off or level-based).
-            // Assuming Challenges are one-time per level.
-
+            // 2. Find or Create UserMission Record for Today/Ever
             let userMissionQuery = {
                 userId: userId,
                 missionId: mission.id
@@ -53,34 +46,36 @@ const checkAndCompleteMission = async (userId, missionName, currentValue) => {
                 where: userMissionQuery
             });
 
-            // If already completed, skip
-            if (userMission && userMission.status) continue;
+            const wasAlreadyCompleted = !!(userMission && userMission.status);
+            const isNowCompleted = currentValue >= mission.targetValue;
 
             if (!userMission) {
-                // Create new completed mission
+                // Create new record with current progress
                 userMission = await prisma.userMission.create({
                     data: {
                         userId: userId,
                         missionId: mission.id,
                         currentProgress: currentValue,
-                        status: true, // Completed!
-                        completedAt: new Date()
+                        status: isNowCompleted,
+                        completedAt: isNowCompleted ? new Date() : null
                     }
                 });
             } else {
-                // Update existing to completed
+                // Update existing record progress (even if already completed, to allow sync/correction)
                 userMission = await prisma.userMission.update({
                     where: { id: userMission.id },
                     data: {
-                        status: true,
                         currentProgress: currentValue,
-                        completedAt: new Date()
+                        status: isNowCompleted,
+                        completedAt: isNowCompleted ? (userMission.completedAt || new Date()) : (userMission.completedAt || null)
                     }
                 });
             }
 
-            // 4. Grant Rewards
-            await grantRewards(userId, mission);
+            // 3. Grant Rewards ONLY IF it just became completed (transitions from false to true)
+            if (isNowCompleted && !wasAlreadyCompleted) {
+                await grantRewards(userId, mission);
+            }
         }
 
         // 5. Trigger Streak Check (Maintain Consistency) - Only for Daily usually, but consistent behavior is fine.
@@ -151,26 +146,57 @@ const grantRewards = async (userId, mission) => {
  */
 const checkStreakMission = async (userId) => {
     try {
-        const streakMissionName = 'รักษาความสม่ำเสมอ (Streak Mission)';
-        const { start, end } = getTodayRange();
-
-        // Count completed missions today
-        const completedCount = await prisma.userMission.count({
+        console.log(`--- [STREAK DEBUG] Starting check for User ${userId} ---`);
+        
+        // 1. Identify the Streak Mission using EXACT name first, then fallback
+        let streakMission = await prisma.mission.findFirst({
             where: {
-                userId: userId,
-                status: true,
-                createdAt: { gte: start, lte: end },
-                mission: {
-                    missionName: { not: streakMissionName } // Exclude itself to avoid infinite loop
-                }
+                missionName: 'รักษาความสม่ำเสมอ (Streak Mission)',
+                isActive: true
             }
         });
 
-        // Check and complete if >= 3
-        await checkAndCompleteMission(userId, streakMissionName, completedCount);
+        // Fallback if the exact name isn't found (using the previous contains logic)
+        if (!streakMission) {
+            streakMission = await prisma.mission.findFirst({
+                where: {
+                    missionName: { contains: 'รักษาความสม่ำเสมอ' },
+                    isActive: true
+                }
+            });
+        }
+
+        if (!streakMission) {
+            console.log('--- [STREAK DEBUG] Streak Mission NOT FOUND ---');
+            return;
+        }
+
+        const streakMissionName = streakMission.missionName;
+        const { start, end } = getTodayRange();
+
+        // 2. Count missions COMPLETED today (using completedAt to be most accurate)
+        // This should match the visual "Completed" count in the app
+        const completedMissions = await prisma.userMission.findMany({
+            where: {
+                userId: userId,
+                status: true,
+                completedAt: { gte: start, lte: end },
+                missionId: { not: streakMission.id }
+            },
+            include: { mission: true }
+        });
+
+        const completedCount = completedMissions.length;
+        const cappedCount = Math.min(completedCount, 3); // Cap display at target (3)
+        
+        console.log(`--- [STREAK DEBUG] Found ${completedCount} missions, capping at ${cappedCount} for User ${userId} ---`);
+        
+        // 3. Sync the progress
+        await checkAndCompleteMission(userId, streakMissionName, cappedCount);
+        console.log(`--- [STREAK DEBUG] Check completed. Final Progress set to: ${cappedCount}/3 ---`);
 
     } catch (error) {
-        console.error('Error checking streak mission:', error);
+        console.error('--- [STREAK ERROR] ---', error);
     }
 };
 

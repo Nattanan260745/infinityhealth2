@@ -15,11 +15,6 @@ type TabType = 'daily' | 'challenge';
 const getMissionIcon = (title: string, type: string): string => {
   const titleLower = title.toLowerCase();
 
-  if (titleLower.includes('water') || titleLower.includes('drink') || titleLower.includes('น้ำ')) return '💧';
-  if (titleLower.includes('walk') || titleLower.includes('step') || titleLower.includes('เดิน') || titleLower.includes('ก้าว')) return '👟';
-  if (titleLower.includes('exercise') || titleLower.includes('workout') || titleLower.includes('ออกกำลังกาย')) return '💪';
-  if (titleLower.includes('sleep') || titleLower.includes('rest') || titleLower.includes('นอน')) return '😴';
-  if (titleLower.includes('food') || titleLower.includes('meal') || titleLower.includes('eat')) return '🥗';
   if (titleLower.includes('sugar')) return '🍬';
   if (titleLower.includes('stretch')) return '🧘';
   if (titleLower.includes('cardio')) return '🏃';
@@ -28,11 +23,11 @@ const getMissionIcon = (title: string, type: string): string => {
 
   // Default by type
   switch (type) {
-    case 'daily': return '📅';
+    case 'daily': return '📜';
     case 'weekly': return '📆';
     case 'monthly': return '🗓️';
     case 'special': return '⭐';
-    default: return '🎯';
+    default: return '📜';
   }
 };
 
@@ -234,8 +229,8 @@ export const useMissionPage = () => {
   // Convert API mission to display format
   const convertToDisplayMission = (mission: MissionWithStatus): DisplayMission => {
     const progressParts = mission.user_status?.progress?.split('/') || ['0', String(mission.target_value || 100)];
-    let currentProgress = parseInt(progressParts[0]) || 0;
     let totalProgress = parseInt(progressParts[1]) || mission.target_value || 100;
+    let currentProgress = Math.min(parseInt(progressParts[0]) || 0, totalProgress); // FRONTEND LOCK: Cap at total to avoid 4/3 display
     let title = mission.title;
     let targetUnit = mission.target_unit || '';
 

@@ -11,6 +11,7 @@ const defaultStatCards: StatCard[] = [
     { id: 'Water', icon: 'water', iconColor: '#00BFFF', value: '-', unit: 'ml', bgColor: '#D8F4FF' },
     { id: 'Sleep', icon: 'moon', iconColor: '#FFEA00', value: '-', unit: 'hr', bgColor: '#FAF5DE' },
     { id: 'Steps', icon: 'footsteps', iconColor: '#6004FF', value: '-', unit: 'steps', bgColor: '#EAE1F9' },
+
 ];
 
 const filterTabs: MetricType[] = ['Weight', 'BMI', 'Water', 'Sleep', 'Steps'];
@@ -163,9 +164,9 @@ export const useDashBoardPage = () => {
                     : 0; // Don't fallback to yesterday for steps/water/sleep
                 return val;
             };
-
             const water = getDailyValue('water');
             const sleep = getDailyValue('sleepHours', 'sleep_hours');
+            const calories = getDailyValue('calories', 'calories');
 
             const bmi = (typeof weight === 'number' && typeof height === 'number' && height > 0)
                 ? (weight / ((height / 100) ** 2)).toFixed(2)
@@ -191,6 +192,7 @@ export const useDashBoardPage = () => {
                 { id: 'Water', icon: 'water', iconColor: '#00BFFF', value: water?.toString() || '-', unit: 'ml', bgColor: '#D8F4FF' },
                 { id: 'Sleep', icon: 'moon', iconColor: '#FFEA00', value: sleep?.toString() || '-', unit: 'hr', bgColor: '#FAF5DE' },
                 { id: 'Steps', icon: 'footsteps', iconColor: '#6004FF', value: finalSteps.toString(), unit: 'steps', bgColor: '#EAE1F9' },
+
             ];
 
             setStatCards(prevCards => {
@@ -348,8 +350,16 @@ export const useDashBoardPage = () => {
                     }
                     return { date: dateStr, value: val };
                 });
-                // Sort by date just in case
-                setChartData(mappedData.reverse());
+                // Sort by date (Ascending: Oldest to Newest = Latest on Right)
+                const sortedData = mappedData.sort((a, b) => {
+                    // Assuming date format "M/D" or "YYYY-MM-DD", but dedupedData source is better for sorting
+                    // However, mappedData is already derived from a sorted source (backend returns ASC).
+                    // To be safe and meet user's "Latest on Right" requirement:
+                    // Just use the original order from backend (which is ASC) and DON'T reverse.
+                    return 0; // Keeping original order from backend
+                });
+
+                setChartData(mappedData); // Remove .reverse() to keep latest on right
             }
 
         } catch (error) {

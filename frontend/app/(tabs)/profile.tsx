@@ -16,14 +16,11 @@ import CustomAlert from '../shared/CustomAlert';
 import * as ImagePicker from 'expo-image-picker';
 import * as Notifications from 'expo-notifications';
 import { Mission, MissionWithStatus } from '../interface/infinityhealth.interface';
-import { LinearGradient } from 'expo-linear-gradient';
-
 export default function ProfileScreen() {
   const { user } = useUser();
   const { signOut } = useAuth();
   const router = useRouter();
   const { resetTutorial } = useTutorial();
-  const [date, setDate] = useState(new Date());
   const [userName, setUserName] = useState('User');
 
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
@@ -47,7 +44,7 @@ export default function ProfileScreen() {
   });
 
   const [userData, setUserData] = useState({
-    avatar: 'https://i.pinimg.com/736x/5b/2c/47/5b2c4756f84f6a0478b67df75e2fd1c0.jpg',
+    avatar: '', // Rely on Clerk user.imageUrl primarily
     level: 1,
     rank: 'Beginner',
     experience: 0,
@@ -62,15 +59,16 @@ export default function ProfileScreen() {
       const loadUserData = async () => {
         try {
           if (user) {
-            const name = user.fullName || user.firstName || 'User';
-            const email = user.emailAddresses[0]?.emailAddress;
+            const clerkName = user.fullName || user.firstName || 'User';
             const avatar = user.imageUrl;
-
-            setUserName(name);
             setUserData(prev => ({
               ...prev,
               avatar: avatar || prev.avatar
             }));
+
+            // Try to load name from storage first for instant update
+            const cachedName = await storage.getItem('userFullName');
+            setUserName(cachedName || clerkName);
 
             let internalUserId = await storage.getItem('internalUserId');
 
@@ -88,6 +86,13 @@ export default function ProfileScreen() {
                   experience: res.data?.exp || 0,
                   totalPoints: res.data?.points || 0
                 }));
+
+                // Prioritize Backend Name if available
+                if (res.data?.user?.firstName) {
+                  const backendName = res.data.user.firstName;
+                  setUserName(backendName);
+                  await storage.setItem('userFullName', backendName);
+                }
 
                 // Fetch Level Data by ID to ensure correct progress bar even if XP overflows
                 try {
@@ -269,6 +274,8 @@ export default function ProfileScreen() {
       const avatar = user?.imageUrl;
       if (email) {
         await syncClerkUser(email, newName, user?.lastName || '', avatar);
+        // Persist name in storage
+        await storage.setItem('userFullName', newName);
       }
 
       Alert.alert("Success", "Name updated successfully!");
@@ -437,7 +444,7 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: Platform.OS === 'web' ? 40 : 60,
-          paddingBottom: 100,
+          paddingBottom: 30,
           paddingHorizontal: 20,
         }}
       >
@@ -588,28 +595,29 @@ export default function ProfileScreen() {
         </TutorialTarget>
 
         {/* Total Points Card */}
-        <View style={{
-          backgroundColor: '#F9FAFB',
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 16,
-        }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
-            Total Points
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Image
-              source={require('../../assets/images/point.png')}
-              style={{ width: 20, height: 20, marginRight: 8 }}
-              resizeMode="contain"
-            />
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1F2937' }}>
-              {userData.totalPoints}
+        <TutorialTarget tutorialKey="profile_points_card">
+          <View style={{
+            backgroundColor: '#F9FAFB',
+            borderRadius: 16,
+            padding: 20,
+            marginBottom: 16,
+          }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
+              Total Points
             </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Image
+                source={require('../../assets/images/point.png')}
+                style={{ width: 20, height: 20, marginRight: 8 }}
+                resizeMode="contain"
+              />
+              <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1F2937' }}>
+                {userData.totalPoints}
+              </Text>
+            </View>
           </View>
-        </View>
+        </TutorialTarget>
 
-        {/* Ranks Up Card - Always Visible */}
         {/* Ranks Up Card - Always Visible */}
         {(() => {
           const isBossLevel = (userData.level % 10 === 0);
@@ -628,84 +636,85 @@ export default function ProfileScreen() {
           const isReadyToRankUp = isExpReady && isPointsReady && isChallengeReady;
 
           return (
-            <View style={{
-              backgroundColor: '#F3F4F6',
-              borderRadius: 20,
-              padding: 24,
-              marginBottom: 24,
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              {/* Icon Circle */}
+            <TutorialTarget tutorialKey="profile_rank_up_card">
               <View style={{
-                width: 60,
-                height: 60,
-                borderRadius: 30,
-                backgroundColor: isReadyToRankUp ? '#E9D5FF' : '#E5E7EB',
+                backgroundColor: '#F3F4F6',
+                borderRadius: 20,
+                padding: 24,
+                marginBottom: 12,
                 alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16
+                justifyContent: 'center'
               }}>
-                <Ionicons name="trophy-outline" size={28} color={isReadyToRankUp ? "#A855F7" : "#9CA3AF"} />
-              </View>
-
-              {/* Description Text */}
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#374151', textAlign: 'center', marginBottom: 4 }}>
-                {isReadyToRankUp ? "Rank Up Available!" : "Rank Up Requirements"}
-              </Text>
-
-              {/* Requirements Text */}
-              <Text style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20 }}>
-                {isReadyToRankUp
-                  ? `Ready to Rank Up! (Cost: ${pointsCost} Points)`
-                  : `Requirements: Max EXP, Challenge, and ${pointsCost} Points`}
-              </Text>
-
-              {/* Status Indicators */}
-              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name={isExpReady ? "checkmark-circle" : "ellipse-outline"} size={16} color={isExpReady ? "#10B981" : "#EF4444"} />
-                  <Text style={{ marginLeft: 4, fontSize: 12, color: isExpReady ? '#4B5563' : '#EF4444' }}>Max EXP</Text>
+                {/* Icon Circle */}
+                <View style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 30,
+                  backgroundColor: isReadyToRankUp ? '#E9D5FF' : '#E5E7EB',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16
+                }}>
+                  <Ionicons name="trophy-outline" size={28} color={isReadyToRankUp ? "#A855F7" : "#9CA3AF"} />
                 </View>
 
-                {/* Points Indicator */}
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name={isPointsReady ? "checkmark-circle" : "ellipse-outline"} size={16} color={isPointsReady ? "#10B981" : "#EF4444"} />
-                  <Text style={{ marginLeft: 4, fontSize: 12, color: isPointsReady ? '#4B5563' : '#EF4444' }}>{pointsCost} Pts</Text>
-                </View>
-
-                {/* Challenge Indicator */}
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name={isChallengeReady ? "checkmark-circle" : "ellipse-outline"} size={16} color={isChallengeReady ? "#10B981" : "#EF4444"} />
-                  <Text style={{ marginLeft: 4, fontSize: 12, color: isChallengeReady ? '#4B5563' : '#EF4444' }}>Challenge</Text>
-                </View>
-              </View>
-
-              {/* Button */}
-              <TouchableOpacity
-                onPress={handleRankUpPress}
-                style={{
-                  backgroundColor: isReadyToRankUp ? '#7DD1E0' : '#D1D5DB',
-                  paddingVertical: 12,
-                  paddingHorizontal: 32,
-                  borderRadius: 25,
-                  shadowColor: isReadyToRankUp ? '#7DD1E0' : 'transparent',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 4,
-                }}
-                disabled={!isReadyToRankUp}
-              >
-                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
-                  Rank Up!
+                {/* Description Text */}
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#374151', textAlign: 'center', marginBottom: 4 }}>
+                  {isReadyToRankUp ? "Rank Up Available!" : "Rank Up Requirements"}
                 </Text>
-              </TouchableOpacity>
-            </View>
+
+                {/* Requirements Text */}
+                <Text style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20 }}>
+                  {isReadyToRankUp
+                    ? `Ready to Rank Up! (Cost: ${pointsCost} Points)`
+                    : `Requirements: Max EXP, Challenge, and ${pointsCost} Points`}
+                </Text>
+
+                {/* Status Indicators */}
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name={isExpReady ? "checkmark-circle" : "ellipse-outline"} size={16} color={isExpReady ? "#10B981" : "#EF4444"} />
+                    <Text style={{ marginLeft: 4, fontSize: 12, color: isExpReady ? '#4B5563' : '#EF4444' }}>Max EXP</Text>
+                  </View>
+
+                  {/* Points Indicator */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name={isPointsReady ? "checkmark-circle" : "ellipse-outline"} size={16} color={isPointsReady ? "#10B981" : "#EF4444"} />
+                    <Text style={{ marginLeft: 4, fontSize: 12, color: isPointsReady ? '#4B5563' : '#EF4444' }}>{pointsCost} Pts</Text>
+                  </View>
+
+                  {/* Challenge Indicator */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name={isChallengeReady ? "checkmark-circle" : "ellipse-outline"} size={16} color={isChallengeReady ? "#10B981" : "#EF4444"} />
+                    <Text style={{ marginLeft: 4, fontSize: 12, color: isChallengeReady ? '#4B5563' : '#EF4444' }}>Challenge</Text>
+                  </View>
+                </View>
+
+                {/* Button */}
+                <TouchableOpacity
+                  onPress={handleRankUpPress}
+                  style={{
+                    backgroundColor: isReadyToRankUp ? '#7DD1E0' : '#D1D5DB',
+                    paddingVertical: 12,
+                    paddingHorizontal: 32,
+                    borderRadius: 25,
+                    shadowColor: isReadyToRankUp ? '#7DD1E0' : 'transparent',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }}
+                  disabled={!isReadyToRankUp}
+                >
+                  <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
+                    Rank Up!
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TutorialTarget>
           );
         })()}
 
-        {/* Logout Button */}
         {/* Tutorial Guide Button */}
         <TouchableOpacity
           onPress={async () => {
@@ -719,7 +728,7 @@ export default function ProfileScreen() {
             backgroundColor: '#F3F4F6',
             borderRadius: 12,
             paddingVertical: 14,
-            marginTop: 40
+            marginTop: 8
           }}
         >
           <Ionicons name="help-circle-outline" size={22} color="#4B5563" style={{ marginRight: 8 }} />
@@ -736,7 +745,7 @@ export default function ProfileScreen() {
             backgroundColor: '#FEE2E2',
             borderRadius: 12,
             paddingVertical: 14,
-            marginTop: 12
+            marginTop: 8
           }}
         >
           <Ionicons name="log-out-outline" size={20} color="#EF4444" style={{ marginRight: 8 }} />

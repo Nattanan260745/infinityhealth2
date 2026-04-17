@@ -7,10 +7,9 @@ interface HeaderProps {
   userName: string;
   userAvatar: string;
   date: string;
-  unreadCount?: number;
 }
 
-export function Header({ userName, userAvatar, date, unreadCount = 0 }: HeaderProps) {
+export function Header({ userName, userAvatar, date }: HeaderProps) {
   const router = useRouter();
 
   return (

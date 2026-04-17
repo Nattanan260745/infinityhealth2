@@ -145,11 +145,6 @@ export default function DashboardPage() {
         case 'Weight': basePayload.weight = numVal; break;
         case 'Height': basePayload.height = numVal; break;
         case 'Water':
-          // Water is cumulative usually, but if user edits manually, maybe they mean total?
-          // Let's assume they are setting the TOTAL value they want to see, or we can treat as 'add'?
-          // Usually 'Edit' implies 'Set to'. If they want to add water, they use quick adds.
-          // But here, let's treat it as SET TO for Weight/Height/Sleep.
-          // For consistency, let's treat manual input as SET TO for all.
           basePayload.water = numVal;
           break;
         case 'Sleep':
@@ -210,8 +205,9 @@ export default function DashboardPage() {
         paddingBottom: 16,
         paddingHorizontal: 20,
         backgroundColor: '#FFFFFF',
+        alignItems: 'center',
       }}>
-        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937' }}>
+        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937', textAlign: 'center' }}>
           Summary Dashboard
         </Text>
       </View>

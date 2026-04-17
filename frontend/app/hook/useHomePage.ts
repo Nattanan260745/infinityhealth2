@@ -4,76 +4,14 @@ import { StyleSheet, Platform, Alert } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import storage from "../utils/storage";
 import { HealthCheckResponse } from "../interface/infinityhealth.interface";
-import { getHealthCheck, getUserRoutinesByDate, syncClerkUser, getUserNotifications } from "../service/InfinityhealthApi";
+import { getHealthCheck, getUserRoutinesByDate, syncClerkUser, getUserNotifications, getUserProfile } from "../service/InfinityhealthApi";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import * as Notifications from 'expo-notifications';
 
 const styles = StyleSheet.create({
     container: {
         flex: 1, backgroundColor: '#FFFFFF'
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-        alignItems: 'center',
-    },
-    notificationContainer: {
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        width: '100%',
-        maxHeight: '80%', // Allow mostly full height
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 8,
-        paddingBottom: 20, // Add padding for bottom safe area
-    },
-    notificationHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-    },
-    notificationTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#1F2937',
-    },
-    notificationItem: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
-    },
-    unreadNotification: {
-        backgroundColor: '#F0FDFA',
-    },
-    notificationDot: {
-        width: 20,
-        alignItems: 'center',
-        paddingTop: 6,
-    },
-    unreadDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#7DD1E0',
-    },
-    notificationText: {
-        fontSize: 14,
-        color: '#1F2937',
-        marginBottom: 4,
-    },
-    notificationTime: {
-        fontSize: 12,
-        color: '#9CA3AF',
-    },
+    }
 });
 
 // Helper to get current week (Mon-Sun or Sun-Sat)
@@ -122,67 +60,6 @@ export const useHomePage = () => {
     const [userId, setUserId] = useState<string | null>(null);
     const [routines, setRoutines] = useState<Routine[]>([]);
 
-    // Notification Logic (Simplified: Routines = Notifications)
-    const [notifications, setNotifications] = useState<any[]>([]);
-
-    const fetchNotifications = async () => {
-        if (!userId) return;
-        try {
-            // 1. Fetch Routines for Today
-            const d = new Date();
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const today = `${year}-${month}-${day}`;
-            const res = await getUserRoutinesByDate(userId, today);
-            let notifs: any[] = [];
-
-            if (res.success && Array.isArray(res.data)) {
-                notifs = res.data.map((r: any) => ({
-                    id: r.id, // specific ID
-                    title: r.title,
-                    subtitle: r.scheduledTime ? `Scheduled: ${r.scheduledTime}` : 'Daily Routine',
-                    time: r.scheduledTime || 'Today',
-                    type: 'planner',
-                    isRead: false // default
-                }));
-            }
-
-            // 2. Check Local Storage for "Read" status
-            const readKey = `read_notifications_${today}`; // reset daily
-            const readData = await storage.getItem(readKey);
-            const readIds: number[] = readData ? JSON.parse(readData) : [];
-
-            // 3. Apply Read Status
-            const finalNotifs = notifs.map(n => ({
-                ...n,
-                isRead: readIds.includes(n.id)
-            }));
-
-            setNotifications(finalNotifs);
-
-        } catch (error) {
-            console.error('Error fetching notifications:', error);
-        }
-    };
-
-    // Calculate unread count
-    const unreadCount = notifications.filter(n => !n.isRead).length;
-
-    const handleDeleteNotification = (id: number) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
-    };
-
-    const handleClearAllNotifications = () => {
-        setNotifications([]);
-    };
-
-    useFocusEffect(
-        useCallback(() => {
-            fetchNotifications();
-        }, [userId])
-    );
-
     useEffect(() => {
         setWeekDays(getWeekDays());
     }, []);
@@ -207,15 +84,22 @@ export const useHomePage = () => {
     // Load user data from Clerk and sync to storage
     const loadUserData = async () => {
         if (user) {
-            const name = user.fullName || user.firstName || 'User';
-            setUserName(name);
-            // setUserId(user.id); // DO NOT SET CLERK ID IMMEDIATELY to avoid race condition with fetchRoutines
+            const clerkName = user.fullName || user.firstName || 'User';
+            
+            // Try to load cached name for instant UI update
+            const cachedName = await storage.getItem('userFullName');
+            setUserName(cachedName || clerkName);
 
-            // Check if we have Internal ID in storage
-            const cachedInternalId = await storage.getItem('internalUserId');
-            if (cachedInternalId) {
-                setUserId(cachedInternalId);
-                console.log('[HomePage] Loaded cached Internal ID:', cachedInternalId);
+            // Fetch latest profile from backend to sync
+            const internalId = await storage.getItem('internalUserId');
+            if (internalId) {
+                setUserId(internalId);
+                const res = await getUserProfile(internalId);
+                if (res.success && res.data?.user?.firstName) {
+                    const backendName = res.data.user.firstName;
+                    setUserName(backendName);
+                    await storage.setItem('userFullName', backendName);
+                }
             } else {
                 console.log('[HomePage] Internal ID not found yet. Waiting for global sync...');
             }
@@ -345,7 +229,6 @@ export const useHomePage = () => {
         try {
             await Promise.all([
                 fetchRoutines(),
-                fetchNotifications(),
                 loadUserData()
             ]);
         } catch (error) {
@@ -368,10 +251,6 @@ export const useHomePage = () => {
         userName,
         userAvatar,
         handleLogout,
-        notifications,
-        handleDeleteNotification,
-        handleClearAllNotifications,
-        unreadCount,
         refreshing,
         onRefresh
     }

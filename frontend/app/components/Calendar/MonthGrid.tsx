@@ -23,7 +23,8 @@ export const MonthGrid: React.FC<MonthGridProps> = ({
     const screenWidth = Dimensions.get('window').width;
     const paddingHorizontal = 20;
     const availableWidth = screenWidth - (paddingHorizontal * 2);
-    const itemSize = availableWidth / 7;
+    // Use Math.floor to ensure 7 items always fit in one row without wrapping
+    const itemSize = Math.floor(availableWidth / 7);
 
     return (
         <View style={{ paddingHorizontal: paddingHorizontal, marginBottom: 24 }}>
@@ -58,7 +59,7 @@ export const MonthGrid: React.FC<MonthGridProps> = ({
                                 height: itemSize,
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                marginBottom: 8,
+                                marginBottom: 4,
                             }}
                         >
                             <View style={{

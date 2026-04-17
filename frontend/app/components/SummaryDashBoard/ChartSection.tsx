@@ -5,6 +5,7 @@ import { Circle, Text as SvgText, G, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from "react-native-chart-kit";
 import { Dimensions } from "react-native";
+import { BarChart } from "react-native-chart-kit";
 
 interface ChartSectionProps {
     selectedTab: MetricType
