@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Platform, DeviceEventEmitter } from 'react-native';
-import storage from '../utils/storage';
-import { getUserNotifications, getUserRoutinesByDate, getUserProfile, syncClerkUser } from '../service/InfinityhealthApi';
-import { Notification } from '../interface/infinityhealth.interface';
+import storage from '@/utils/storage';
+import { getUserNotifications, getUserRoutinesByDate, getUserProfile, syncClerkUser } from '@/service/InfinityhealthApi';
+import { Notification } from '@/interface/infinityhealth.interface';
 import { useUser } from '@clerk/clerk-expo';
-import { usePushNotifications } from '../hook/usePushNotifications';
-import TutorialTarget from '../components/shared/TutorialTarget';
+import { usePushNotifications } from '@/hook/usePushNotifications';
+import TutorialTarget from '@/components/shared/TutorialTarget';
 
 export default function TabLayout() {
   const { user } = useUser();

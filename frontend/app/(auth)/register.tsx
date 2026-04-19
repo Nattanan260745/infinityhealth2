@@ -15,7 +15,7 @@ import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSignUp, useOAuth } from '@clerk/clerk-expo';
-import FormTextField from '../shared/FormTextField';
+import FormTextField from '../../shared/FormTextField';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';

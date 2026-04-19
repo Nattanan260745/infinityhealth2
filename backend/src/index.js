@@ -153,7 +153,7 @@ app.get('/', (req, res) => {
 });
 
 // Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server is running on http://0.0.0.0:${PORT}`);
+  console.log(`📊 Health check: http://192.168.1.46:${PORT}/health`);
 });

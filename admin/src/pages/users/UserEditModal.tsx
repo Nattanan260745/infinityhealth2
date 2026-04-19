@@ -99,6 +99,8 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ user, onClose, onUpdate }
                             value={formData.email}
                             onChange={handleChange}
                             className="form-input"
+                            disabled
+                            style={{ backgroundColor: '#f3f4f6', cursor: 'not-allowed' }}
                         />
                     </div>
 

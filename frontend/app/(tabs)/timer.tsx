@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTimer } from '../hook/useTimer';
-import { WheelPicker } from '../components/shared/WheelPicker';
+import { useTimer } from '@/hook/useTimer';
+import { WheelPicker } from '@/components/shared/WheelPicker';
 
 export default function TimerPage() {
     const { 

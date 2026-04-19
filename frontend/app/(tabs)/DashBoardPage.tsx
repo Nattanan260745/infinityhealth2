@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Platform, Dimensions, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DashBoardCard from '../components/SummaryDashBoard/DashBoardCard';
-import { MetricType, StatCard } from '../interface/infinityhealth.interface';
-import Filter from '../components/SummaryDashBoard/Filter';
-import ChartSection from '../components/SummaryDashBoard/ChartSection';
-import { useDashBoardPage } from '../hook/useDashBoardPage';
-import DashBoardEditModal from '../components/SummaryDashBoard/DashBoardEditModal';
-import SuccessModal from '../components/SummaryDashBoard/SuccessModal';
-import { saveHealthData, getHealthTrackRange, syncClerkUser } from '../service/InfinityhealthApi';
-import storage from '../utils/storage';
+import DashBoardCard from '@/components/SummaryDashBoard/DashBoardCard';
+import { MetricType, StatCard } from '@/interface/infinityhealth.interface';
+import Filter from '@/components/SummaryDashBoard/Filter';
+import ChartSection from '@/components/SummaryDashBoard/ChartSection';
+import { useDashBoardPage } from '@/hook/useDashBoardPage';
+import DashBoardEditModal from '@/components/SummaryDashBoard/DashBoardEditModal';
+import SuccessModal from '@/components/SummaryDashBoard/SuccessModal';
+import { saveHealthData, getHealthTrackRange, syncClerkUser } from '@/service/InfinityhealthApi';
+import storage from '@/utils/storage';
 import { useUser } from '@clerk/clerk-expo';
 
 

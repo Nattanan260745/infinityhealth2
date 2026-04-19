@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TouchableOpacity } from 'react-native';
-import { Header } from '../components/HomePage/Header';
-import { MissionCard } from '../components/HomePage/MissionCard';
-import { CalendarWeek } from '../components/HomePage/CalendarWeek';
-import { RoutineList } from '../components/HomePage/RoutineList';
+import { Header } from '@/components/HomePage/Header';
+import { MissionCard } from '@/components/HomePage/MissionCard';
+import { CalendarWeek } from '@/components/HomePage/CalendarWeek';
+import { RoutineList } from '@/components/HomePage/RoutineList';
 import { CalendarDay, Mission, Routine } from '@/src/types';
-import { useHomePage } from '../hook/useHomePage';
+import { useHomePage } from '@/hook/useHomePage';
 import { Ionicons } from '@expo/vector-icons';
-import { useGoogleFit } from '../hooks/useGoogleFit';
-import { useTutorial } from '../context/TutorialContext';
-import TutorialTarget from '../components/shared/TutorialTarget';
+import { useGoogleFit } from '@/hooks/useGoogleFit';
+import { useTutorial } from '@/context/TutorialContext';
+import TutorialTarget from '@/components/shared/TutorialTarget';
 import { useEffect } from 'react';
 
 

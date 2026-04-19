@@ -1,6 +1,6 @@
 {
   "name": "infinityhealth",
-  "main": "expo-router/entry",
+  "main": "index.js",
   "version": "1.56.0",
   "scripts": {
     "start": "expo start",

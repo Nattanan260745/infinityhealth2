@@ -1,10 +1,10 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator, DeviceEventEmitter } from 'react-native';
-import { NotificationItem } from '../components/HomePage/NotificationItem';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator, DeviceEventEmitter, FlatList, RefreshControl } from 'react-native';
+import { NotificationItem } from '@/components/HomePage/NotificationItem';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useFocusEffect } from 'expo-router';
-import storage from '../utils/storage';
+import { useFocusEffect, useRouter } from 'expo-router';
+import storage from '@/utils/storage';
 import {
     getUserNotifications,
     markNotificationAsRead,
@@ -12,10 +12,10 @@ import {
     deleteNotification,
     deleteAllNotifications,
     getUserRoutinesByDate
-} from '../service/InfinityhealthApi';
-import { Notification } from '../interface/infinityhealth.interface';
-
-import { usePushNotifications } from '../hook/usePushNotifications';
+} from '@/service/InfinityhealthApi';
+import { Notification } from '@/interface/infinityhealth.interface';
+import { useUser } from '@clerk/clerk-expo';
+import { usePushNotifications } from '@/hook/usePushNotifications';
 
 export default function NotificationScreen() {
     const [notifications, setNotifications] = useState<Notification[]>([]);

@@ -1,20 +1,21 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, Slot } from 'expo-router'; // Added Slot
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme, Platform } from 'react-native';
-import { ClerkProvider, ClerkLoaded } from '@clerk/clerk-expo'; // Added Clerk imports
-import * as SecureStore from 'expo-secure-store'; // Added SecureStore import
+import { ClerkProvider, ClerkLoaded } from '@clerk/clerk-expo';
+import * as SecureStore from 'expo-secure-store';
 import * as Notifications from 'expo-notifications';
-import { usePushNotifications } from './hook/usePushNotifications';
-import { usePollingNotifications } from './hook/usePollingNotifications';
 
-import { TutorialProvider } from './context/TutorialContext';
-import TutorialOverlay from './components/shared/TutorialOverlay';
+import { usePushNotifications } from '@/hook/usePushNotifications';
+import { usePollingNotifications } from '@/hook/usePollingNotifications';
 
-import '../app/global.css';
+import { TutorialProvider } from '@/context/TutorialContext';
+import TutorialOverlay from '@/components/shared/TutorialOverlay';
+
+import './global.css';
 
 // Configure Notification Channel for Android
 if (Platform.OS === 'android') {
@@ -111,14 +112,10 @@ function RootLayoutNav() {
   return (
     <TutorialProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="components/HomePage/subHomePage/missions" options={{ headerShown: false }} />
-          <Stack.Screen name="components/HomePage/subHomePage/exercise" options={{ headerShown: false }} />
-          <Stack.Screen name="components/HomePage/subHomePage/routine" options={{ headerShown: false }} />
-          <Stack.Screen name="components/HomePage/subHomePage/modal" options={{ presentation: 'modal' }} />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
         </Stack>
         <TutorialOverlay />
       </ThemeProvider>

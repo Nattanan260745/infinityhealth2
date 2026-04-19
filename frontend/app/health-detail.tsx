@@ -3,9 +3,9 @@ import { View, Text, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator
 import { useLocalSearchParams, useRouter, Stack, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart, BarChart } from "react-native-chart-kit";
-import { getHealthTrackRange } from './service/InfinityhealthApi'; // Fixed import path
-import storage from './utils/storage';
-import { MetricType, HealthTrack } from './interface/infinityhealth.interface';
+import { getHealthTrackRange } from '@/service/InfinityhealthApi';
+import storage from '@/utils/storage';
+import { MetricType, HealthTrack } from '@/interface/infinityhealth.interface';
 
 const screenWidth = Dimensions.get("window").width;
 

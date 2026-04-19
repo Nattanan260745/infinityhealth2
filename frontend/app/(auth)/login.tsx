@@ -9,9 +9,13 @@ export const useWarmUpBrowser = () => {
   React.useEffect(() => {
     // Warm up the android browser to improve UX
     // https://docs.expo.dev/guides/authentication/#improving-user-experience
-    void WebBrowser.warmUpAsync()
+    if (Platform.OS !== 'web') {
+      void WebBrowser.warmUpAsync()
+    }
     return () => {
-      void WebBrowser.coolDownAsync()
+      if (Platform.OS !== 'web') {
+        void WebBrowser.coolDownAsync()
+      }
     }
   }, [])
 }
@@ -19,7 +23,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { FormProvider, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import FormTextField from '../shared/FormTextField'
+import FormTextField from '../../shared/FormTextField'
 
 export default function LoginPage() {
   const { signIn, setActive, isLoaded } = useSignIn()

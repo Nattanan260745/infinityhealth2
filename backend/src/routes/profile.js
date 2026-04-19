@@ -172,10 +172,9 @@ router.put('/:userId', async (req, res) => {
     if (bio !== undefined) userUpdate.bio = bio;
     if (pushToken !== undefined) userUpdate.pushToken = pushToken;
     // Added fields for admin edit
-    const { firstName, lastName, email } = req.body;
+    const { firstName, lastName } = req.body;
     if (firstName !== undefined) userUpdate.firstName = firstName;
     if (lastName !== undefined) userUpdate.lastName = lastName;
-    if (email !== undefined) userUpdate.email = email;
 
     if (Object.keys(userUpdate).length > 0) {
       await prisma.user.update({

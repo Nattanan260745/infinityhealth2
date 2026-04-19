@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, ScrollView, Platform, TouchableOpacity } from 'react-native';
-import { useCalendar } from '../hook/useCalendar';
+import { useCalendar } from '@/hook/useCalendar';
 import {
     CalendarHeader,
     MonthNavigation,
@@ -10,7 +10,7 @@ import {
     EmptyState,
     SelectedDateInfo,
     MonthGrid,
-} from '../components/Calendar';
+} from '@/components/Calendar';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function CalendarScreen() {
