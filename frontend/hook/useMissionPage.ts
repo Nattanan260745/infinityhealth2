@@ -113,19 +113,6 @@ export const useMissionPage = () => {
     return null;
   };
 
-  // Load Streak (omitted unchanged parts for brevity if handled by diff, but need context)
-  // ... (keeping existing streak logic ideally, but since I'm replacing a huge chunk, let's just make sure I don't delete it. 
-  // Wait, I should target specific lines or be careful. The `replace_file_content` replaces a contiguous block. 
-  // I need to be careful not to delete the streak logic if it's in between.)
-
-  // Actually, let's just use `multi_replace_file_content` if I need to touch multiple places, 
-  // but here I need to inject state near top and replace handleSave/handleComplete logic.
-  // The state injection is at lines 65-68.
-  // The handleSave/handleComplete logic is further down.
-
-  // Let's do this in steps via `multi_replace_file_content` instead of one big replace.
-  // It's safer.
-
 
 
   // Load Streak

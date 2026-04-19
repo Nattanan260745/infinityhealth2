@@ -93,6 +93,7 @@ export const useHomePage = () => {
             // Fetch latest profile from backend to sync
             const internalId = await storage.getItem('internalUserId');
             if (internalId) {
+                setUserId(internalId);
                 try {
                     const res = await getUserProfile(internalId);
                     if (res.success && res.data?.user?.firstName) {

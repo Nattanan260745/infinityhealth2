@@ -644,15 +644,13 @@ export default function RoutineScreen() {
         </View>
       </ScrollView>
 
-      {/* Add Button */}
+      {/* Add Button Area - Fixed Footer */}
       <View style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
         padding: 20,
-        paddingBottom: Platform.OS === 'ios' ? 34 : Math.max(insets.bottom, 20) + 80, // Moved up significantly
+        paddingBottom: Platform.OS === 'ios' ? 34 : Math.max(insets.bottom, 20) + 10,
         backgroundColor: colors.background,
+        borderTopWidth: 1,
+        borderTopColor: colors.borderLight,
       }}>
         <TutorialTarget tutorialKey="add_routine_button" borderRadius={25}>
           <TouchableOpacity

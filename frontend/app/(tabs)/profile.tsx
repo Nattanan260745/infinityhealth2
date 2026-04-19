@@ -101,7 +101,7 @@ export default function ProfileScreen() {
                   if (levelRes.success && levelRes.data) {
                     setUserData(prev => ({
                       ...prev,
-                      rank: levelRes.data?.levelName || 'Beginner',
+                      rank: levelRes.data?.title || 'Beginner',
                       minExperience: levelRes.data?.min_exp || 0,
                       maxExperience: levelRes.data?.max_exp || 1000,
                     }));

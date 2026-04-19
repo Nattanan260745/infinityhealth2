@@ -276,8 +276,8 @@ export default function ExerciseScreen() {
 
         {/* Horizontal Category Selector for Weight */}
         {(selectedTab === 'weight') && (
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             style={{ marginBottom: 20 }}
             contentContainerStyle={{ gap: 10 }}
@@ -364,7 +364,7 @@ export default function ExerciseScreen() {
                   )}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text 
+                  <Text
                     style={{ fontSize: 16, fontWeight: '700', color: '#1F2937', marginBottom: 4 }}
                     numberOfLines={2}
                   >
