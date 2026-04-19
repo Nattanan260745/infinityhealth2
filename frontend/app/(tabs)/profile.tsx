@@ -101,6 +101,7 @@ export default function ProfileScreen() {
                   if (levelRes.success && levelRes.data) {
                     setUserData(prev => ({
                       ...prev,
+                      rank: levelRes.data?.levelName || 'Beginner',
                       minExperience: levelRes.data?.min_exp || 0,
                       maxExperience: levelRes.data?.max_exp || 1000,
                     }));
@@ -573,7 +574,7 @@ export default function ProfileScreen() {
                   Experience
                 </Text>
                 <Text style={{ fontSize: 14, color: '#6B7280' }}>
-                  {userData.experience - userData.minExperience} / {userData.maxExperience - userData.minExperience + 1}
+                  {Math.max(0, userData.experience - userData.minExperience)} / {Math.max(1, userData.maxExperience - userData.minExperience)}
                 </Text>
               </View>
 

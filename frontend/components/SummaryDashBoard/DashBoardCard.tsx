@@ -64,7 +64,7 @@ const DashBoardCard: React.FC<DashBoardCardProps> = (props) => {
                                     resizeMode="contain"
                                 />
                             </View>
-                            <Text style={{ marginLeft: card.id === 'Sleep' ? 90 : 6, fontSize: 14, color: '#4B5563' }}>{card.id}</Text>
+                            <Text style={{ marginLeft:10, fontSize: 14, color: '#4B5563' }}>{card.id}</Text>
                         </View>
                         <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1F2937' }}>
                             {card.value}
